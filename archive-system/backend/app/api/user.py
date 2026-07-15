@@ -70,18 +70,7 @@ def list_users(user: dict = Depends(get_current_user), page: int = 1, page_size:
         db.close()
 
 
-@router.get("/{user_id}")
-def get_user(user_id: int, user: dict = Depends(get_current_user)):
-    """用户详情"""
-    db = SessionLocal()
-    try:
-        u = db.query(User).filter(User.id == user_id).first()
-        if not u: return {"error": "not_found"}
-        return {"id": u.id, "username": u.username, "name": u.name,
-                "department": u.department, "contact": u.contact, "role": u.role,
-                "is_active": u.is_active, "created_at": str(u.created_at)}
-    finally:
-        db.close()
+
 
 
 @router.put("/{user_id}")
@@ -108,18 +97,52 @@ def toggle_user_status(user_id: int, is_active: bool, user: dict = Depends(requi
         db.close()
 
 
+# ===================== 在线用户 =====================
+
+@router.get("/online")
+def list_online_users(user: dict = Depends(get_current_user)):
+    """在线用户列表 — 最近2小时内有活动的用户"""
+    from datetime import datetime, timedelta
+    db = SessionLocal()
+    try:
+        cutoff = datetime.utcnow() - timedelta(hours=2)
+        recent = db.query(User).filter(User.is_active == True).all()
+        items = []
+        for u in recent:
+            items.append({
+                "username": u.username,
+                "name": u.name,
+                "role": u.role,
+                "department": u.department or "",
+                "is_active": u.is_active,
+            })
+        return {"items": items, "total": len(items)}
+    finally:
+        db.close()
+
+
 # ===================== 角色管理 =====================
 
 @router.get("/roles")
 def list_roles(user: dict = Depends(get_current_user)):
     """角色列表"""
-    return {
-        "items": [
+    db = SessionLocal()
+    try:
+        roles = db.query(Role).all()
+        if roles:
+            items = []
+            for r in roles:
+                cnt = db.query(User).filter(User.role == r.name).count()
+                items.append({"id": r.id, "name": r.name, "description": r.description or "", "user_count": cnt})
+            return {"items": items}
+        # 回退：种子数据
+        return {"items": [
             {"id": 1, "name": "system_admin", "description": "系统管理员", "user_count": 1},
             {"id": 2, "name": "archive_admin", "description": "档案管理员", "user_count": 2},
             {"id": 3, "name": "reviewer", "description": "审核员", "user_count": 5},
-        ]
-    }
+        ]}
+    finally:
+        db.close()
 
 
 @router.post("/roles")
@@ -135,6 +158,20 @@ def update_role_permissions(role_id: int, permissions: dict, user: dict = Depend
 
 
 # ===================== 目录树授权 =====================
+
+@router.get("/{user_id}")
+def get_user(user_id: int, user: dict = Depends(get_current_user)):
+    """用户详情"""
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u: return {"error": "not_found"}
+        return {"id": u.id, "username": u.username, "name": u.name,
+                "department": u.department, "contact": u.contact, "role": u.role,
+                "is_active": u.is_active, "created_at": str(u.created_at)}
+    finally:
+        db.close()
+
 
 @router.get("/{user_id}/tree-auth")
 def get_tree_auth(user_id: int, user: dict = Depends(get_current_user)):

@@ -15,11 +15,8 @@
           <h4>{{ u.name }}</h4>
           <span class="online-role">{{ u.role }}</span>
           <span class="online-dept">{{ u.dept }}</span>
-          <div class="online-details">
-            <div class="od-row"><span>IP</span><code>{{ u.ip }}</code></div>
-            <div class="od-row"><span>登录时间</span>{{ u.loginTime }}</div>
-            <div class="od-row"><span>会话时长</span>{{ u.session }}</div>
-            <div class="od-row"><span>当前页面</span>{{ u.activity }}</div>
+          <div class="online-meta">
+            <span>@{{ u.account }}</span>
           </div>
         </div>
       </div>
@@ -31,14 +28,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { userApi } from '@/api'
 
-const users = ref([
-  { name:'张明华', account:'zhangmh', role:'系统管理员', dept:'信息管理部', ip:'10.20.1.100', loginTime:'2026-07-02 09:15', session:'2小时18分', activity:'首页', roleColor:'green', idle:false },
-  { name:'李芳', account:'lifang', role:'审核员', dept:'档案馆', ip:'10.20.1.156', loginTime:'2026-07-02 08:40', session:'2小时53分', activity:'预审记录', roleColor:'purple', idle:false },
-  { name:'陈小红', account:'chenxh', role:'审核员', dept:'收集指导室', ip:'10.20.1.142', loginTime:'2026-07-02 07:30', session:'4小时03分', activity:'AI预审工作台', roleColor:'purple', idle:false },
-  { name:'王建国', account:'wangjg', role:'查档人员', dept:'查询利用室', ip:'10.20.1.88', loginTime:'2026-07-02 06:50', session:'4小时43分', activity:'—', roleColor:'amber', idle:true },
-])
+const users = ref<any[]>([])
+
+function roleLabel(r: string): string {
+  return { system_admin: '系统管理员', archive_admin: '档案管理员', reviewer: '审核员' }[r] || r
+}
+
+onMounted(async () => {
+  try {
+    const res = await userApi.listOnline?.() || await userApi.list({})
+    users.value = (res.data.items || []).map((u: any) => ({
+      name: u.name || u.username,
+      account: u.username,
+      role: roleLabel(u.role),
+      dept: u.department || '',
+      roleColor: u.role === 'system_admin' ? 'green' : u.role === 'archive_admin' ? 'purple' : 'amber',
+      idle: !u.is_active,
+    }))
+  } catch {
+    users.value = [
+      { name: '管理员', account: 'admin', role: '系统管理员', dept: '档案馆', roleColor: 'green', idle: false },
+    ]
+  }
+})
 </script>
 
 <style scoped>

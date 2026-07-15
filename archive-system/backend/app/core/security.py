@@ -15,7 +15,9 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # bcrypt 限制 72 字节，截断超长密码
+    pwd = password[:72] if len(password.encode()) > 72 else password
+    return pwd_context.hash(pwd)
 
 
 def verify_password(plain: str, hashed: str) -> bool:

@@ -112,36 +112,93 @@ for _cat, _words in SENSITIVE_RULES.items():
         _ALL_WORDS[w] = _cat
 
 
+# ==================== Aho-Corasick 自动机（高性能扫描） ====================
+
+_automaton = None  # 惰性初始化
+
+
+def _get_automaton():
+    """获取或构建 Aho-Corasick 自动机，降级为简单扫描"""
+    global _automaton
+    if _automaton is not None:
+        return _automaton
+
+    try:
+        import ahocorasick
+        automaton = ahocorasick.Automaton()
+        for word, category in _ALL_WORDS.items():
+            automaton.add_word(word, (word, category))
+        automaton.make_automaton()
+        _automaton = automaton
+        return _automaton
+    except ImportError:
+        _automaton = False  # 标记不可用
+        return None
+
+
+def _build_shortcut_index():
+    """
+    降级优化: 按首字符建索引，减少不必要的比较。
+    例如只对首字符匹配的词才做 find()，避免 400 词全量扫描。
+    """
+    index: dict[str, list[tuple[str, str]]] = {}
+    for word, cat in _ALL_WORDS.items():
+        c = word[0]
+        if c not in index:
+            index[c] = []
+        index[c].append((word, cat))
+    return index
+
+
 # ==================== 规则扫描 ====================
 
 def scan_sensitive(full_text: str) -> list[dict]:
     """
     扫描全文，返回所有命中的敏感词及其位置。
-    时间复杂度 O(n*m)，但 400 词 × 几千字档案 在 Python 中 < 50ms。
+
+    优先级: Aho-Corasick > 首字符索引 > 全量遍历
+    AC 自动机: O(N + matches) — 适合 400+ 词大批量扫描
     """
     hits = []
-    seen = set()  # 去重
+    seen = set()
 
-    for word, category in _ALL_WORDS.items():
-        idx = 0
-        while True:
-            idx = full_text.find(word, idx)
-            if idx == -1:
-                break
-            key = f"{word}:{idx}"
-            if key not in seen:
+    # 方案 A: Aho-Corasick（最佳）
+    automaton = _get_automaton()
+    if automaton:
+        for end_idx, (word, category) in automaton.iter(full_text):
+            start_idx = end_idx - len(word) + 1
+            if start_idx < 0:
+                continue
+            key = f"{word}:{start_idx}"
+            if key in seen:
+                continue
+            seen.add(key)
+            ctx_start = max(0, start_idx - 15)
+            ctx_end = min(len(full_text), end_idx + 1 + 20)
+            hits.append({
+                "type": category, "word": word,
+                "content": full_text[ctx_start:ctx_end],
+                "start_char": start_idx, "end_char": end_idx + 1,
+            })
+        return hits
+
+    # 方案 B: 首字符索引降级
+    char_index = _build_shortcut_index()
+    for i, ch in enumerate(full_text):
+        candidates = char_index.get(ch, [])
+        for word, category in candidates:
+            if full_text.startswith(word, i):
+                key = f"{word}:{i}"
+                if key in seen:
+                    continue
                 seen.add(key)
-                # 提取上下文（前后各 15 字）
-                ctx_start = max(0, idx - 15)
-                ctx_end = min(len(full_text), idx + len(word) + 20)
+                ctx_start = max(0, i - 15)
+                ctx_end = min(len(full_text), i + len(word) + 20)
                 hits.append({
-                    "type": category,
-                    "word": word,
+                    "type": category, "word": word,
                     "content": full_text[ctx_start:ctx_end],
-                    "start_char": idx,
-                    "end_char": idx + len(word),
+                    "start_char": i, "end_char": i + len(word),
                 })
-            idx += 1
 
     return hits
 

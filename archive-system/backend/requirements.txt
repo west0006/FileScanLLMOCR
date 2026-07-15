@@ -31,6 +31,9 @@ openpyxl==3.1.2
 httpx==0.26.0
 python-dotenv==1.0.0
 
+# 敏感词扫描加速（可选）
+pyahocorasick==2.0.0
+
 # 测试
 pytest==8.0.0
 pytest-cov==4.1.0

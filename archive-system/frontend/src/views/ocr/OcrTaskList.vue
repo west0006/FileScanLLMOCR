@@ -19,10 +19,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { ocrApi } from '@/api'
+
 const tasks = ref<any[]>([])
 const showCreate = ref(false)
 const cf = reactive({ task_name: '', category: '' })
+
+onMounted(async () => {
+  try {
+    const res = await ocrApi.listTasks({ page: 1, page_size: 50 })
+    tasks.value = res.data.items || []
+  } catch { /* keep empty */ }
+})
 function barClass(s: string) { return { pending:'low',running:'mid',completed:'low',failed:'high' }[s]||'low' }
 function statusLabel(s: string) { return { pending:'待处理',running:'处理中',completed:'已完成',failed:'失败' }[s]||s }
 </script>

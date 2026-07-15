@@ -70,9 +70,11 @@ class Settings(BaseSettings):
     SYNC_DATA_DIR: str = "/app/sync_data"
     MAX_UPLOAD_SIZE_MB: int = 500
 
-    class Config:
-        env_file = ".env"
-        env_file_encoding = "utf-8"
+    model_config = {
+        "extra": "ignore",
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+    }
 
 
 settings = Settings()

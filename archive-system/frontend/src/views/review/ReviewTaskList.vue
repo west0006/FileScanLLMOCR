@@ -20,10 +20,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { reviewApi } from '@/api'
+
 const tasks = ref<any[]>([])
 const showCreate = ref(false)
 const createForm = ref({ task_name: '', batch_name: '' })
+
+onMounted(async () => {
+  try {
+    const res = await reviewApi.listTasks({ page: 1, page_size: 50 })
+    tasks.value = res.data.items || []
+  } catch { /* keep empty */ }
+})
 function statusClass(s: string) { return { pending:'low', running:'mid', completed:'low', failed:'high' }[s]||'low' }
 function statusLabel(s: string) { return { pending:'待启动', running:'处理中', completed:'已完成', failed:'失败' }[s]||s }
 </script>

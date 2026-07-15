@@ -93,7 +93,8 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref, onMounted } from 'vue'
+import { statsApi, logApi } from '@/api'
 
 const stats = reactive({
   totalArchives: 125830,
@@ -104,13 +105,38 @@ const stats = reactive({
   pendingReview: 2341,
 })
 
-const recentActivities = [
+const recentActivities = ref([
   { type: 'search', desc: '用户"管理员"检索了关键词"招生 1996"', time: '2 分钟前' },
   { type: 'review', desc: 'AI 预审任务 REV-2026-001 完成 560 件', time: '15 分钟前' },
   { type: 'ocr', desc: 'OCR 任务"历史档案补录"处理完成 2400 页', time: '1 小时前' },
   { type: 'system', desc: '文件增量同步完成，新增 125 个文件', time: '2 小时前' },
   { type: 'login', desc: '用户"审核员李芳"登录系统', time: '3 小时前' },
-]
+])
+
+onMounted(async () => {
+  try {
+    const [userRes, typeRes] = await Promise.all([
+      statsApi.byUser({}),
+      statsApi.byType({}),
+    ])
+    const total = userRes.data.items?.reduce((s: number, i: any) => s + (i.count || 0), 0) || 0
+    if (total > 0) {
+      stats.totalArchives = total
+    }
+  } catch {
+    // 后端不可用时保持静态数据
+  }
+  try {
+    const logs = await logApi.list({ page: 1, page_size: 5 })
+    if (logs.data.items?.length) {
+      recentActivities.value = logs.data.items.map((l: any) => ({
+        type: l.operation_type || 'system',
+        desc: l.description || l.operation_type,
+        time: l.created_at?.substring(11, 19) || '',
+      }))
+    }
+  } catch { /* ignore */ }
+})
 
 function formatNum(n: number): string {
   return n.toLocaleString('zh-CN')

@@ -1,8 +1,9 @@
 """FastAPI 主入口"""
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.database import engine, Base, init_db
@@ -43,6 +44,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(OperationLogMiddleware)
+
+# ===================== 全局异常处理 =====================
+
+@app.exception_handler(404)
+async def not_found_handler(request: Request, exc):
+    return JSONResponse(status_code=404, content={"error": "not_found", "path": str(request.url.path)})
+
+@app.exception_handler(500)
+async def server_error_handler(request: Request, exc):
+    return JSONResponse(status_code=500, content={"error": "internal_error", "detail": str(exc) if settings.DEBUG else "服务器内部错误"})
+
+@app.exception_handler(Exception)
+async def global_handler(request: Request, exc):
+    return JSONResponse(status_code=500, content={"error": "unhandled", "detail": str(exc) if settings.DEBUG else "未知错误"})
 
 # ===================== 注册路由 =====================
 app.include_router(auth.router, prefix="/api/auth", tags=["认证"])

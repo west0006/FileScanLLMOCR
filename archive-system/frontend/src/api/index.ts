@@ -78,6 +78,7 @@ export const userApi = {
   update: (id: number, data: any) => api.put(`/user/${id}`, data),
   resetPassword: (id: number, pass: string) => api.put(`/user/${id}/password`, null, { params: { new_password: pass } }),
   toggleStatus: (id: number, active: boolean) => api.put(`/user/${id}/status`, null, { params: { is_active: active } }),
+  listOnline: () => api.get('/user/online'),
   listRoles: () => api.get('/user/roles'),
   updatePermissions: (roleId: number, perms: any) => api.put(`/user/roles/${roleId}/permissions`, perms),
 }

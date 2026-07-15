@@ -20,7 +20,7 @@
           </div>
         </div>
       </div>
-      <button class="filter-reset" v-if="activeCat||activeYear" @click="activeCat='';activeYear=null">清除筛选</button>
+      <button class="filter-reset" v-if="activeCat||activeYear" @click="activeCat='';activeYear=null;doSearch()">清除筛选</button>
     </aside>
 
     <!-- 右侧主区域 -->
@@ -185,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { searchApi } from '@/api'
 import { ElMessage } from 'element-plus'
@@ -244,15 +244,23 @@ const queryTime = ref(0)
 async function doSearch() {
   loading.value = true
   searched.value = true
+  page.value = 1
   try {
     let res: any
-    const params: any = { page: page.value, page_size: pageSize.value, level: searchLevel.value }
+    const common: any = {
+      page: page.value, page_size: pageSize.value, level: searchLevel.value,
+      category: activeCat.value || undefined, department: undefined,
+    }
+    if (activeYear.value) {
+      common.year_from = activeYear.value
+      common.year_to = activeYear.value
+    }
     if (searchMode.value === 'semantic') {
-      res = await searchApi.semantic({ query: semanticQuery.value, ...params })
+      res = await searchApi.semantic({ query: semanticQuery.value, ...common })
     } else if (searchMode.value === 'advanced') {
-      res = await searchApi.advanced({ ...advancedForm, ...params })
+      res = await searchApi.advanced({ ...advancedForm, category: advancedForm.category || activeCat.value || undefined, ...common })
     } else {
-      res = await searchApi.keyword({ keywords: keyword.value, ...params })
+      res = await searchApi.keyword({ keywords: keyword.value, ...common })
     }
     results.value = res.data.results
     total.value = res.data.total
@@ -265,6 +273,9 @@ async function doSearch() {
     loading.value = false
   }
 }
+
+// 筛选栏变化自动重新搜索
+watch([activeCat, activeYear], () => { if (searched.value) doSearch() })
 
 function highlightText(text: string) {
   if (!keyword.value || !text) return text
