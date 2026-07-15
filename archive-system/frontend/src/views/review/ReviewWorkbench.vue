@@ -125,11 +125,29 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
-import { reviewApi } from '@/api'
+import { ref, reactive, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { reviewApi, searchApi } from '@/api'
+
+const route = useRoute()
 
 const reviewing = ref(false)
 const result = ref<any>(null)
+
+onMounted(async () => {
+  const q = route.query
+  if (q.archive_id) {
+    form.archive_id = q.archive_id as string
+    form.year = Number(q.year) || new Date().getFullYear()
+    form.department = (q.department as string) || ''
+    // 尝试从后端加载完整 OCR 文本
+    try {
+      const res = await searchApi.ocrText(q.archive_id as string)
+      if (res.data?.ocr_text) form.full_text = res.data.ocr_text
+    } catch { /* 使用摘要或留空 */ }
+    if (!form.full_text && q.summary) form.full_text = q.summary as string
+  }
+})
 
 const form = reactive({
   archive_id: '1996-XZ-001',

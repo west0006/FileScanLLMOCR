@@ -169,6 +169,10 @@
               <span class="meta-sep">·</span>
               <span class="meta-item">{{ item.department }}</span>
               <span class="meta-score">{{ item.relevance || 85 }}% 匹配</span>
+              <button class="meta-send" @click.stop="sendToReview(item)" title="发送到AI预审">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                送审
+              </button>
             </div>
           </div>
         </div>
@@ -284,6 +288,17 @@ function highlightText(text: string) {
 }
 
 function goDetail(id: string) { router.push(`/search/detail/${id}`) }
+function sendToReview(item: any) {
+  router.push({
+    path: '/review',
+    query: {
+      archive_id: item.archive_id,
+      year: item.year,
+      department: item.department,
+      summary: item.summary,
+    },
+  })
+}
 function handleExport() { ElMessage.info('导出任务已提交，请稍后下载') }
 </script>
 
@@ -600,6 +615,14 @@ function handleExport() { ElMessage.info('导出任务已提交，请稍后下�
   padding: 2px 8px;
   border-radius: var(--r-full);
 }
+.meta-send {
+  display: flex; align-items: center; gap: 4px;
+  padding: 2px 10px; border-radius: var(--r-full);
+  border: 1px solid var(--c-border); background: transparent;
+  color: var(--c-purple); font-size: 11px; font-weight: var(--fw-medium);
+  cursor: pointer; transition: all var(--t-fast);
+}
+.meta-send:hover { background: #F3E8FF; border-color: var(--c-purple); }
 
 /* 分页 */
 .results-pager {
