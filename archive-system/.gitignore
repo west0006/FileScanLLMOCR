@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.egg
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 环境
+.env
+.env.local
+
+# Docker
+docker-compose.override.yml
+
+# 数据库
+*.db
+*.sqlite3
+
+# 上传和同步数据
+uploads/
+sync_data/
+
+# 模型文件
+train/data/
+*.pth
+*.bin
+*.safetensors
+*.onnx
+*.mindir
+
+# 日志
+*.log
+logs/
+
+# 构建产物
+dist/
+build/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

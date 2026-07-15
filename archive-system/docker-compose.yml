@@ -1,0 +1,155 @@
+# L1/L2 开发环境 —— x86 Docker Compose
+# L3 昇腾部署使用 docker-compose.arm.yml
+
+version: "3.8"
+
+services:
+  # ===================== API 服务 =====================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        TARGETARCH: ${TARGETARCH:-amd64}
+    container_name: archive-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - LLM_MODE=${LLM_MODE:-mock}
+      - OCR_MODE=${OCR_MODE:-mock}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=archive
+      - DB_PASSWORD=${DB_PASSWORD:-archive123}
+      - DB_NAME=archive_db
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-in-production}
+      - JWT_EXPIRE_MINUTES=120
+    volumes:
+      - ./backend:/app
+      - archive_uploads:/app/uploads
+      - archive_sync:/app/sync_data
+    depends_on:
+      mysql:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ===================== Celery Worker =====================
+  celery:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        TARGETARCH: ${TARGETARCH:-amd64}
+    container_name: archive-celery
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - LLM_MODE=${LLM_MODE:-mock}
+      - OCR_MODE=${OCR_MODE:-mock}
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=archive
+      - DB_PASSWORD=${DB_PASSWORD:-archive123}
+      - DB_NAME=archive_db
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./backend:/app
+      - archive_uploads:/app/uploads
+      - archive_sync:/app/sync_data
+    depends_on:
+      - mysql
+      - elasticsearch
+      - redis
+    restart: unless-stopped
+
+  # ===================== 前端 (开发模式) =====================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: archive-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  # ===================== MySQL 8.0 =====================
+  mysql:
+    image: mysql:8.0
+    container_name: archive-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-root123}
+      - MYSQL_DATABASE=archive_db
+      - MYSQL_USER=archive
+      - MYSQL_PASSWORD=${DB_PASSWORD:-archive123}
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./backend/scripts/init_mysql.sql:/docker-entrypoint-initdb.d/01_init.sql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "archive", "-p${DB_PASSWORD:-archive123}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # ===================== Elasticsearch =====================
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    container_name: archive-es
+    ports:
+      - "9200:9200"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+    restart: unless-stopped
+
+  # ===================== Redis =====================
+  redis:
+    image: redis:7-alpine
+    container_name: archive-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  es_data:
+  redis_data:
+  archive_uploads:
+  archive_sync:

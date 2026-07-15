@@ -1,0 +1,35 @@
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 环境
+.env
+.env.local
+
+# 数据库
+*.db
+*.sqlite3
+
+# 模型
+train/data/
+*.pth
+*.bin
+*.safetensors
+*.onnx
+
+# 构建
+dist/
+build/
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db

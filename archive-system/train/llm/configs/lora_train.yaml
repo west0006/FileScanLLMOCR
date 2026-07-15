@@ -1,0 +1,55 @@
+# ============================================================
+# LLaMA-Factory LoRA 微调配置
+# 目标模型: DeepSeek-R1-Distill-Qwen-32B / Qwen3-32B
+# 任务: 档案开放审核 (SFT)
+#
+# 部署到 LLaMA-Factory 服务器:
+#   将本文件放入 LLaMA-Factory 项目目录
+#   或通过 Web UI (http://10.11.13.100:7860/) 上传
+# ============================================================
+
+### model
+model_name_or_path: Qwen/Qwen2.5-32B-Instruct  # 或 DeepSeek-R1-Distill-Qwen-32B
+trust_remote_code: true
+
+### method
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_target: q_proj,v_proj,k_proj,o_proj
+lora_rank: 32
+lora_alpha: 64
+lora_dropout: 0.1
+use_rslora: true
+
+### dataset
+dataset: archive_review
+template: qwen
+cutoff_len: 4096
+overwrite_cache: true
+preprocessing_num_workers: 4
+
+### output
+output_dir: ./output/lora-archive-review-v1
+logging_steps: 10
+save_steps: 200
+plot_loss: true
+
+### train
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 8
+learning_rate: 2.0e-4
+num_train_epochs: 3
+lr_scheduler_type: cosine
+warmup_ratio: 0.1
+bf16: false
+fp16: true
+
+### eval
+val_size: 0.1
+per_device_eval_batch_size: 2
+eval_steps: 200
+
+### 昇腾 NPU 设置 (如果 LLaMA-Factory 绑定了昇腾)
+# use_npu: true
+# npu_visible_devices: 0,1
