@@ -1,0 +1,131 @@
+============================================
+  档案智能查询与开放审核系统
+  启动说明书 & 注意事项
+  2026-07-15
+============================================
+
+一、环境要求
+----------------------------------------------
+- Python 3.10+（推荐 3.11）
+- Node.js 18+
+- Windows 10+ / macOS / Linux
+- Git
+
+二、快速启动（Windows PowerShell）
+----------------------------------------------
+1. 打开 PowerShell，进入项目目录：
+   cd archive-system
+
+2. 一键安装依赖（首次运行）：
+   .\install.ps1
+
+3. 一键启动前后端：
+   .\start.ps1
+
+4. 浏览器访问：
+   前端: http://localhost:3000
+   后端API文档: http://localhost:8000/docs
+   登录: 用户名 admin，密码任意（开发模式）
+
+5. 按任意键停止所有服务。
+
+三、仅启动后端
+----------------------------------------------
+   .\start-dev.ps1
+   然后在另一个终端手动启动前端：
+   cd frontend
+   npm run dev
+
+四、运行测试
+----------------------------------------------
+   python -m pytest archive-system/backend/tests/ -v
+
+五、目录结构
+----------------------------------------------
+archive-system/
+├── backend/              # Python FastAPI 后端
+│   ├── app/
+│   │   ├── api/          # 8 个路由模块（认证/检索/OCR/审核/同步/用户/日志/统计）
+│   │   ├── core/         # 配置/数据库/安全/种子数据
+│   │   ├── models/       # SQLAlchemy 数据模型
+│   │   ├── services/     # 检索/审核/LLM/OCR 服务层
+│   │   ├── tasks/        # Celery 异步任务
+│   │   └── middleware/   # 操作日志中间件
+│   ├── tests/            # pytest 测试
+│   └── scripts/          # 数据解析/脱敏/转换脚本
+├── frontend/             # Vue 3 前端
+│   └── src/
+│       ├── views/        # 15 个页面组件
+│       ├── layout/       # 主布局（侧边栏可折叠）
+│       ├── api/          # Axios API 层
+│       ├── stores/       # Pinia 状态管理
+│       └── styles/       # 设计系统 CSS
+├── train/                # AI 微调训练
+│   ├── ocr/              # PaddleOCR 配置和脚本
+│   └── llm/              # LLaMA-Factory 配置和 Prompt
+├── docker-compose.yml    # Docker 编排（含 MySQL/ES/Redis）
+├── install.ps1           # 一键安装依赖
+└── start.ps1             # 一键启动
+
+六、注意事项
+----------------------------------------------
+
+1. 【数据库模式】
+   开发环境默认使用 SQLite（文件: backend/archive_dev.db）。
+   生产环境需设 DB_MODE=mysql 并配置 MySQL 连接。
+   切换方式：修改 .env 中的 DB_MODE 字段。
+
+2. 【AI 模式】
+   开发环境 LLM_MODE=mock（模拟审核结果）。
+   连接真实 LLaMA-Factory 需设 LLM_MODE=real。
+   LLaMA-Factory 地址：http://10.11.13.100:7860 （需通过向日葵访问学校主机）
+
+3. 【敏感配置】
+   .env 文件包含密码和密钥，已加入 .gitignore，不会推送到 GitHub。
+   生产环境务必修改 JWT_SECRET 和数据库密码。
+
+4. 【认证机制】
+   开发模式：用户名不存在则自动创建（默认 reviewer 权限），密码不校验。
+   生产模式：严格校验密码 + 5次失败锁定15分钟 + 密码30天过期。
+
+5. 【密码策略】
+   生产模式下密码要求：不少于12个字符，包含大小写字母、数字、特殊符号。
+   同一密码有效期30天。
+
+6. 【端口占用】
+   后端默认 8000，前端默认 3000。
+   如端口被占用，修改 start.ps1 中的端口号。
+
+7. 【前端代理】
+   前端 Vite 开发服务器自动将 /api 请求代理到 http://localhost:8000。
+   如果后端地址不同，修改 frontend/vite.config.ts。
+
+8. 【Elasticsearch】
+   本地开发无需 ES（自动降级为 SQLite 全文搜索）。
+   Docker 环境或生产环境需启动 ES 服务。
+
+9. 【Celery 任务】
+   本地开发无需 Redis（Celery 降级为同步执行模式）。
+   生产环境需启动 Redis 和 Celery Worker。
+
+10.【浏览器兼容】
+    Chrome 90+ / Firefox 88+ / Edge 90+ / 国产浏览器极速模式。
+    不支持 IE。
+
+11.【种子数据】
+    首次启动自动插入演示数据：
+    - 5 条示例档案
+    - 5 条预审记录
+    - 默认管理员 admin
+
+12.【主题色】
+    主色 #10B981（翡翠绿），侧边栏点击 Logo 可折叠/展开。
+
+13.【GitHub 仓库】
+    https://github.com/west0006/FileScanLLMOCR.git
+
+14.【已知限制】
+    - 原文 TIFF/PDF 在线浏览为占位符，需接入文件转码服务
+    - 统计图表需 ECharts（已集成，前端 dev 模式自动加载）
+    - LLaMA-Factory 微调待学校主机验证
+    - 安全测试（渗透/漏洞扫描）待部署后执行
