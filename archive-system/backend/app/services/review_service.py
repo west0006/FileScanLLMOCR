@@ -270,6 +270,73 @@ def calculate_risk_score(rule_hits: list[dict]) -> tuple[float, str]:
     return score, level
 
 
+# ==================== 开放白名单（校外开放范围） ====================
+# 依据「档案控制使用和开放范围」第二项：档案校外开放范围
+# 这些类别的内容原则上可开放，用于降低仅含公开信息的档案的误判风险
+
+OPEN_WHITELIST = {
+    # (一) 学校基本信息
+    "学校基本信息": [
+        "学校简介", "领导班子", "学科情况", "专业情况",
+        "基本数据", "学校章程", "规章制度",
+        "学校概况", "院系设置", "专业设置", "学校历史",
+    ],
+    # (二) 资产及捐献管理
+    "资产捐献管理": [
+        "资产管理制度", "受赠资产", "捐赠使用情况",
+        "资产管理", "捐赠管理",
+    ],
+    # (三) 人事师资（可公开部分）
+    "人事师资公开": [
+        "校领导社会兼职", "干部任免", "人员招聘",
+        "教职工劳动人事争议", "教师招聘",
+    ],
+    # (四) 其他
+    "其他公开信息": [
+        "巡视组意见", "整改情况", "自然灾害",
+        "突发事件应急处理", "应急预案",
+        "招生计划", "招生简章", "录取分数线",
+        "毕业就业", "就业质量", "教学质量",
+    ],
+}
+
+# 扁平化
+_ALL_OPEN_WORDS: dict[str, str] = {}
+for _ocat, _owords in OPEN_WHITELIST.items():
+    for w in _owords:
+        _ALL_OPEN_WORDS[w] = _ocat
+
+
+def scan_open_categories(full_text: str) -> list[dict]:
+    """扫描全文，返回命中的可开放类别"""
+    hits = []
+    for word, category in _ALL_OPEN_WORDS.items():
+        idx = full_text.find(word)
+        if idx != -1:
+            hits.append({"type": category, "word": word, "start_char": idx, "end_char": idx + len(word)})
+    return hits
+
+
+def apply_whitelist_reduction(risk_score: float, open_hits: list[dict]) -> float:
+    """
+    白名单降分逻辑：
+    - 命中 1 个开放类别 → 降 5 分
+    - 命中 2+ 个开放类别 → 降 10 分
+    - 仅含开放内容且无敏感命中 → 降至 0-5 分
+    """
+    if not open_hits:
+        return risk_score
+
+    unique_cats = len(set(h["type"] for h in open_hits))
+    if unique_cats >= 2:
+        reduction = 10
+    else:
+        reduction = 5
+
+    score = max(0, risk_score - reduction)
+    return round(score, 1)
+
+
 # ==================== 双引擎融合 ====================
 
 def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
@@ -288,9 +355,12 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     # 第二层：LLM 语义审核
     llm_result = llm_client.review(full_text, metadata)
     llm_score = llm_result.get("risk_score", 0)
-    llm_level = llm_result.get("risk_level", "中")
 
-    # 第三层：融合 (规则 50% + LLM 50%——审核场景需偏保守)
+    # 第三层：白名单降分
+    open_hits = scan_open_categories(full_text)
+    rule_score = apply_whitelist_reduction(rule_score, open_hits)
+
+    # 第四层：融合 (规则 50% + LLM 50%——审核场景需偏保守)
     final_score = round(rule_score * 0.5 + llm_score * 0.5, 1)
 
     # 最终等级
@@ -325,6 +395,8 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
         "reason": llm_result.get("reason", _default_reason(final_score, rule_hits)),
         "rule_hits_count": len(rule_hits),
         "rule_categories": list(set(h["type"] for h in rule_hits)),
+        "open_categories": list(set(h["type"] for h in open_hits)),
+        "open_hits_count": len(open_hits),
         "llm_raw_score": llm_score,
         "llm_confidence": llm_result.get("confidence", 0),
         "rule_raw_score": rule_score,
