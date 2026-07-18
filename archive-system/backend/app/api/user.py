@@ -154,7 +154,16 @@ def create_role(name: str, description: str, user: dict = Depends(require_role(R
 @router.put("/roles/{role_id}/permissions")
 def update_role_permissions(role_id: int, permissions: dict, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """配置角色权限"""
-    return {"role_id": role_id, "permissions": permissions}
+    db = SessionLocal()
+    try:
+        role = db.query(Role).filter(Role.id == role_id).first()
+        if role:
+            role.permissions = permissions
+            db.commit()
+            return {"role_id": role_id, "permissions": permissions, "status": "updated"}
+        return {"error": "role_not_found"}
+    finally:
+        db.close()
 
 
 # ===================== 目录树授权 =====================
