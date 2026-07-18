@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     APP_NAME: str = "档案智能查询与开放审核系统"
     APP_VERSION: str = "1.0.0"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # 数据库 — DB_MODE=sqlite 用于无 Docker 的本地开发
     DB_MODE: str = "sqlite"  # mysql | sqlite

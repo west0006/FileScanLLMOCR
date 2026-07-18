@@ -15,6 +15,9 @@ from starlette.responses import Response
 
 from app.core.database import SessionLocal
 from app.models.models import OperationLog
+from app.core.logging import get_logger
+
+_mw_log = get_logger("middleware")
 
 # 需要记录的 GET 操作前缀
 _LOG_GET_PREFIXES = ("/api/search/", "/api/log/", "/api/stats/")
@@ -95,6 +98,14 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         description = f"{method} {path}"
         if method == "POST" and "/api/search/" in path:
             description = f"检索操作 (耗时 {duration_ms}ms)"
+
+        # 慢请求观测
+        if duration_ms > 1000:
+            _mw_log.obs("SLOW_REQUEST", path=path, method=method, ms=duration_ms)
+
+        # 失败观测
+        if response.status_code >= 400:
+            _mw_log.obs("REQUEST_FAILED", path=path, method=method, status=response.status_code, ms=duration_ms)
 
         # 异步写日志
         ip = request.client.host if request.client else ""

@@ -347,18 +347,32 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     3. 融合评分
     """
     from app.services.llm_client import llm_client
+    from app.core.logging import get_logger
+    log = get_logger("review")
+
+    log.time_start("review_total")
 
     # 第一层：规则引擎
+    log.time_start("review_rule_scan")
     rule_hits = scan_sensitive(full_text)
+    rule_scan_ms = log.time_end("review_rule_scan", hits=len(rule_hits))
+
     rule_score, rule_level = calculate_risk_score(rule_hits)
+    log.obs("RULE_SCAN_DONE", hits=len(rule_hits), score=rule_score, level=rule_level, scan_ms=rule_scan_ms)
 
     # 第二层：LLM 语义审核
+    log.time_start("review_llm")
     llm_result = llm_client.review(full_text, metadata)
+    llm_ms = log.time_end("review_llm", score=llm_result.get("risk_score", 0))
+
     llm_score = llm_result.get("risk_score", 0)
+    log.obs("LLM_REVIEW_DONE", score=llm_score, confidence=llm_result.get("confidence", 0), llm_ms=llm_ms)
 
     # 第三层：白名单降分
     open_hits = scan_open_categories(full_text)
     rule_score = apply_whitelist_reduction(rule_score, open_hits)
+    if open_hits:
+        log.obs("WHITELIST_APPLIED", open_cats=list(set(h["type"] for h in open_hits)), reduction="5-10")
 
     # 第四层：融合 (规则 50% + LLM 50%——审核场景需偏保守)
     final_score = round(rule_score * 0.5 + llm_score * 0.5, 1)
@@ -386,6 +400,9 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
 
     # 只保留前 20 条，避免返回过大
     sensitive_items = sensitive_items[:20]
+
+    total_ms = log.time_end("review_total", final_score=final_score, level=final_level)
+    log.obs("REVIEW_COMPLETE", score=final_score, level=final_level, suggestion=suggestion, total_ms=total_ms)
 
     return {
         "risk_score": final_score,
