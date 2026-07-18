@@ -33,7 +33,37 @@ def create_ocr_task(req: CreateOcrTaskRequest, user: dict = Depends(get_current_
         db.add(task)
         db.commit()
         db.refresh(task)
-        return {"task_id": task.id, "task_name": task.task_name, "status": task.status}
+        try:
+            from app.tasks.ocr_tasks import process_ocr_task
+            process_ocr_task.delay(task.id)
+        except Exception:
+            pass
+        return {"task_id": task.id, "task_name": task.task_name, "status": "queued"}
+    finally:
+        db.close()
+
+
+@router.put("/tasks/{task_id}")
+def update_ocr_task(task_id: int, action: str, user: dict = Depends(get_current_user)):
+    """暂停/恢复/取消 OCR 任务"""
+    db = SessionLocal()
+    try:
+        t = db.query(OcrTask).filter(OcrTask.id == task_id).first()
+        if not t: return {"error": "not_found"}
+        if action == "start":
+            t.status = "running"
+            from app.tasks.ocr_tasks import process_ocr_task
+            try: process_ocr_task.delay(task_id)
+            except: pass
+        elif action == "pause": t.status = "paused"
+        elif action == "resume":
+            t.status = "running"
+            from app.tasks.ocr_tasks import process_ocr_task
+            try: process_ocr_task.delay(task_id)
+            except: pass
+        elif action == "cancel": t.status = "cancelled"
+        db.commit()
+        return {"task_id": task_id, "action": action, "status": t.status}
     finally:
         db.close()
 
@@ -68,12 +98,6 @@ def get_ocr_task(task_id: int, user: dict = Depends(get_current_user)):
                 "created_at": str(t.created_at)}
     finally:
         db.close()
-
-
-@router.put("/tasks/{task_id}")
-def update_ocr_task(task_id: int, action: str, user: dict = Depends(get_current_user)):
-    """暂停/恢复/取消 OCR 任务"""
-    return {"task_id": task_id, "action": action, "status": "updated"}
 
 
 @router.get("/results/{archive_id}")

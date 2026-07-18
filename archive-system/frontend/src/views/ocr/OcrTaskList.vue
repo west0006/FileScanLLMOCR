@@ -14,7 +14,7 @@
         </tbody>
       </table>
     </div>
-    <div v-if="showCreate" class="modal-overlay" @click.self="showCreate=false"><div class="modal-card"><div class="modal-head"><h3>创建 OCR 任务</h3><button class="modal-close" @click="showCreate=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="modal-body"><div class="form-group"><label>任务名称</label><input class="field-input" v-model="cf.task_name" /></div><div class="form-group"><label>档案门类</label><select class="field-input" v-model="cf.category"><option value="">全部</option><option>文书档案</option><option>教学档案</option></select></div><div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px"><button class="btn-sm" @click="showCreate=false">取消</button><button class="btn-primary" @click="showCreate=false">提交任务</button></div></div></div></div>
+    <div v-if="showCreate" class="modal-overlay" @click.self="showCreate=false"><div class="modal-card"><div class="modal-head"><h3>创建 OCR 任务</h3><button class="modal-close" @click="showCreate=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="modal-body"><div class="form-group"><label>任务名称</label><input class="field-input" v-model="cf.task_name" /></div><div class="form-group"><label>档案门类</label><select class="field-input" v-model="cf.category"><option value="">全部</option><option>文书档案</option><option>教学档案</option></select></div><div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px"><button class="btn-sm" @click="showCreate=false">取消</button><button class="btn-primary" @click="handleCreateTask">提交任务</button></div></div></div></div>
   </div>
 </template>
 
@@ -26,12 +26,25 @@ const tasks = ref<any[]>([])
 const showCreate = ref(false)
 const cf = reactive({ task_name: '', category: '' })
 
-onMounted(async () => {
+import { ElMessage } from 'element-plus'
+
+onMounted(fetchTasks)
+async function fetchTasks() {
   try {
     const res = await ocrApi.listTasks({ page: 1, page_size: 50 })
     tasks.value = res.data.items || []
   } catch { /* keep empty */ }
-})
+}
+async function handleCreateTask() {
+  if (!cf.task_name) { ElMessage.warning('请输入任务名称'); return }
+  try {
+    await ocrApi.createTask({ task_name: cf.task_name, category: cf.category || undefined })
+    ElMessage.success('任务已创建')
+    showCreate.value = false
+    cf.task_name = ''; cf.category = ''
+    fetchTasks()
+  } catch { ElMessage.error('创建失败') }
+}
 function barClass(s: string) { return { pending:'low',running:'mid',completed:'low',failed:'high' }[s]||'low' }
 function statusLabel(s: string) { return { pending:'待处理',running:'处理中',completed:'已完成',failed:'失败' }[s]||s }
 </script>
