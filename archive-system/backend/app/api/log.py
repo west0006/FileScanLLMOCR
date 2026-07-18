@@ -1,5 +1,6 @@
 """操作日志 API — 日志查询 + 导出 + 审计"""
 
+import os
 from fastapi import APIRouter, Depends, Query
 from typing import Optional
 
@@ -64,13 +65,25 @@ def login_logs(user: dict = Depends(get_current_user), page: int = 1, page_size:
 
 
 @router.post("/export")
-def export_logs(
-    format: str = "excel",
-    filters: dict = {},
-    user: dict = Depends(get_current_user),
-):
+def export_logs(format: str = "excel", filters: dict = {}, user: dict = Depends(get_current_user)):
     """日志导出"""
-    return {"task_id": "mock-export-log", "status": "queued"}
+    db = SessionLocal()
+    try:
+        rows = db.query(OperationLog).order_by(OperationLog.created_at.desc()).limit(2000).all()
+        from app.services.export_service import export_to_excel
+        from app.core.config import settings
+        data = [{
+            "操作时间": str(r.created_at)[:19] if r.created_at else "",
+            "用户": r.username, "操作类型": r.operation_type, "模块": r.module or "",
+            "操作描述": r.description or "", "IP地址": r.ip_address or "",
+            "结果": r.result,
+        } for r in rows]
+        path = export_to_excel("操作日志", data,
+            ["操作时间","用户","操作类型","模块","操作描述","IP地址","结果"],
+            output_dir=settings.UPLOAD_DIR or "/tmp")
+        return {"status": "ok", "file": os.path.basename(path), "count": len(data)}
+    finally:
+        db.close()
 
 
 @router.get("/audit/summary")

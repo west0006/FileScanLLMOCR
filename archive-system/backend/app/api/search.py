@@ -1,5 +1,6 @@
 """智能检索 API — 关键词/语义/高级检索 + 结果导出 + 档案详情"""
 
+import os
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
@@ -124,5 +125,22 @@ def archive_image(archive_id: str, page: int = 1, user: dict = Depends(get_curre
 
 @router.post("/export")
 def export_results(format: str = "excel", archive_ids: list[str] = [], user: dict = Depends(get_current_user)):
-    """检索结果导出 — 异步任务"""
-    return {"task_id": "export-task", "status": "queued", "message": "导出任务已提交"}
+    """检索结果导出"""
+    db = SessionLocal()
+    try:
+        q = db.query(Archive)
+        if archive_ids: q = q.filter(Archive.archive_id.in_(archive_ids))
+        rows = q.limit(500).all()
+        from app.services.export_service import export_to_excel
+        from app.core.config import settings
+        data = [{
+            "档案编号": r.archive_id, "题名": r.title, "归档年度": r.year,
+            "门类": r.category or "", "归口单位": r.department or "",
+            "保管期限": r.retention_period or "", "密级": r.security_level or "",
+        } for r in rows]
+        path = export_to_excel("档案检索结果", data,
+            ["档案编号","题名","归档年度","门类","归口单位","保管期限","密级"],
+            output_dir=settings.UPLOAD_DIR or "/tmp")
+        return {"status": "ok", "file": os.path.basename(path), "count": len(data)}
+    finally:
+        db.close()

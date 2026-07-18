@@ -132,7 +132,14 @@ async function fetchRecords() {
     total.value = res.data.total || 0
   } catch { /* ignore */ }
 }
-function showDetail(row: any) { selected.value = row }
+async function showDetail(row: any) {
+  try {
+    const res = await reviewApi.getRecord(row.id)
+    selected.value = res.data
+  } catch {
+    selected.value = row
+  }
+}
 function handleExport() { ElMessage.info('导出任务已提交') }
 </script>
 

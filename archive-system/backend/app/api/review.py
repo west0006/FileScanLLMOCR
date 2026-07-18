@@ -1,5 +1,6 @@
 """AI 开放预审 API — 任务管理 + 预审记录 + 结果导出"""
 
+import os
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 from typing import Optional
@@ -216,11 +217,27 @@ def get_review_record(record_id: int, user: dict = Depends(get_current_user)):
 # ===================== 导出 =====================
 
 @router.post("/export")
-def export_review_results(
-    task_id: Optional[int] = None,
-    archive_ids: list[str] = [],
-    export_type: str = "excel",  # excel | archive_zip
-    user: dict = Depends(get_current_user),
-):
-    """导出预审结果 — Excel 表格或原文压缩包"""
-    return {"task_id": "mock-export-task", "status": "queued", "export_type": export_type}
+def export_review_results(task_id: Optional[int] = None, archive_ids: list[str] = [], user: dict = Depends(get_current_user)):
+    """导出预审结果"""
+    db = SessionLocal()
+    try:
+        q = db.query(ReviewRecord)
+        if task_id: q = q.filter(ReviewRecord.task_id == task_id)
+        if archive_ids: q = q.filter(ReviewRecord.archive_id.in_(archive_ids))
+        rows = q.limit(500).all()
+        from app.services.export_service import export_to_excel
+        from app.core.config import settings
+        data = [{
+            "档案编号": r.archive_id, "风险评分": r.risk_score, "风险等级": r.risk_level,
+            "AI建议": r.suggestion, "建议理由": r.reason or "",
+            "置信度": f"{(r.confidence or 0)*100:.0f}%",
+            "敏感类型": ", ".join(s.get("type","") for s in (r.sensitive_items or [])),
+            "预审耗时(ms)": r.processing_time_ms, "模型": r.model_name or "",
+            "预审时间": str(r.created_at)[:19] if r.created_at else "",
+        } for r in rows]
+        path = export_to_excel("AI预审结果", data,
+            ["档案编号","风险评分","风险等级","AI建议","建议理由","置信度","敏感类型","预审耗时(ms)","模型","预审时间"],
+            output_dir=settings.UPLOAD_DIR or "/tmp")
+        return {"status": "ok", "file": os.path.basename(path), "count": len(data)}
+    finally:
+        db.close()

@@ -307,7 +307,12 @@ function sendToReview(item: any) {
     },
   })
 }
-function handleExport() { ElMessage.info('导出任务已提交，请稍后下载') }
+async function handleExport() {
+  try {
+    const res = await searchApi.export({ format: 'excel', archive_ids: [] })
+    ElMessage.success(`导出成功: ${res.data.file} (${res.data.count}条)`)
+  } catch { ElMessage.error('导出失败') }
+}
 </script>
 
 <style scoped>
