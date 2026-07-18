@@ -101,20 +101,37 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { reviewApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const records = ref<any[]>([])
 const selected = ref<any>(null)
+const total = ref(0)
+const page = ref(1)
+const pageSize = ref(20)
 
 const filters = ref({
   risk_level: '', suggestion: '', year_from: undefined as number | undefined, year_to: undefined as number | undefined,
 })
 
+onMounted(() => fetchRecords())
+
 function riskLevelClass(lvl: string) {
   return { '高': 'high', '中': 'mid', '低': 'low' }[lvl] || 'low'
 }
-function fetchRecords() {}
+async function fetchRecords() {
+  try {
+    const res = await reviewApi.listRecords({
+      page: page.value, page_size: pageSize.value,
+      risk_level: filters.value.risk_level || undefined,
+      suggestion: filters.value.suggestion || undefined,
+      year_from: filters.value.year_from, year_to: filters.value.year_to,
+    })
+    records.value = res.data.items || []
+    total.value = res.data.total || 0
+  } catch { /* ignore */ }
+}
 function showDetail(row: any) { selected.value = row }
 function handleExport() { ElMessage.info('导出任务已提交') }
 </script>
