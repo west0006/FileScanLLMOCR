@@ -14,10 +14,11 @@ router = APIRouter()
 
 class KeywordSearchRequest(BaseModel):
     keywords: str
-    scope_nodes: Optional[list[str]] = None   # 目录树节点
-    level: Optional[str] = "all"              # all/project/box/file
+    scope_nodes: Optional[list[str]] = None
+    level: Optional[str] = "all"
     page: int = 1
     page_size: int = 20
+    sort: Optional[str] = "score"
 
 
 class SemanticSearchRequest(BaseModel):
@@ -25,6 +26,7 @@ class SemanticSearchRequest(BaseModel):
     scope_nodes: Optional[list[str]] = None
     page: int = 1
     page_size: int = 20
+    sort: Optional[str] = "score"
 
 
 class AdvancedSearchRequest(BaseModel):
@@ -38,12 +40,13 @@ class AdvancedSearchRequest(BaseModel):
     open_status: Optional[str] = None
     page: int = 1
     page_size: int = 20
+    sort: Optional[str] = "score"
 
 
 @router.post("/keyword")
 def keyword_search(req: KeywordSearchRequest, user: dict = Depends(get_current_user)):
     """关键词检索"""
-    return search_service.search_keyword(req.keywords, req.scope_nodes, req.level or "all", req.page, req.page_size)
+    return search_service.search_keyword(req.keywords, req.scope_nodes, req.level or "all", req.page, req.page_size, req.sort)
 
 
 @router.post("/semantic")

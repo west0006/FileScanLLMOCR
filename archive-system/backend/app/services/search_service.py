@@ -42,6 +42,7 @@ def search_keyword(
     level: str = "all",
     page: int = 1,
     page_size: int = 20,
+    sort: str = "score",
 ) -> dict:
     """关键词检索"""
     t0 = time.time()
@@ -51,10 +52,10 @@ def search_keyword(
 
     es = get_es()
     if es is None:
-        return _fallback_search(keywords, page, page_size, t0)
+        return _fallback_search(keywords, page, page_size, t0, sort)
 
     query = _build_keyword_query(expanded, scope_nodes, level)
-    return _execute_es_search(es, query, page, page_size, t0)
+    return _execute_es_search(es, query, page, page_size, t0, sort)
 
 
 def search_semantic(
@@ -223,14 +224,19 @@ def _expand_synonyms(keywords: str) -> str:
 
 # ==================== ES 执行 ====================
 
-def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float) -> dict:
+def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, sort: str = "score") -> dict:
     """执行 ES 搜索并格式化结果"""
     from_idx = (page - 1) * page_size
+
+    sort_clause = [{"_score": "desc"}]
+    if sort == "time_asc": sort_clause = [{"year": "asc"}]
+    elif sort == "time_desc": sort_clause = [{"year": "desc"}]
 
     body = {
         "query": query,
         "from": from_idx,
         "size": page_size,
+        "sort": sort_clause,
         "highlight": {
             "fields": {
                 "title": {"number_of_fragments": 0},
@@ -285,7 +291,7 @@ def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float) ->
 
 # ==================== SQLite 降级 ====================
 
-def _fallback_search(keywords: str, page: int, page_size: int, t0: float) -> dict:
+def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score") -> dict:
     """ES 不可用时的 SQLite 降级搜索"""
     db = SessionLocal()
     try:
@@ -298,6 +304,8 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float) -> dic
                     (Archive.ocr_text.contains(kw))
                 )
         total = query.count()
+        if sort == "time_asc": query = query.order_by(Archive.year.asc())
+        elif sort == "time_desc": query = query.order_by(Archive.year.desc())
         rows = query.offset((page - 1) * page_size).limit(page_size).all()
         results = [{
             "archive_id": r.archive_id,

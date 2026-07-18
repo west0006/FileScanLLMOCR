@@ -25,6 +25,16 @@ def list_logs(user: dict = Depends(get_current_user), page: int = 1, page_size: 
         if module: q = q.filter(OperationLog.module == module)
         if result: q = q.filter(OperationLog.result == result)
         if keyword: q = q.filter(OperationLog.description.contains(keyword))
+        if date_from:
+            try:
+                from datetime import datetime
+                q = q.filter(OperationLog.created_at >= datetime.fromisoformat(date_from))
+            except: pass
+        if date_to:
+            try:
+                from datetime import datetime
+                q = q.filter(OperationLog.created_at <= datetime.fromisoformat(date_to.replace('00:00:00','23:59:59')))
+            except: pass
         total = q.count()
         items = q.order_by(OperationLog.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
         return {"total": total, "page": page, "page_size": page_size,

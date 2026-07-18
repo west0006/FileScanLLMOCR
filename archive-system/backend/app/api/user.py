@@ -76,13 +76,36 @@ def list_users(user: dict = Depends(get_current_user), page: int = 1, page_size:
 @router.put("/{user_id}")
 def update_user(user_id: int, req: UpdateUserRequest, user: dict = Depends(get_current_user)):
     """修改用户信息"""
-    return {"user_id": user_id, "status": "updated"}
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u: return {"error": "not_found"}
+        if req.name is not None: u.name = req.name
+        if req.department is not None: u.department = req.department
+        if req.contact is not None: u.contact = req.contact
+        if req.role is not None: u.role = req.role
+        db.commit()
+        return {"user_id": user_id, "status": "updated"}
+    finally:
+        db.close()
 
 
 @router.put("/{user_id}/password")
 def reset_password(user_id: int, new_password: str, user: dict = Depends(get_current_user)):
     """重置密码"""
-    return {"user_id": user_id, "status": "password_reset"}
+    if len(new_password) < 12:
+        return {"error": "密码不少于12个字符"}
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u: return {"error": "not_found"}
+        from datetime import datetime
+        u.password_hash = hash_password(new_password)
+        u.password_updated_at = datetime.utcnow()
+        db.commit()
+        return {"user_id": user_id, "status": "password_reset"}
+    finally:
+        db.close()
 
 
 @router.put("/{user_id}/status")
@@ -146,9 +169,19 @@ def list_roles(user: dict = Depends(get_current_user)):
 
 
 @router.post("/roles")
-def create_role(name: str, description: str, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
+def create_role(name: str, description: str = "", user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """创建角色"""
-    return {"role_id": 4, "name": name, "status": "created"}
+    db = SessionLocal()
+    try:
+        existing = db.query(Role).filter(Role.name == name).first()
+        if existing: return {"error": "角色已存在"}
+        role = Role(name=name, description=description)
+        db.add(role)
+        db.commit()
+        db.refresh(role)
+        return {"role_id": role.id, "name": role.name, "status": "created"}
+    finally:
+        db.close()
 
 
 @router.put("/roles/{role_id}/permissions")
