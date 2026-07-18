@@ -251,20 +251,28 @@ async function doSearch() {
   page.value = 1
   try {
     let res: any
-    const common: any = {
-      page: page.value, page_size: pageSize.value, level: searchLevel.value,
-      category: activeCat.value || undefined, department: undefined,
-    }
-    if (activeYear.value) {
-      common.year_from = activeYear.value
-      common.year_to = activeYear.value
-    }
+    const base: any = { page: page.value, page_size: pageSize.value, level: searchLevel.value }
+
     if (searchMode.value === 'semantic') {
-      res = await searchApi.semantic({ query: semanticQuery.value, ...common })
+      res = await searchApi.semantic({ query: semanticQuery.value, ...base })
     } else if (searchMode.value === 'advanced') {
-      res = await searchApi.advanced({ ...advancedForm, category: advancedForm.category || activeCat.value || undefined, ...common })
+      const cat = advancedForm.category || activeCat.value || undefined
+      const yf = advancedForm.yearFrom ?? activeYear.value ?? undefined
+      const yt = advancedForm.yearTo ?? activeYear.value ?? undefined
+      res = await searchApi.advanced({ ...advancedForm, category: cat, year_from: yf, year_to: yt, ...base })
     } else {
-      res = await searchApi.keyword({ keywords: keyword.value, ...common })
+      // 关键词 + 筛选: 有筛选条件时走 advanced，否则走 keyword
+      if (activeCat.value || activeYear.value) {
+        res = await searchApi.advanced({
+          keywords: keyword.value,
+          category: activeCat.value || undefined,
+          year_from: activeYear.value ?? undefined,
+          year_to: activeYear.value ?? undefined,
+          ...base,
+        })
+      } else {
+        res = await searchApi.keyword({ keywords: keyword.value, ...base })
+      }
     }
     results.value = res.data.results
     total.value = res.data.total
