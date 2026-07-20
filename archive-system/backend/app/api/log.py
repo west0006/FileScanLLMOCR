@@ -49,17 +49,31 @@ def list_logs(user: dict = Depends(get_current_user), page: int = 1, page_size: 
 
 
 @router.get("/login")
-def login_logs(user: dict = Depends(get_current_user), page: int = 1, page_size: int = 20):
-    """登录日志"""
+def login_logs(user: dict = Depends(get_current_user), page: int = 1, page_size: int = 20,
+               username: Optional[str] = None, result: Optional[str] = None,
+               date_from: Optional[str] = None, date_to: Optional[str] = None):
+    """登录日志 — 支持按用户/结果/时间筛选"""
     db = SessionLocal()
     try:
         q = db.query(OperationLog).filter(OperationLog.operation_type.in_(["login", "logout"]))
+        if username: q = q.filter(OperationLog.username == username)
+        if result: q = q.filter(OperationLog.result == result)
+        if date_from:
+            try: q = q.filter(OperationLog.created_at >= datetime.fromisoformat(date_from))
+            except: pass
+        if date_to:
+            try: q = q.filter(OperationLog.created_at <= datetime.fromisoformat(date_to.replace("00:00:00", "23:59:59")))
+            except: pass
         total = q.count()
-        items = q.order_by(OperationLog.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
-        return {"total": total, "page": page, "page_size": page_size,
-                "items": [{"id": i.id, "username": i.username, "operation_type": i.operation_type,
-                            "ip_address": i.ip_address, "result": i.result,
-                            "created_at": str(i.created_at)} for i in items]}
+        items = q.order_by(OperationLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
+        return {
+            "total": total, "page": page, "page_size": page_size,
+            "items": [{
+                "id": i.id, "username": i.username, "operation_type": i.operation_type,
+                "ip_address": i.ip_address, "result": i.result,
+                "description": i.description or "", "created_at": str(i.created_at),
+            } for i in items],
+        }
     finally:
         db.close()
 

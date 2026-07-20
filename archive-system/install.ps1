@@ -30,7 +30,7 @@ if (-not $FrontendOnly) {
     # 核心框架
     & $py -m pip install fastapi==0.109.0 uvicorn[standard]==0.27.0 pydantic==2.5.3 pydantic-settings==2.1.0
 
-    # 数据库
+    # 数据库.md
     & $py -m pip install sqlalchemy==2.0.25 alembic==1.13.1 pymysql==1.1.0 cryptography==42.0.2 aiosqlite
 
     # 搜索
@@ -51,8 +51,9 @@ if (-not $FrontendOnly) {
     # 敏感词加速（可选，安装失败不影响）
     try { & $py -m pip install pyahocorasick } catch { Write-Host "  [!] pyahocorasick 安装失败（非必需，将使用降级方案）" -ForegroundColor Yellow }
 
-    # OCR（本地开发可选）
-    try { & $py -m pip install paddleocr paddlepaddle } catch { Write-Host "  [!] PaddleOCR 安装失败（非必需，mock 模式可用）" -ForegroundColor Yellow }
+    # OCR（本地开发可选，~500MB，Windows 下可能无预编译包）
+    Write-Host "  跳过 PaddleOCR 安装（本地开发使用 OCR_MODE=mock）" -ForegroundColor DarkGray
+    Write-Host "  如需安装: pip install paddlepaddle paddleocr" -ForegroundColor DarkGray
 
     # 测试
     & $py -m pip install pytest==8.0.0 pytest-cov==4.1.0 pytest-asyncio==0.23.3

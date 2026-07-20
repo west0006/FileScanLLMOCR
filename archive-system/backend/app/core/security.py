@@ -28,12 +28,13 @@ def verify_password(plain: str, hashed: str) -> bool:
 security_scheme = HTTPBearer(auto_error=False)
 
 
-def create_access_token(user_id: int, username: str, role: str) -> str:
+def create_access_token(user_id: int, username: str, role: str, name: str = "") -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
     payload = {
         "sub": str(user_id),
         "username": username,
         "role": role,
+        "name": name or username,
         "exp": expire,
         "iat": datetime.now(timezone.utc),
     }
@@ -62,6 +63,7 @@ async def get_current_user(
     return {
         "user_id": int(payload["sub"]),
         "username": payload["username"],
+        "name": payload.get("name", payload["username"]),
         "role": payload["role"],
     }
 
@@ -73,19 +75,14 @@ def require_role(*allowed_roles: str):
     async def checker(user: dict = Depends(get_current_user)):
         if user["role"] in allowed_roles:
             return user
-        # dev 模式：自动提权，避免权限阻塞开发
+        # dev 模式：放行但记录警告，不持久化提权
         if settings.APP_ENV == "development":
-            from app.core.database import SessionLocal
-            from app.models.models import User as UserModel
-            db = SessionLocal()
-            try:
-                u = db.query(UserModel).filter(UserModel.id == user["user_id"]).first()
-                if u and u.role not in allowed_roles:
-                    u.role = allowed_roles[0]
-                    db.commit()
-                    user["role"] = allowed_roles[0]
-            finally:
-                db.close()
+            import logging
+            logger = logging.getLogger("security")
+            logger.warning(
+                f"[DEV] 权限放行: user={user['username']} role={user['role']} "
+                f"需要 {allowed_roles} — 生产环境将拒绝"
+            )
             return user
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -99,3 +96,61 @@ def require_role(*allowed_roles: str):
 ROLE_SYSTEM_ADMIN = "system_admin"
 ROLE_ARCHIVE_ADMIN = "archive_admin"
 ROLE_REVIEWER = "reviewer"
+
+
+# ===================== 数据权限过滤 =====================
+
+def apply_data_scope(user: dict, query, model):
+    """
+    对查询应用数据权限过滤。
+
+    - system_admin / archive_admin: 全量（不过滤）
+    - reviewer: 按 tree_auth 中的门类/部门过滤
+    - 无 tree_auth: 只能看自己部门的档案
+    """
+    if user["role"] in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+        return query
+
+    from app.core.database import SessionLocal
+    from app.models.models import User as UserModel
+
+    db = SessionLocal()
+    try:
+        u = db.query(UserModel).filter(UserModel.id == user["user_id"]).first()
+        if not u:
+            return query.filter(False)  # 用户不存在，返回空
+
+        tree_auth = u.tree_auth or []
+
+        # 从 tree_auth 提取允许的门类和部门
+        allowed_categories = set()
+        allowed_departments = set()
+
+        for node in tree_auth:
+            if "/" in node:
+                cat, dept = node.split("/", 1)
+                allowed_categories.add(cat)
+                allowed_departments.add(dept)
+            else:
+                allowed_categories.add(node)
+
+        if not allowed_categories and not allowed_departments:
+            # 无授权: 只能看自己部门的
+            if u.department:
+                return query.filter(model.department == u.department)
+            return query.filter(False)  # 完全没有部门信息
+
+        # 构建过滤
+        from sqlalchemy import or_
+        conditions = []
+        if allowed_categories:
+            conditions.append(model.category.in_(allowed_categories))
+        if allowed_departments:
+            conditions.append(model.department.in_(allowed_departments))
+
+        if conditions:
+            return query.filter(or_(*conditions))
+
+        return query
+    finally:
+        db.close()

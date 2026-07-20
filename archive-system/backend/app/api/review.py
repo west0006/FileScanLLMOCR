@@ -1,7 +1,7 @@
 """AI 开放预审 API — 任务管理 + 预审记录 + 结果导出"""
 
 import os
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional
 
@@ -33,8 +33,9 @@ class PreviewRequest(BaseModel):
 # ===================== 预审工作台 =====================
 
 @router.post("/preview")
-def preview_review(req: PreviewRequest, user: dict = Depends(get_current_user)):
+def preview_review(req: PreviewRequest, request: Request, user: dict = Depends(get_current_user)):
     """单件实时预审 — 工作台用，结果自动落库"""
+    request.state.log_description = f"AI预审: {req.archive_id} — {req.title or '(无题名)'}"
     metadata = {
         "archive_id": req.archive_id,
         "title": req.title,

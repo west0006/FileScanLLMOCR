@@ -31,19 +31,19 @@ def login(req: LoginRequest):
         user = db.query(User).filter(User.username == req.username).first()
 
         if settings.APP_ENV == "development":
-            # 开发模式：用户不存在则自动创建；Token 统一给 system_admin 便于调试
+            # 开发模式：用户不存在则自动创建（reviewer 权限）；Token 使用实际角色，权限门禁由 require_role dev 放行
             if user is None:
                 user = User(
                     username=req.username,
                     name=req.username,
                     password_hash=hash_password(req.password),
-                    role="system_admin",
+                    role="reviewer",
                     is_active=True,
                 )
                 db.add(user)
                 db.commit()
                 db.refresh(user)
-            token = create_access_token(user_id=user.id, username=user.username, role="system_admin")
+            token = create_access_token(user_id=user.id, username=user.username, role=user.role, name=user.name)
             return LoginResponse(
                 access_token=token,
                 expires_in=settings.JWT_EXPIRE_MINUTES * 60,
@@ -93,7 +93,7 @@ def login(req: LoginRequest):
         user.locked_until = None
         db.commit()
 
-        token = create_access_token(user_id=user.id, username=user.username, role=user.role)
+        token = create_access_token(user_id=user.id, username=user.username, role=user.role, name=user.name)
         return LoginResponse(
             access_token=token,
             expires_in=settings.JWT_EXPIRE_MINUTES * 60,

@@ -19,7 +19,7 @@ venv/
 # Docker
 docker-compose.override.yml
 
-# 数据库
+# 数据库.md
 *.db
 *.sqlite3
 

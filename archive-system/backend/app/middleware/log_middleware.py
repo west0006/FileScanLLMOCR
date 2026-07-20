@@ -81,6 +81,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         # 提取用户信息
         user_id = 0
         username = "anonymous"
+        user_name = ""
         try:
             token = request.headers.get("Authorization", "")
             if token.startswith("Bearer "):
@@ -89,15 +90,25 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                 if payload:
                     user_id = int(payload.get("sub", 0))
                     username = payload.get("username", "anonymous")
+                    user_name = payload.get("name", username)
         except Exception:
             pass
 
         op_type = _OP_MAP.get(op_tag, op_tag)
+
+        # 修正 auth 路径下的 logout 被映射为 login
+        if path.endswith("/logout"):
+            op_type = "logout"
         result = "success" if response.status_code < 400 else "failure"
 
-        description = f"{method} {path}"
-        if method == "POST" and "/api/search/" in path:
+        # 优先使用路由设置的自定义描述（通过 request.state）
+        custom_desc = getattr(request.state, "log_description", None)
+        if custom_desc:
+            description = custom_desc
+        elif method == "POST" and "/api/search/" in path:
             description = f"检索操作 (耗时 {duration_ms}ms)"
+        else:
+            description = f"{method} {path}"
 
         # 慢请求观测
         if duration_ms > 1000:
@@ -109,6 +120,9 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
 
         # 异步写日志
         ip = request.client.host if request.client else ""
+        # 未提供自定义描述时，补充用户姓名
+        if not custom_desc and user_name:
+            description = f"[{user_name}] {description}"
         threading.Thread(
             target=_write_log_sync,
             args=(user_id, username, op_type, op_tag, description, "", ip, result),

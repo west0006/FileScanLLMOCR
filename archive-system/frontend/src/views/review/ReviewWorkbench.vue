@@ -7,6 +7,10 @@
           <h3>档案原文</h3>
           <div class="panel-head-right">
             <span v-if="form.full_text" class="char-count">{{ form.full_text.length }} 字</span>
+            <button class="btn-clear" v-if="form.archive_id" @click="handleDownload" title="下载原文">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              下载
+            </button>
             <button class="btn-clear" v-if="form.full_text" @click="form.full_text='';result=null" title="清空">清空</button>
           </div>
         </div>
@@ -133,6 +137,17 @@ const route = useRoute()
 
 const reviewing = ref(false)
 const result = ref<any>(null)
+
+async function handleDownload() {
+  if (!form.archive_id) return
+  try {
+    const res = await searchApi.download(form.archive_id)
+    const url = window.URL.createObjectURL(new Blob([res.data]))
+    const a = document.createElement('a')
+    a.href = url; a.download = `${form.archive_id}.tif`; a.click()
+    window.URL.revokeObjectURL(url)
+  } catch { ElMessage.error('下载失败，原文文件可能尚未同步') }
+}
 
 onMounted(async () => {
   const q = route.query

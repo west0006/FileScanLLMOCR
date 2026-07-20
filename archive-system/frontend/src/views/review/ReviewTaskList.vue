@@ -10,7 +10,11 @@
             <td><div class="mini-bar"><div class="mini-bar-fill mini-bar--low" :style="{width:(t.completed_count/t.total_count*100||0)+'%'}"></div><span class="mini-bar-num">{{ t.completed_count }}/{{ t.total_count }}</span></div></td>
             <td><span class="text-xs"><span style="color:var(--c-danger)">高{{ t.risk_dist?.high||0 }}</span> / <span style="color:var(--c-warning)">中{{ t.risk_dist?.medium||0 }}</span> / <span style="color:var(--c-success)">低{{ t.risk_dist?.low||0 }}</span></span></td>
             <td><span class="risk-tag" :class="'risk-tag--'+statusClass(t.status)">{{ statusLabel(t.status) }}</span></td>
-            <td><button class="btn-sm">{{ t.status==='pending'?'启动':t.status==='running'?'暂停':'查看' }}</button></td>
+            <td>
+              <button v-if="t.status==='pending'" class="btn-sm" @click="handleTaskAction(t, 'start')">启动</button>
+              <button v-else-if="t.status==='running'" class="btn-sm" @click="handleTaskAction(t, 'pause')">暂停</button>
+              <button v-else class="btn-sm" @click="handleTaskAction(t, 'view')">查看</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -47,6 +51,17 @@ async function handleCreateTask() {
 }
 function statusClass(s: string) { return { pending:'low', running:'mid', completed:'low', failed:'high' }[s]||'low' }
 function statusLabel(s: string) { return { pending:'待启动', running:'处理中', completed:'已完成', failed:'失败' }[s]||s }
+async function handleTaskAction(t: any, action: string) {
+  if (action === 'view') {
+    ElMessage.info(`任务 #${t.id}: ${t.task_name}`)
+    return
+  }
+  try {
+    await reviewApi.updateTask(t.id, action)
+    ElMessage.success(action === 'start' ? '任务已启动' : '任务已暂停')
+    fetchTasks()
+  } catch { ElMessage.error('操作失败') }
+}
 </script>
 
 <style scoped>

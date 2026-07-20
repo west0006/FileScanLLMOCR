@@ -21,6 +21,7 @@ class User(Base):
     login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime, nullable=True)
     password_updated_at = Column(DateTime, default=datetime.utcnow)
+    tree_auth = Column(JSON, default=list)  # ["行政档案", "教学档案", ...] 授权的目录节点
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -42,13 +43,18 @@ class Archive(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     archive_id = Column(String(100), unique=True, nullable=False, index=True)  # 档案编号
-    title = Column(String(500), nullable=False)
+    title = Column(String(500), nullable=False)         # 题名
+    author = Column(String(200))                        # 责任者
+    file_code = Column(String(100))                     # 文件编号
+    subject = Column(String(300))                       # 主题词
     year = Column(Integer, index=True)
-    category = Column(String(100), index=True)         # 门类
-    department = Column(String(200), index=True)       # 归口单位
-    fonds_id = Column(String(50), index=True)           # 全宗号
+    category = Column(String(100), index=True)          # 门类
+    department = Column(String(200), index=True)        # 归口单位
+    fonds_id = Column(String(50), index=True)            # 全宗号
     retention_period = Column(String(50))               # 保管期限
     security_level = Column(String(50))                 # 密级
+    level = Column(String(20), default="file")           # 层级: project/box/file
+    open_status = Column(String(20), default="未审核")   # 开放状态
     file_count = Column(Integer, default=0)             # 卷内文件数
     ocr_text = Column(Text)                             # OCR 全文
     ocr_status = Column(String(20), default="pending")  # pending/processing/done/failed

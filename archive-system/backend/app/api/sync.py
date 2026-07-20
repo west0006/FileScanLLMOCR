@@ -5,9 +5,11 @@ import os
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
+from fastapi.responses import FileResponse
 
 from app.core.security import get_current_user
 from app.core.database import SessionLocal
+from app.core.config import settings
 from app.models.models import SyncLog
 
 router = APIRouter()
@@ -77,14 +79,16 @@ def trigger_file_sync(mode: str = "incremental", user: dict = Depends(get_curren
     """手动触发文件同步"""
     db = SessionLocal()
     try:
-        log = SyncLog(sync_type="file", sync_mode=mode, status="running")
+        log = SyncLog(sync_type="file", sync_mode=mode, status="pending")
         db.add(log); db.commit(); db.refresh(log)
         try:
             from app.tasks.sync_tasks import sync_files_task
-            sync_files_task.delay(mode)
-        except Exception: log.status = "queued"; db.commit()
+            sync_files_task.delay(log.id, mode)
+        except Exception:
+            log.status = "queued"; db.commit()
         return {"sync_id": log.id, "type": "file", "mode": mode, "status": log.status}
-    finally: db.close()
+    finally:
+        db.close()
 
 
 @router.post("/trigger/database")
@@ -92,14 +96,16 @@ def trigger_database_sync(mode: str = "incremental", user: dict = Depends(get_cu
     """手动触发数据库同步"""
     db = SessionLocal()
     try:
-        log = SyncLog(sync_type="database", sync_mode=mode, status="running")
+        log = SyncLog(sync_type="database", sync_mode=mode, status="pending")
         db.add(log); db.commit(); db.refresh(log)
         try:
             from app.tasks.sync_tasks import sync_database_task
-            sync_database_task.delay(mode)
-        except Exception: log.status = "queued"; db.commit()
+            sync_database_task.delay(log.id, mode)
+        except Exception:
+            log.status = "queued"; db.commit()
         return {"sync_id": log.id, "type": "database", "mode": mode, "status": log.status}
-    finally: db.close()
+    finally:
+        db.close()
 
 
 @router.get("/progress/{sync_id}")
@@ -126,4 +132,112 @@ def sync_history(user: dict = Depends(get_current_user), page: int = 1, page_siz
                 "items": [{"id": s.id, "sync_type": s.sync_type, "sync_mode": s.sync_mode,
                             "new_files": s.new_files, "updated_files": s.updated_files,
                             "status": s.status, "started_at": str(s.started_at)} for s in items]}
-    finally: db.close()
+    finally:
+        db.close()
+
+
+# ===================== 文件转码与静态服务 =====================
+
+_CACHE_DIR = os.path.join(os.path.dirname(settings.SYNC_DATA_DIR), ".transcode_cache")
+
+
+@router.get("/files/{file_path:path}")
+def serve_sync_file(file_path: str):
+    """
+    提供同步目录中的文件访问。
+
+    支持格式：
+    - PNG/JPEG/GIF → 直接返回
+    - TIFF/TIF → 转码为 PNG 后返回（结果缓存）
+    - PDF → 暂不支持，返回提示
+    """
+    full_path = os.path.normpath(os.path.join(settings.SYNC_DATA_DIR, file_path))
+
+    # 安全检查：确保路径在 SYNC_DATA_DIR 内
+    if not full_path.startswith(os.path.normpath(settings.SYNC_DATA_DIR)):
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=403, content={"error": "forbidden"})
+
+    if not os.path.isfile(full_path):
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=404, content={"error": "file_not_found", "path": file_path})
+
+    ext = os.path.splitext(full_path)[1].lower()
+
+    # 图片格式直接返回
+    if ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"):
+        media_types = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                       ".gif": "image/gif", ".webp": "image/webp", ".bmp": "image/bmp"}
+        return FileResponse(full_path, media_type=media_types.get(ext, "application/octet-stream"))
+
+    # TIFF 转码
+    if ext in (".tiff", ".tif"):
+        return _transcode_tiff(full_path, file_path)
+
+    # PDF — 暂不支持
+    if ext == ".pdf":
+        from fastapi.responses import JSONResponse
+        return JSONResponse(status_code=415, content={
+            "error": "pdf_not_supported",
+            "hint": "PDF 在线预览需接入 pdf.js 渲染，当前仅支持下载",
+        })
+
+    from fastapi.responses import JSONResponse
+    return JSONResponse(status_code=415, content={"error": "unsupported_format", "ext": ext})
+
+
+def _transcode_tiff(full_path: str, rel_path: str):
+    """TIFF → PNG 转码，结果缓存到 .transcode_cache/"""
+    from fastapi.responses import FileResponse, JSONResponse
+
+    src_mtime = os.path.getmtime(full_path)
+    cache_key = rel_path.replace("/", "_").replace("\\", "_")
+    cache_path = os.path.join(_CACHE_DIR, f"{cache_key}_{int(src_mtime)}.png")
+
+    # 命中缓存
+    if os.path.isfile(cache_path):
+        return FileResponse(cache_path, media_type="image/png")
+
+    try:
+        from PIL import Image
+
+        # 清理旧版本缓存
+        if os.path.exists(_CACHE_DIR):
+            for f in os.listdir(_CACHE_DIR):
+                if f.startswith(cache_key) and not f.endswith(f"_{int(src_mtime)}.png"):
+                    try:
+                        os.remove(os.path.join(_CACHE_DIR, f))
+                    except OSError:
+                        pass
+
+        os.makedirs(_CACHE_DIR, exist_ok=True)
+
+        with Image.open(full_path) as img:
+            w, h = img.size
+            max_w = 2000
+            if w > max_w:
+                ratio = max_w / w
+                img = img.resize((max_w, int(h * ratio)), Image.LANCZOS)
+
+            # 统一到 RGB
+            if img.mode in ("CMYK", "LA"):
+                img = img.convert("RGB")
+            elif img.mode == "P":
+                img = img.convert("RGBA")
+            elif img.mode not in ("RGB", "RGBA"):
+                img = img.convert("RGB")
+
+            img.save(cache_path, "PNG", optimize=True)
+
+        return FileResponse(cache_path, media_type="image/png")
+
+    except ImportError:
+        return JSONResponse(status_code=500, content={
+            "error": "pillow_not_installed",
+            "hint": "pip install Pillow",
+        })
+    except Exception as e:
+        return JSONResponse(status_code=500, content={
+            "error": "transcode_failed",
+            "detail": str(e)[:200],
+        })

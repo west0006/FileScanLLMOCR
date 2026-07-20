@@ -33,6 +33,19 @@
         <div ref="userChartRef" class="chart-box"></div>
       </div>
     </div>
+    <div class="charts-row">
+      <div class="chart-card chart-card--full">
+        <div class="chart-head">
+          <h3>操作趋势</h3>
+          <select v-model="timeGranularity" @change="loadTimeChart" class="chart-select">
+            <option value="day">按日</option>
+            <option value="week">按周</option>
+            <option value="month">按月</option>
+          </select>
+        </div>
+        <div ref="timeChartRef" class="chart-box"></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -43,6 +56,8 @@ import * as echarts from 'echarts'
 
 const typeChartRef = ref<HTMLElement>()
 const userChartRef = ref<HTMLElement>()
+const timeChartRef = ref<HTMLElement>()
+const timeGranularity = ref('day')
 
 const summary = reactive({
   total_operations: 0, search_count: 0, review_count: 0, failed_count: 0,
@@ -76,6 +91,9 @@ onMounted(async () => {
   }
 
   await nextTick()
+
+  // 时间趋势图
+  loadTimeChart()
 
   // 饼图 — 按类型
   if (typeChartRef.value) {
@@ -122,6 +140,38 @@ function typeLabel(t: string): string {
   }
   return m[t] || t
 }
+
+async function loadTimeChart() {
+  if (!timeChartRef.value) return
+  let timeData: any[] = []
+  try {
+    const res = await statsApi.byTime({ granularity: timeGranularity.value, days: 30 })
+    timeData = res.data.items || []
+  } catch {
+    timeData = []
+  }
+
+  const c = echarts.init(timeChartRef.value)
+  c.setOption({
+    tooltip: { trigger: 'axis' },
+    grid: { left: 40, right: 20, top: 10, bottom: 30 },
+    xAxis: {
+      type: 'category', data: timeData.map((i: any) => i.period),
+      axisLabel: { rotate: timeGranularity.value === 'day' ? 45 : 0, fontSize: 10 },
+    },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [{
+      type: 'line', data: timeData.map((i: any) => i.count),
+      smooth: true, symbol: 'circle', symbolSize: 6,
+      lineStyle: { color: '#10B981', width: 2 },
+      itemStyle: { color: '#10B981' },
+      areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+        { offset: 0, color: 'rgba(16,185,129,0.25)' },
+        { offset: 1, color: 'rgba(16,185,129,0.02)' },
+      ])},
+    }],
+  })
+}
 </script>
 
 <style scoped>
@@ -140,5 +190,9 @@ function typeLabel(t: string): string {
 }
 .chart-card h3 { font-size: var(--fs-base); font-weight: var(--fw-semibold); color: var(--c-text); margin: 0 0 16px; }
 .chart-box { height: 300px; }
+.chart-card--full .chart-box { height: 280px; }
+.chart-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.chart-head h3 { margin: 0; }
+.chart-select { height: 32px; padding: 0 10px; border: 1px solid var(--c-border); border-radius: var(--r-sm); font-size: var(--fs-xs); background: var(--c-bg); outline: none; cursor: pointer; }
 @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } .charts-row { grid-template-columns: 1fr; } }
 </style>

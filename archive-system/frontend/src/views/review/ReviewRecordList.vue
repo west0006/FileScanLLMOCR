@@ -20,9 +20,8 @@
       <select v-model="filters.suggestion" class="filter-select">
         <option value="">全部 AI 建议</option>
         <option value="建议开放">建议开放</option>
-        <option value="建议部分开放">建议部分开放</option>
-        <option value="建议延期开放">建议延期开放</option>
-        <option value="建议不予开放">建议不予开放</option>
+        <option value="建议人工重点关注">建议人工重点关注</option>
+        <option value="建议延期开放或不予开放">建议延期开放或不予开放</option>
       </select>
       <input v-model.number="filters.year_from" type="number" placeholder="起始年度" class="filter-input filter-input--sm" />
       <span class="filter-sep">—</span>
@@ -140,7 +139,12 @@ async function showDetail(row: any) {
     selected.value = row
   }
 }
-function handleExport() { ElMessage.info('导出任务已提交') }
+async function handleExport() {
+  try {
+    const res = await reviewApi.export({ archive_ids: [] })
+    ElMessage.success(`导出成功: ${res.data.file} (${res.data.count} 条)`)
+  } catch { ElMessage.error('导出失败') }
+}
 </script>
 
 <style scoped>

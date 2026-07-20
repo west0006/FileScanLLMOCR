@@ -116,12 +116,50 @@ def get_ocr_result(archive_id: str, user: dict = Depends(get_current_user)):
 
 @router.get("/quality-report")
 def quality_report(task_id: Optional[int] = None, user: dict = Depends(get_current_user)):
-    """OCR 质量报告"""
-    return {
-        "overall_accuracy": 0.93,
-        "low_confidence_count": 12,
-        "common_errors": [],
-    }
+    """OCR 质量报告 — 基于实际数据动态计算"""
+    db = SessionLocal()
+    try:
+        q = db.query(Archive).filter(Archive.ocr_status.in_(["done", "low_quality"]))
+
+        if task_id:
+            task = db.query(OcrTask).filter(OcrTask.id == task_id).first()
+            if task and task.filter_criteria:
+                c = task.filter_criteria
+                if c.get("year_from"): q = q.filter(Archive.year >= c["year_from"])
+                if c.get("year_to"): q = q.filter(Archive.year <= c["year_to"])
+                if c.get("category"): q = q.filter(Archive.category == c["category"])
+
+        archives = q.all()
+        total = len(archives)
+        if total == 0:
+            return {"overall_accuracy": 0, "total": 0, "low_confidence_count": 0, "common_errors": []}
+
+        # 平均置信度
+        confidences = [a.ocr_confidence for a in archives if a.ocr_confidence is not None]
+        overall = round(sum(confidences) / len(confidences), 4) if confidences else 0
+
+        # 低置信度 (< 0.7)
+        low_conf = [a for a in archives if a.ocr_confidence is not None and a.ocr_confidence < 0.7]
+
+        # 常见错误类型统计
+        error_counts: dict[str, int] = {}
+        for a in archives:
+            if a.ocr_status == "low_quality":
+                error_counts["低置信度"] = error_counts.get("低置信度", 0) + 1
+            if a.ocr_status == "failed":
+                error_counts["识别失败"] = error_counts.get("识别失败", 0) + 1
+        common_errors = [{"type": k, "count": v} for k, v in sorted(error_counts.items(), key=lambda x: -x[1])]
+
+        return {
+            "overall_accuracy": overall,
+            "total": total,
+            "low_confidence_count": len(low_conf),
+            "low_confidence_ids": [a.archive_id for a in low_conf[:20]],
+            "failed_count": sum(1 for a in archives if a.ocr_status == "failed"),
+            "common_errors": common_errors,
+        }
+    finally:
+        db.close()
 
 
 # ===================== 调试/测试端点（无需认证） =====================

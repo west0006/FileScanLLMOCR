@@ -218,10 +218,59 @@ def get_user(user_id: int, user: dict = Depends(get_current_user)):
 @router.get("/{user_id}/tree-auth")
 def get_tree_auth(user_id: int, user: dict = Depends(get_current_user)):
     """查看目录树授权"""
-    return {"user_id": user_id, "authorized_nodes": []}
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u:
+            return {"error": "not_found"}
+        return {"user_id": user_id, "authorized_nodes": u.tree_auth or []}
+    finally:
+        db.close()
+
+
+class TreeAuthRequest(BaseModel):
+    node_ids: list[str]
 
 
 @router.put("/{user_id}/tree-auth")
-def update_tree_auth(user_id: int, node_ids: list[str], user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
-    """配置目录树授权"""
-    return {"user_id": user_id, "authorized_nodes": node_ids}
+def update_tree_auth(user_id: int, req: TreeAuthRequest, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
+    """配置目录树授权 — 持久化到用户记录"""
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u:
+            return {"error": "not_found"}
+        # 继承：上级节点授权自动包含所有下级节点
+        expanded = _expand_tree_nodes(req.node_ids)
+        u.tree_auth = expanded
+        db.commit()
+        return {"user_id": user_id, "authorized_nodes": expanded}
+    finally:
+        db.close()
+
+
+# ==================== 辅助函数 ====================
+
+# 档案目录树结构：大类 → 年份 → 部门
+_TREE_HIERARCHY: dict[str, list[str]] = {
+    "行政档案": ["校长办公室", "发展规划部", "人事部"],
+    "教学档案": ["教务处", "研究生院", "招生办公室"],
+    "党群档案": ["组织部", "宣传部", "纪委", "统战部", "工会", "团委"],
+    "科研档案": ["科研处"],
+    "人事档案": ["人事处"],
+    "财务档案": ["财务处"],
+    "基建档案": ["基建处"],
+    "声像档案": ["档案馆"],
+}
+
+
+def _expand_tree_nodes(node_ids: list[str]) -> list[str]:
+    """将目录树节点扩展：大类节点自动包含所有子部门"""
+    expanded = list(node_ids)
+    for nid in node_ids:
+        if nid in _TREE_HIERARCHY:
+            for child in _TREE_HIERARCHY[nid]:
+                child_path = f"{nid}/{child}"
+                if child_path not in expanded:
+                    expanded.append(child_path)
+    return expanded

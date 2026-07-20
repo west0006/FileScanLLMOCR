@@ -25,7 +25,7 @@
 4. 浏览器访问：
    前端: http://localhost:3000
    后端API文档: http://localhost:8000/docs
-   登录: 用户名 admin，密码任意（开发模式）
+   登录: 用户名 admin，密码 Admin@123456（开发模式任意账密自动创建，角色 reviewer）
 
 5. 按任意键停止所有服务。
 
@@ -40,34 +40,8 @@
 ----------------------------------------------
    python -m pytest archive-system/backend/tests/ -v
 
-五、目录结构
-----------------------------------------------
-archive-system/
-├── backend/              # Python FastAPI 后端
-│   ├── app/
-│   │   ├── api/          # 8 个路由模块（认证/检索/OCR/审核/同步/用户/日志/统计）
-│   │   ├── core/         # 配置/数据库/安全/种子数据
-│   │   ├── models/       # SQLAlchemy 数据模型
-│   │   ├── services/     # 检索/审核/LLM/OCR 服务层
-│   │   ├── tasks/        # Celery 异步任务
-│   │   └── middleware/   # 操作日志中间件
-│   ├── tests/            # pytest 测试
-│   └── scripts/          # 数据解析/脱敏/转换脚本
-├── frontend/             # Vue 3 前端
-│   └── src/
-│       ├── views/        # 15 个页面组件
-│       ├── layout/       # 主布局（侧边栏可折叠）
-│       ├── api/          # Axios API 层
-│       ├── stores/       # Pinia 状态管理
-│       └── styles/       # 设计系统 CSS
-├── train/                # AI 微调训练
-│   ├── ocr/              # PaddleOCR 配置和脚本
-│   └── llm/              # LLaMA-Factory 配置和 Prompt
-├── docker-compose.yml    # Docker 编排（含 MySQL/ES/Redis）
-├── install.ps1           # 一键安装依赖
-└── start.ps1             # 一键启动
 
-六、注意事项
+五、注意事项
 ----------------------------------------------
 
 1. 【数据库模式】
@@ -125,7 +99,10 @@ archive-system/
     https://github.com/west0006/FileScanLLMOCR.git
 
 14.【已知限制】
-    - 原文 TIFF/PDF 在线浏览为占位符，需接入文件转码服务
+    - 原文 TIFF 在线浏览已支持（Pillow 转码 → PNG 缓存），PDF 预览待接入 pdf.js
+    - 数据同步需配置共享目录路径后才生效（SyncManagement 页配置）
     - 统计图表需 ECharts（已集成，前端 dev 模式自动加载）
     - LLaMA-Factory 微调待学校主机验证
     - 安全测试（渗透/漏洞扫描）待部署后执行
+    - 关联检索/知识图谱未实现
+    - 数据权限过滤（案卷级/卷内级）未强制

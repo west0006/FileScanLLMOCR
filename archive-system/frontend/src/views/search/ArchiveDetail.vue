@@ -30,6 +30,26 @@
             <div class="info-row"><dt>卷内文件</dt><dd>{{ archive.file_count || 0 }} 件</dd></div>
           </dl>
         </div>
+
+        <!-- 关联档案 -->
+        <div class="info-card" v-if="related.length">
+          <h3 class="info-card-title">📎 关联档案</h3>
+          <div class="related-list">
+            <router-link
+              v-for="r in related" :key="r.archive_id"
+              :to="'/search/detail/' + r.archive_id"
+              class="related-item"
+            >
+              <div class="related-title">{{ r.title }}</div>
+              <div class="related-meta">
+                <span>{{ r.year }}</span>
+                <span>·</span>
+                <span>{{ r.department }}</span>
+                <span class="related-reason">{{ r.reason }}</span>
+              </div>
+            </router-link>
+          </div>
+        </div>
       </div>
 
       <!-- 右侧：原文 -->
@@ -43,10 +63,34 @@
 
           <div class="view-content">
             <div v-if="viewMode === 'image'" class="image-panel">
-              <div class="image-placeholder">
+              <div v-if="imagePages.length" class="image-viewer">
+                <div class="image-nav">
+                  <button :disabled="curPage <= 0" @click="curPage--">&lt; 上一页</button>
+                  <span>{{ curPage + 1 }} / {{ imagePages.length }}</span>
+                  <button :disabled="curPage >= imagePages.length - 1" @click="curPage++">下一页 &gt;</button>
+                </div>
+                <div class="image-main" v-if="imagePages[curPage]">
+                  <img
+                    :src="'/api/sync/files/' + imagePages[curPage].path"
+                    :alt="imagePages[curPage].filename"
+                    @error="onImageError"
+                    class="archive-image"
+                  />
+                </div>
+                <div class="image-file-list">
+                  <div v-for="(f, i) in imagePages" :key="f.page"
+                       :class="['image-file-item', { active: curPage === i }]"
+                       @click="curPage = i">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+                    <span>{{ f.filename }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="image-placeholder">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                <p>原文图像区域</p>
-                <span>支持 TIFF / JPG / PDF 在线浏览</span>
+                <p>原文图像暂未就绪</p>
+                <span v-if="imageInfo">{{ imageInfo.hint || '支持 TIFF / JPG / PDF 在线浏览' }}</span>
+                <span v-else>支持 TIFF / JPG / PDF 在线浏览</span>
               </div>
             </div>
             <div v-else-if="viewMode === 'ocr'" class="ocr-panel">
@@ -81,11 +125,32 @@ const viewMode = ref('image')
 const archive = ref<any>({})
 const ocrContent = ref('')
 
+const imageInfo = ref<any>(null)
+const imagePages = ref<any[]>([])
+const curPage = ref(0)
+const related = ref<any[]>([])
+
+function onImageError() {
+  // 图片加载失败，静默降级
+}
+
 onMounted(async () => {
   try {
-    const [d, o] = await Promise.all([searchApi.detail(archiveId), searchApi.ocrText(archiveId)])
+    const [d, o, img] = await Promise.all([
+      searchApi.detail(archiveId),
+      searchApi.ocrText(archiveId),
+      searchApi.image(archiveId).catch(() => ({ data: null })),
+    ])
     archive.value = d.data
     ocrContent.value = o.data.ocr_text || '(暂无 OCR 文本)'
+    if (img.data) {
+      imageInfo.value = img.data
+      imagePages.value = img.data.files || []
+    }
+
+    // 关联档案
+    const rel = await searchApi.related(archiveId).catch(() => ({ data: { related: [] } }))
+    related.value = rel.data.related || []
   } catch {
     archive.value = { archive_id: archiveId, title: '示例档案', year: 1996, category: '行政档案', department: '学校办公室', retention_period: '永久', security_level: '内部', file_count: 3 }
     ocrContent.value = 'OCR 文本加载中...'
@@ -169,4 +234,42 @@ onMounted(async () => {
   text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
 }
 .compare-divider { width: 1px; background: var(--c-border); flex-shrink: 0; }
+
+/* 关联档案 */
+.related-list { display: flex; flex-direction: column; gap: 2px; }
+.related-item {
+  display: block; padding: 8px 10px; border-radius: var(--r-sm);
+  text-decoration: none; transition: background var(--t-fast);
+}
+.related-item:hover { background: var(--c-bg); }
+.related-title { font-size: var(--fs-sm); color: var(--c-text); font-weight: var(--fw-medium); line-height: 1.4; }
+.related-meta { font-size: var(--fs-xs); color: var(--c-text-muted); margin-top: 2px; display: flex; gap: 6px; }
+.related-reason { color: var(--c-accent); margin-left: auto; }
+
+/* 图像查看器 */
+.image-viewer { display: flex; flex-direction: column; height: 500px; }
+.image-nav {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  padding: 8px 0; border-bottom: 1px solid var(--c-border-light);
+}
+.image-nav button {
+  padding: 4px 12px; border: 1px solid var(--c-border); border-radius: var(--r-sm);
+  background: var(--c-surface); color: var(--c-text-secondary); font-size: var(--fs-xs); cursor: pointer;
+}
+.image-nav button:hover:not(:disabled) { border-color: var(--c-accent); color: var(--c-accent); }
+.image-nav button:disabled { opacity: 0.4; cursor: not-allowed; }
+.image-nav span { font-size: var(--fs-sm); color: var(--c-text); }
+.image-main { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f5f5f5; }
+.archive-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+.image-file-list {
+  display: flex; gap: 4px; padding: 8px; overflow-x: auto;
+  border-top: 1px solid var(--c-border-light); background: var(--c-bg);
+}
+.image-file-item {
+  display: flex; align-items: center; gap: 4px; padding: 4px 10px;
+  border-radius: var(--r-sm); font-size: var(--fs-xs); color: var(--c-text-secondary);
+  cursor: pointer; white-space: nowrap; transition: all var(--t-fast);
+}
+.image-file-item:hover { background: var(--c-border-light); }
+.image-file-item.active { background: var(--c-accent); color: #fff; }
 </style>

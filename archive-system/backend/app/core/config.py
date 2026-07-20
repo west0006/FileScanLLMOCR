@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
 
-    # 数据库 — DB_MODE=sqlite 用于无 Docker 的本地开发
+    # 数据库.md — DB_MODE=sqlite 用于无 Docker 的本地开发
     DB_MODE: str = "sqlite"  # mysql | sqlite
     DB_HOST: str = "mysql"
     DB_PORT: int = 3306

@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <div class="page-head"><h2>角色权限</h2></div>
+    <div class="page-head"><h2>角色权限</h2><button class="btn-primary" @click="showCreateRole = true">创建角色</button></div>
     <div class="card">
       <table class="data-table">
         <thead><tr><th>角色名称</th><th>描述</th><th style="width:80px">用户数</th><th style="width:120px">操作</th></tr></thead>
@@ -28,6 +28,16 @@
         <button class="btn-primary" @click="savePerm">保存</button>
       </template>
     </AppModal>
+
+    <!-- 创建角色弹窗 -->
+    <AppModal :visible="showCreateRole" title="创建角色" @close="showCreateRole=false; roleForm.name=''; roleForm.desc=''" width="400px">
+      <div class="form-group"><label>角色标识</label><input v-model="roleForm.name" class="field-input" placeholder="英文标识, 如: dept_admin" /></div>
+      <div class="form-group"><label>角色描述</label><input v-model="roleForm.desc" class="field-input" placeholder="如: 部门管理员" /></div>
+      <template #footer>
+        <button class="btn-sm" @click="showCreateRole=false">取消</button>
+        <button class="btn-primary" @click="createRole">创建</button>
+      </template>
+    </AppModal>
   </div>
 </template>
 
@@ -39,8 +49,10 @@ import AppModal from '@/components/AppModal.vue'
 
 const roles = ref<any[]>([])
 const showPerm = ref(false)
+const showCreateRole = ref(false)
 const editingRole = ref<any>(null)
 const permForm = reactive<Record<string, boolean>>({})
+const roleForm = reactive({ name: '', desc: '' })
 
 const permModules = [
   { key: 'search', label: '智能检索', desc: '关键词/语义/高级检索' },
@@ -87,6 +99,17 @@ async function savePerm() {
     ElMessage.success('权限已保存')
     showPerm.value = false
   } catch { ElMessage.error('保存失败') }
+}
+
+async function createRole() {
+  if (!roleForm.name) { ElMessage.warning('请输入角色标识'); return }
+  try {
+    await userApi.createRole(roleForm.name, roleForm.desc)
+    ElMessage.success('角色已创建')
+    showCreateRole.value = false
+    roleForm.name = ''; roleForm.desc = ''
+    fetchRoles()
+  } catch { ElMessage.error('创建失败') }
 }
 </script>
 

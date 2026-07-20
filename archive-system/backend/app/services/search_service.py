@@ -19,6 +19,9 @@ from app.services.llm_client import llm_client
 # ==================== 字段权重 ====================
 FIELD_BOOST = {
     "title": 3.0,
+    "author": 2.0,
+    "file_code": 2.5,
+    "subject": 2.0,
     "full_text": 1.0,
     "department": 2.0,
     "category": 0.5,
@@ -43,18 +46,20 @@ def search_keyword(
     page: int = 1,
     page_size: int = 20,
     sort: str = "score",
+    exact: bool = False,
+    user: dict | None = None,
 ) -> dict:
     """关键词检索"""
     t0 = time.time()
 
-    # 扩展同义词
-    expanded = _expand_synonyms(keywords)
+    # 扩展同义词（精确模式不扩展）
+    expanded = keywords if exact else _expand_synonyms(keywords)
 
     es = get_es()
     if es is None:
-        return _fallback_search(keywords, page, page_size, t0, sort, scope_nodes)
+        return _fallback_search(keywords, page, page_size, t0, sort, scope_nodes, level, user)
 
-    query = _build_keyword_query(expanded, scope_nodes, level)
+    query = _build_keyword_query(expanded, scope_nodes, level, exact)
     return _execute_es_search(es, query, page, page_size, t0, sort)
 
 
@@ -63,6 +68,8 @@ def search_semantic(
     scope_nodes: list[str] | None = None,
     page: int = 1,
     page_size: int = 20,
+    sort: str = "score",
+    user: dict | None = None,
 ) -> dict:
     """语义检索 — LLM 理解意图 → ES 查询"""
     t0 = time.time()
@@ -72,18 +79,20 @@ def search_semantic(
 
     es = get_es()
     if es is None:
-        return _fallback_search(query_text, page, page_size, t0)
+        return _fallback_search(query_text, page, page_size, t0, sort, scope_nodes, user=user)
 
     # 用 LLM 解析出的关键词 + 实体构造 ES 查询
     keywords = " ".join(intent.get("keywords", []) or query_text.split())
     query = _build_keyword_query(keywords, scope_nodes)
     query = _add_semantic_boost(query, intent)
 
-    return _execute_es_search(es, query, page, page_size, t0)
+    return _execute_es_search(es, query, page, page_size, t0, sort)
 
 
 def search_advanced(
     keywords: str | None = None,
+    author: str | None = None,
+    file_code: str | None = None,
     year_from: int | None = None,
     year_to: int | None = None,
     category: str | None = None,
@@ -94,13 +103,15 @@ def search_advanced(
     level: str = "all",
     page: int = 1,
     page_size: int = 20,
+    sort: str = "score",
+    user: dict | None = None,
 ) -> dict:
     """高级条件检索"""
     t0 = time.time()
 
     es = get_es()
     if es is None:
-        return _fallback_search(keywords or "", page, page_size, t0)
+        return _fallback_search(keywords or "", page, page_size, t0, sort, level=level, user=user)
 
     must_clauses = []
     filters = []
@@ -131,6 +142,10 @@ def search_advanced(
         filters.append({"term": {"category": category}})
     if department:
         filters.append({"term": {"department": department}})
+    if author:
+        filters.append({"term": {"author": author}})
+    if file_code:
+        filters.append({"term": {"file_code": file_code}})
     if fonds_id:
         filters.append({"term": {"fonds_id": fonds_id}})
     if retention_period:
@@ -145,7 +160,7 @@ def search_advanced(
         }
     }
 
-    return _execute_es_search(es, query, page, page_size, t0)
+    return _execute_es_search(es, query, page, page_size, t0, sort)
 
 
 # ==================== ES 查询构造 ====================
@@ -154,18 +169,22 @@ def _build_keyword_query(
     keywords: str,
     scope_nodes: list[str] | None = None,
     level: str = "all",
+    exact: bool = False,
 ) -> dict:
     """构造关键词 ES 查询"""
+    match_clause = {
+        "multi_match": {
+            "query": keywords,
+            "fields": [f"{k}^{v}" for k, v in FIELD_BOOST.items()],
+            "type": "phrase" if exact else "best_fields",
+        }
+    }
+    if exact:
+        match_clause["multi_match"]["operator"] = "and"
     return {
         "bool": {
-            "must": [{
-                "multi_match": {
-                    "query": keywords,
-                    "fields": [f"{k}^{v}" for k, v in FIELD_BOOST.items()],
-                    "type": "best_fields",
-                }
-            }],
-            "filter": _build_level_filter(level),
+            "must": [match_clause],
+            "filter": _build_level_filter(level, scope_nodes),
         }
     }
 
@@ -291,12 +310,15 @@ def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, so
 
 # ==================== SQLite 降级 ====================
 
-def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None) -> dict:
+def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None, level: str = "all", user: dict | None = None) -> dict:
     """ES 不可用时的 SQLite 降级搜索"""
     db = SessionLocal()
     try:
         from app.models.models import Archive
         query = db.query(Archive)
+        if user:
+            from app.core.security import apply_data_scope
+            query = apply_data_scope(user, query, Archive)
         if keywords:
             for kw in keywords.split():
                 query = query.filter(
@@ -304,8 +326,13 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: 
                     (Archive.ocr_text.contains(kw))
                 )
         if scope_nodes:
-            # scope_nodes 格式: ["行政档案", "教学档案"] 等门类名
             query = query.filter(Archive.category.in_(scope_nodes))
+        if level == "project":
+            query = query.filter(Archive.level == "project")
+        elif level == "box":
+            query = query.filter(Archive.level == "box")
+        elif level == "file":
+            query = query.filter(Archive.level == "file")
         total = query.count()
         if sort == "time_asc": query = query.order_by(Archive.year.asc())
         elif sort == "time_desc": query = query.order_by(Archive.year.desc())

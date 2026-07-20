@@ -9,5 +9,6 @@ export const userApi = {
   toggleStatus: (id: number, active: boolean) => api.put(`/user/${id}/status`, null, { params: { is_active: active } }),
   listOnline: () => api.get('/user/online'),
   listRoles: () => api.get('/user/roles'),
+  createRole: (name: string, description: string) => api.post('/user/roles', null, { params: { name, description } }),
   updatePermissions: (roleId: number, perms: any) => api.put(`/user/roles/${roleId}/permissions`, perms),
 }

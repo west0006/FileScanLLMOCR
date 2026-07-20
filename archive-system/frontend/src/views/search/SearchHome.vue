@@ -47,6 +47,21 @@
             @keyup.enter="doSearch"
           />
           <button class="search-btn" @click="doSearch">检索</button>
+          <label class="exact-toggle" title="精确匹配：完整字段值严格匹配"><input type="checkbox" v-model="exactMatch" /> 精确</label>
+          <button class="history-btn" @click.stop="showHistory = !showHistory" title="检索历史">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </button>
+          <div v-if="showHistory" class="history-dropdown" @click.stop>
+            <div class="history-head">
+              <span>检索历史</span>
+              <button class="history-clear" @click="clearHistory">清空</button>
+            </div>
+            <div v-if="searchHistory.length === 0" class="history-empty">暂无检索记录</div>
+            <div v-for="(h, i) in searchHistory" :key="i" class="history-item" @click="keyword = h; showHistory = false; doSearch()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              <span>{{ h }}</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -179,9 +194,9 @@
       </div>
 
       <div v-if="total > pageSize" class="results-pager">
-        <button class="pager-btn" :disabled="page <= 1" @click="page--; doSearch()">上一页</button>
+        <button class="pager-btn" :disabled="page <= 1" @click="page--; doSearch(false)">上一页</button>
         <span class="pager-info">{{ page }} / {{ Math.ceil(total / pageSize) }}</span>
-        <button class="pager-btn" :disabled="page >= Math.ceil(total/pageSize)" @click="page++; doSearch()">下一页</button>
+        <button class="pager-btn" :disabled="page >= Math.ceil(total/pageSize)" @click="page++; doSearch(false)">下一页</button>
       </div>
     </div>
     </div><!-- /search-main -->
@@ -189,12 +204,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { searchApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
+
+onMounted(loadFacets)
+async function loadFacets() {
+  try {
+    const res = await searchApi.facets()
+    if (res.data.categories?.length) categoryTree.value = res.data.categories
+    if (res.data.years?.length) yearList.value = res.data.years
+  } catch { /* keep defaults */ }
+}
 
 const tabs = [
   { key: 'keyword', label: '关键词检索' },
@@ -213,7 +237,7 @@ const searchLevel = ref('all')
 const activeCat = ref('')
 const activeYear = ref<number | null>(null)
 
-const categoryTree = [
+const categoryTree = ref([
   { key: '行政档案', label: '行政档案', count: 45210 },
   { key: '教学档案', label: '教学档案', count: 23100 },
   { key: '党群档案', label: '党群档案', count: 18500 },
@@ -222,8 +246,8 @@ const categoryTree = [
   { key: '财务档案', label: '财务档案', count: 7200 },
   { key: '基建档案', label: '基建档案', count: 3800 },
   { key: '声像档案', label: '声像档案', count: 2100 },
-]
-const yearList = [
+])
+const yearList = ref([
   { year: 2025, count: 12300 }, { year: 2024, count: 11800 }, { year: 2023, count: 10500 },
   { year: 2022, count: 9800 }, { year: 2021, count: 9200 }, { year: 2020, count: 8900 },
   { year: 2010, count: 7500 }, { year: 2000, count: 6800 }, { year: 1990, count: 5200 },
@@ -244,14 +268,33 @@ const page = ref(1)
 const pageSize = ref(20)
 const sortBy = ref('score')
 const queryTime = ref(0)
+const exactMatch = ref(false)
+const showHistory = ref(false)
+const searchHistory = ref<string[]>([])
 
-async function doSearch() {
+onMounted(() => {
+  const stored = localStorage.getItem('search_history')
+  if (stored) searchHistory.value = JSON.parse(stored)
+})
+function saveToHistory(q: string) {
+  if (!q.trim()) return
+  searchHistory.value = [q, ...searchHistory.value.filter(h => h !== q)].slice(0, 20)
+  localStorage.setItem('search_history', JSON.stringify(searchHistory.value))
+}
+function clearHistory() {
+  searchHistory.value = []
+  localStorage.removeItem('search_history')
+}
+
+async function doSearch(resetPage = true) {
   loading.value = true
   searched.value = true
-  page.value = 1
+  if (resetPage) page.value = 1
   try {
     let res: any
     const base: any = { page: page.value, page_size: pageSize.value, level: searchLevel.value, sort: sortBy.value }
+
+    if (searchMode.value !== 'advanced') saveToHistory(searchMode.value === 'semantic' ? semanticQuery.value : keyword.value)
 
     if (searchMode.value === 'semantic') {
       res = await searchApi.semantic({ query: semanticQuery.value, ...base })
@@ -271,7 +314,7 @@ async function doSearch() {
           ...base,
         })
       } else {
-        res = await searchApi.keyword({ keywords: keyword.value, ...base })
+        res = await searchApi.keyword({ keywords: keyword.value, exact: exactMatch.value, ...base })
       }
     }
     results.value = res.data.results
@@ -309,8 +352,9 @@ function sendToReview(item: any) {
 }
 async function handleExport() {
   try {
-    const res = await searchApi.export({ format: 'excel', archive_ids: [] })
-    ElMessage.success(`导出成功: ${res.data.file} (${res.data.count}条)`)
+    const ids = results.value.map((r: any) => r.archive_id).filter(Boolean)
+    const res = await searchApi.export({ format: 'excel', archive_ids: ids })
+    ElMessage.success(`导出成功: ${res.data.file} (${res.data.count} 条)`)
   } catch { ElMessage.error('导出失败') }
 }
 </script>
@@ -685,4 +729,40 @@ async function handleExport() {
 }
 .results-empty p { margin: 12px 0 4px; font-size: var(--fs-lg); font-weight: var(--fw-medium); }
 .results-empty span { font-size: var(--fs-sm); }
+
+/* 检索历史 */
+.search-box { position: relative; }
+.history-btn {
+  width: 36px; height: 36px; border: 1px solid var(--c-border); border-radius: var(--r-sm);
+  background: var(--c-surface); color: var(--c-text-muted); cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.history-btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+.exact-toggle {
+  display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs);
+  color: var(--c-text-muted); cursor: pointer; white-space: nowrap;
+  user-select: none;
+}
+.exact-toggle input { accent-color: var(--c-accent); }
+.exact-toggle:has(input:checked) { color: var(--c-accent); font-weight: var(--fw-semibold); }
+.history-dropdown {
+  position: absolute; top: 44px; right: 60px; width: 300px; max-height: 320px; overflow-y: auto;
+  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md);
+  box-shadow: var(--s-dropdown); z-index: 50; padding: 8px 0;
+}
+.history-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 6px 12px 8px; border-bottom: 1px solid var(--c-border-light);
+  font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--c-text-muted);
+}
+.history-clear {
+  border: none; background: none; color: var(--c-danger); font-size: var(--fs-xs); cursor: pointer;
+}
+.history-empty { padding: 16px; text-align: center; color: var(--c-text-muted); font-size: var(--fs-sm); }
+.history-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  cursor: pointer; font-size: var(--fs-sm); color: var(--c-text); transition: background var(--t-fast);
+}
+.history-item:hover { background: var(--c-bg); }
+.history-item svg { color: var(--c-text-muted); flex-shrink: 0; }
 </style>

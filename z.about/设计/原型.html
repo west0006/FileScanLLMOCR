@@ -1,0 +1,3444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>中南财经政法大学 - 档案智能查询与开放预审系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style>
+/* ========== 全局重置与变量 ========== */
+:root {
+  --primary: #1a3c6e;
+  --primary-light: #2d6cdf;
+  --primary-dark: #0f2747;
+  --accent: #d4a017;
+  --success: #52c41a;
+  --warning: #faad14;
+  --danger: #ff4d4f;
+  --info: #1890ff;
+  --bg: #f0f2f5;
+  --card-bg: #ffffff;
+  --text: #303030;
+  --text-secondary: #707070;
+  --text-light: #a0a0a0;
+  --border: #e0e0e0;
+  --border-light: #f0f0f0;
+  --sidebar-width: 230px;
+  --topbar-height: 56px;
+  --radius: 6px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--primary-light); text-decoration: none; }
+a:hover { text-decoration: underline; }
+ul, ol { list-style: none; }
+img { max-width: 100%; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ========== 登录页 ========== */
+#loginPage {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #0f2747 0%, #1a3c6e 40%, #2d6cdf 100%);
+}
+.login-card {
+  width: 400px;
+  background: rgba(255,255,255,0.95);
+  border-radius: 12px;
+  padding: 40px 36px 32px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.3);
+  backdrop-filter: blur(10px);
+}
+.login-logo {
+  text-align: center; margin-bottom: 28px;
+}
+.login-logo .icon {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  border-radius: 12px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 28px; color: #fff; margin-bottom: 12px;
+}
+.login-logo h1 { font-size: 18px; color: var(--primary); font-weight: 600; }
+.login-logo p { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+.login-form .field { margin-bottom: 18px; }
+.login-form label { display: block; font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.login-form input {
+  width: 100%; height: 42px; padding: 0 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 14px; outline: none; transition: border-color .2s;
+}
+.login-form input:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(45,108,223,0.1); }
+.login-form .btn-login {
+  width: 100%; height: 42px; border: none; border-radius: var(--radius);
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff; font-size: 15px; font-weight: 500; cursor: pointer; transition: opacity .2s;
+}
+.login-form .btn-login:hover { opacity: 0.9; }
+.login-form .role-select { display: flex; gap: 8px; margin-bottom: 18px; }
+.login-form .role-select button {
+  flex: 1; padding: 8px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: #fff; cursor: pointer; font-size: 12px; color: var(--text-secondary); transition: all .2s;
+}
+.login-form .role-select button.active {
+  border-color: var(--primary-light); color: var(--primary-light); background: rgba(45,108,223,0.05);
+}
+.login-tip { text-align: center; font-size: 12px; color: var(--text-light); margin-top: 16px; }
+
+/* ========== 主布局 ========== */
+#app { display: none; }
+#app.show { display: block; }
+
+/* 侧边栏 */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: var(--sidebar-width);
+  background: var(--primary-dark);
+  z-index: 100;
+  overflow-y: auto;
+  transition: transform .3s;
+}
+.sidebar-header {
+  height: var(--topbar-height);
+  display: flex; align-items: center; padding: 0 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-header .logo-icon {
+  width: 32px; height: 32px;
+  background: linear-gradient(135deg, var(--primary-light), #4a8de6);
+  border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: #fff; margin-right: 10px; flex-shrink: 0;
+}
+.sidebar-header .logo-text { color: #fff; font-size: 14px; font-weight: 500; line-height: 1.3; }
+.sidebar-header .logo-text small { display: block; font-size: 10px; color: rgba(255,255,255,0.5); font-weight: 400; }
+
+.nav-section { padding: 8px 0; }
+.nav-section-title {
+  padding: 12px 18px 4px; font-size: 11px; color: rgba(255,255,255,0.3);
+  text-transform: uppercase; letter-spacing: 1px;
+}
+.nav-item {
+  display: flex; align-items: center; padding: 10px 18px;
+  color: rgba(255,255,255,0.65); cursor: pointer; transition: all .15s;
+  font-size: 13px; position: relative;
+}
+.nav-item:hover { color: #fff; background: rgba(255,255,255,0.05); }
+.nav-item.active { color: #fff; background: rgba(45,108,223,0.15); }
+.nav-item.active::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--accent);
+}
+.nav-item .nav-icon { width: 20px; text-align: center; margin-right: 10px; font-size: 15px; }
+.nav-item .badge {
+  margin-left: auto; background: var(--danger); color: #fff;
+  font-size: 10px; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center;
+}
+
+/* 顶栏 */
+.topbar {
+  position: fixed; left: var(--sidebar-width); top: 0; right: 0;
+  height: var(--topbar-height);
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 24px;
+  z-index: 99;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+.topbar .breadcrumb { font-size: 13px; color: var(--text-secondary); }
+.topbar .breadcrumb span { color: var(--text); font-weight: 500; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.topbar-right .icon-btn {
+  width: 34px; height: 34px; border: none; background: none;
+  border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--text-secondary); position: relative; transition: background .2s;
+}
+.topbar-right .icon-btn:hover { background: var(--border-light); }
+.topbar-right .icon-btn .dot {
+  position: absolute; top: 6px; right: 6px; width: 7px; height: 7px;
+  background: var(--danger); border-radius: 50%; border: 1.5px solid #fff;
+}
+.topbar-right .user-info {
+  display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 4px 8px; border-radius: var(--radius);
+  transition: background .2s;
+}
+.topbar-right .user-info:hover { background: var(--border-light); }
+.topbar-right .avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500;
+}
+.topbar-right .user-name { font-size: 13px; color: var(--text); }
+.topbar-right .user-role { font-size: 11px; color: var(--text-light); }
+
+/* 内容区 */
+.content {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--topbar-height);
+  padding: 20px 24px;
+  min-height: calc(100vh - var(--topbar-height));
+}
+
+/* ========== 通用组件 ========== */
+.card {
+  background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 20px; margin-bottom: 16px;
+}
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light);
+}
+.card-title { font-size: 15px; font-weight: 600; color: var(--text); }
+.card-title::before { content: ''; display: inline-block; width: 3px; height: 14px; background: var(--primary-light); border-radius: 2px; margin-right: 8px; vertical-align: -2px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 7px 16px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: #fff; color: var(--text); font-size: 13px; cursor: pointer; transition: all .2s;
+}
+.btn:hover { border-color: var(--primary-light); color: var(--primary-light); }
+.btn-primary { background: var(--primary-light); color: #fff; border-color: var(--primary-light); }
+.btn-primary:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+.btn-success:hover { opacity: .9; color: #fff; }
+.btn-warning { background: var(--warning); color: #fff; border-color: var(--warning); }
+.btn-warning:hover { opacity: .9; color: #fff; }
+.btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn-danger:hover { opacity: .9; color: #fff; }
+.btn-sm { padding: 4px 10px; font-size: 12px; }
+.btn-link { background: none; border: none; color: var(--primary-light); padding: 0; cursor: pointer; font-size: 13px; }
+.btn-link:hover { text-decoration: underline; }
+
+/* 统计卡片 */
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px; }
+.stat-card {
+  background: #fff; border-radius: var(--radius); padding: 20px;
+  box-shadow: var(--shadow); position: relative; overflow: hidden;
+}
+.stat-card .stat-icon {
+  position: absolute; right: 16px; top: 16px;
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 18px;
+}
+.stat-card .stat-label { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
+.stat-card .stat-value { font-size: 28px; font-weight: 700; color: var(--text); }
+.stat-card .stat-trend { font-size: 12px; margin-top: 8px; }
+.stat-card .stat-trend.up { color: var(--success); }
+.stat-card .stat-trend.down { color: var(--danger); }
+
+/* 表格 */
+table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.data-table th {
+  text-align: left; padding: 10px 12px; background: #fafafa;
+  border-bottom: 2px solid var(--border); font-weight: 600; color: var(--text-secondary); white-space: nowrap;
+}
+table.data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-light); }
+table.data-table tr:hover { background: #fafbfc; }
+table.data-table .ellipsis { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 标签 */
+.tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 12px; line-height: 20px; }
+.tag-blue { background: #e6f4ff; color: #1890ff; }
+.tag-green { background: #f6ffed; color: #52c41a; }
+.tag-orange { background: #fff7e6; color: #fa8c16; }
+.tag-red { background: #fff1f0; color: #ff4d4f; }
+.tag-gray { background: #f5f5f5; color: #999; }
+.tag-purple { background: #f9f0ff; color: #722ed1; }
+
+/* 进度条 */
+.progress { height: 8px; background: var(--border-light); border-radius: 4px; overflow: hidden; }
+.progress-bar { height: 100%; border-radius: 4px; transition: width .3s; }
+
+/* 搜索框 */
+.search-box {
+  display: flex; gap: 12px; margin-bottom: 20px; align-items: center;
+}
+.search-box .input-wrap { flex: 1; position: relative; }
+.search-box .input-wrap input {
+  width: 100%; height: 40px; padding: 0 16px 0 40px;
+  border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; outline: none;
+}
+.search-box .input-wrap input:focus { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(45,108,223,0.1); }
+.search-box .input-wrap .search-icon {
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 16px; color: var(--text-light);
+}
+
+/* 筛选栏 */
+.filter-bar {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;
+}
+.filter-bar select, .filter-bar input {
+  height: 34px; padding: 0 10px; border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 13px; outline: none; background: #fff;
+}
+
+/* 日志分类标签栏 */
+.log-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:16px; }
+.log-tab {
+  padding:10px 20px; border:none; background:none; font-size:14px; cursor:pointer;
+  color:var(--text-secondary); border-bottom:2px solid transparent; margin-bottom:-2px;
+  transition:all .2s; display:flex; align-items:center; gap:6px;
+}
+.log-tab:hover { color:var(--primary-light); }
+.log-tab.active { color:var(--primary); font-weight:600; border-bottom-color:var(--primary); }
+.log-tab-count { font-size:11px; background:#f0f0f0; color:var(--text-secondary); padding:1px 8px; border-radius:10px; }
+.log-tab.active .log-tab-count { background:var(--primary); color:#fff; }
+
+/* 档案结果卡片 */
+.archive-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.archive-item {
+  background: #fff; border-radius: var(--radius); padding: 16px 20px;
+  box-shadow: var(--shadow); cursor: pointer; transition: all .2s;
+  border-left: 3px solid transparent;
+}
+.archive-item:hover { box-shadow: var(--shadow-lg); border-left-color: var(--primary-light); }
+.archive-item .archive-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.archive-item .archive-meta { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); flex-wrap: wrap; }
+.archive-item .archive-snippet { font-size: 13px; color: var(--text-secondary); margin-top: 6px; line-height: 1.5; }
+.archive-item .archive-snippet .highlight { background: #fff3cd; color: #856404; padding: 0 2px; border-radius: 2px; }
+
+/* 分页 */
+.pagination { display: flex; gap: 4px; justify-content: center; margin-top: 20px; align-items: center; }
+.pagination button {
+  min-width: 32px; height: 32px; border: 1px solid var(--border); background: #fff;
+  border-radius: var(--radius); cursor: pointer; font-size: 13px; color: var(--text); transition: all .2s;
+}
+.pagination button:hover { border-color: var(--primary-light); color: var(--primary-light); }
+.pagination button.active { background: var(--primary-light); color: #fff; border-color: var(--primary-light); }
+.pagination button:disabled { color: var(--text-light); cursor: not-allowed; }
+
+/* 模态框 */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000;
+  display: none; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff; border-radius: 8px; max-width: 900px; width: 100%; max-height: 90vh;
+  overflow-y: auto; box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+}
+.modal-header {
+  padding: 16px 24px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 1;
+}
+.modal-header h3 { font-size: 16px; font-weight: 600; }
+.modal-close { font-size: 20px; cursor: pointer; color: var(--text-light); border: none; background: none; }
+.modal-body { padding: 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* 档案目录树 */
+.tree-container {
+  border:1px solid var(--border); border-radius:var(--radius);
+  max-height:380px; overflow-y:auto; padding:6px; background:#fafbfc;
+}
+.tree-search {
+  margin-bottom:8px;
+}
+.tree-search input {
+  width:100%; height:32px; padding:0 10px; border:1px solid var(--border);
+  border-radius:var(--radius); font-size:12px; outline:none;
+}
+.tree-search input:focus { border-color:var(--primary-light); }
+.tree-node { }
+.tree-node-row {
+  display:flex; align-items:center; padding:4px 6px; cursor:pointer;
+  border-radius:4px; font-size:13px; transition:background .12s; user-select:none;
+}
+.tree-node-row:hover { background:rgba(45,108,223,0.07); }
+.tree-toggle {
+  width:18px; height:18px; display:inline-flex; align-items:center; justify-content:center;
+  font-size:11px; color:var(--text-secondary); flex-shrink:0; cursor:pointer;
+}
+.tree-toggle.leaf { visibility:hidden; }
+.tree-checkbox {
+  width:16px; height:16px; margin-right:6px; flex-shrink:0; cursor:pointer;
+  accent-color:var(--primary-light);
+}
+.tree-label { flex:1; line-height:1.5; }
+.tree-label.folder { font-weight:500; }
+.tree-count { font-size:11px; color:var(--text-light); margin-left:4px; }
+.tree-children { margin-left:20px; display:none; }
+.tree-children.show { display:block; }
+.tree-selected-bar {
+  margin-top:10px; padding:8px 10px; background:#f0f7ff; border:1px solid #d4e8ff;
+  border-radius:var(--radius); font-size:12px; min-height:36px; display:flex; flex-wrap:wrap; gap:4px; align-items:center;
+}
+.tree-tag {
+  display:inline-flex; align-items:center; gap:4px; background:#e6f4ff; color:#1890ff;
+  border:1px solid #91d5ff; border-radius:4px; padding:2px 8px; font-size:12px; white-space:nowrap;
+}
+.tree-tag .tag-remove { cursor:pointer; font-weight:bold; margin-left:2px; }
+.tree-tag .tag-remove:hover { color:var(--danger); }
+.tree-empty-hint { color:var(--text-light); font-size:12px; }
+.tree-toolbar {
+  display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;
+}
+.tree-toolbar .tree-actions { display:flex; gap:6px; }
+.tree-toolbar .tree-actions button {
+  border:1px solid var(--border); background:#fff; border-radius:4px; padding:3px 10px;
+  font-size:12px; cursor:pointer; color:var(--text-secondary);
+}
+.tree-toolbar .tree-actions button:hover { border-color:var(--primary-light); color:var(--primary-light); }
+
+/* 检索范围选择器 */
+.scope-selector { position:relative; flex-shrink:0; }
+.scope-btn {
+  display:flex; align-items:center; gap:6px; height:40px; padding:0 14px;
+  border:1px solid var(--border); border-radius:var(--radius); background:#fff;
+  font-size:13px; cursor:pointer; white-space:nowrap; transition:border-color .2s;
+}
+.scope-btn:hover { border-color:var(--primary-light); }
+.scope-btn .scope-text { max-width:160px; overflow:hidden; text-overflow:ellipsis; }
+.scope-popover {
+  display:none; position:absolute; top:calc(100% + 4px); left:0; z-index:1000;
+  background:#fff; border:1px solid var(--border); border-radius:8px;
+  padding:12px; width:400px; max-height:450px; overflow:auto;
+  box-shadow:0 6px 16px rgba(0,0,0,0.12);
+}
+.scope-popover.show { display:block; }
+
+/* 检索层级选择 */
+.level-select {
+  height:40px; padding:0 12px; border:1px solid var(--border); border-radius:var(--radius);
+  font-size:13px; background:#fff; outline:none; flex-shrink:0;
+}
+
+/* 检索结果左侧筛选 */
+.search-layout { display:flex; gap:16px; }
+.search-sidebar { width:240px; flex-shrink:0; }
+.search-main { flex:1; min-width:0; }
+.filter-card { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:14px; margin-bottom:12px; }
+.filter-card-title { font-size:13px; font-weight:600; margin-bottom:10px; color:var(--text); display:flex; align-items:center; gap:4px; }
+.filter-tree-node { padding:4px 8px; font-size:12px; cursor:pointer; border-radius:4px; display:flex; justify-content:space-between; align-items:center; }
+.filter-tree-node:hover { background:rgba(45,108,223,0.07); }
+.filter-tree-node.active { background:rgba(45,108,223,0.12); color:var(--primary); font-weight:500; }
+.filter-tree-count { font-size:11px; color:var(--text-light); background:#f0f0f0; padding:1px 6px; border-radius:10px; }
+.filter-tree-node.active .filter-tree-count { background:var(--primary); color:#fff; }
+.filter-tree-children { margin-left:12px; }
+.filter-year-item { padding:5px 10px; font-size:12px; cursor:pointer; border-radius:4px; display:flex; justify-content:space-between; align-items:center; }
+.filter-year-item:hover { background:rgba(45,108,223,0.07); }
+.filter-year-item.active { background:rgba(45,108,223,0.12); color:var(--primary); font-weight:500; }
+.filter-year-count { font-size:11px; color:var(--text-light); background:#f0f0f0; padding:1px 6px; border-radius:10px; }
+.filter-year-item.active .filter-year-count { background:var(--primary); color:#fff; }
+.filter-reset-btn { font-size:11px; color:var(--primary); cursor:pointer; margin-left:auto; }
+
+/* 项目/案卷级结果卡片 */
+.level-card {
+  background:#fff; border-radius:var(--radius); padding:14px 18px;
+  box-shadow:var(--shadow); cursor:pointer; transition:all .2s;
+  border-left:3px solid transparent; display:flex; align-items:center; gap:12px;
+}
+.level-card:hover { box-shadow:var(--shadow-lg); border-left-color:var(--primary-light); }
+.level-card-icon { width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+.level-card-body { flex:1; min-width:0; }
+.level-card-title { font-size:14px; font-weight:600; margin-bottom:4px; }
+.level-card-meta { font-size:12px; color:var(--text-secondary); display:flex; gap:12px; flex-wrap:wrap; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+/* 档案详情 */
+.detail-section { margin-bottom: 24px; }
+.detail-section h4 { font-size: 14px; font-weight: 600; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-light); }
+.detail-row { display: flex; margin-bottom: 8px; }
+.detail-label { width: 120px; color: var(--text-secondary); font-size: 13px; flex-shrink: 0; }
+.detail-value { flex: 1; font-size: 13px; color: var(--text); }
+
+/* 审核工作台 */
+.review-layout { display: grid; grid-template-columns: 1fr 320px; gap: 16px; }
+.review-doc-viewer {
+  background: #fff; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 16px; min-height: 500px;
+}
+.doc-page {
+  background: #fafafa; border: 1px solid var(--border); border-radius: 4px;
+  padding: 32px; margin-bottom: 16px; font-family: "FangSong", "STFangsong", serif;
+  font-size: 15px; line-height: 2; color: #333; position: relative;
+}
+.doc-page .page-num { position: absolute; bottom: 8px; right: 16px; font-size: 12px; color: var(--text-light); }
+.doc-page .sensitive-mark { background: #ffe0e0; border-bottom: 2px solid var(--danger); cursor: pointer; }
+.doc-page .ai-annotation {
+  position: absolute; background: var(--danger); color: #fff;
+  font-size: 11px; padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+}
+.review-panel {
+  background: #fff; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 20px; height: fit-content;
+}
+.review-panel .ai-result { background: #f0f7ff; border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+.review-panel .risk-meter { text-align: center; margin-bottom: 16px; }
+.review-panel .risk-circle {
+  width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700;
+}
+.review-panel .risk-low { background: #f6ffed; color: var(--success); border: 3px solid var(--success); }
+.review-panel .risk-medium { background: #fff7e6; color: var(--warning); border: 3px solid var(--warning); }
+.review-panel .risk-high { background: #fff1f0; color: var(--danger); border: 3px solid var(--danger); }
+
+/* 时间线 */
+.timeline { padding-left: 20px; border-left: 2px solid var(--border); }
+.timeline-item { position: relative; padding-bottom: 20px; }
+.timeline-item::before {
+  content: ''; position: absolute; left: -26px; top: 4px;
+  width: 10px; height: 10px; border-radius: 50%; background: var(--primary-light);
+  border: 2px solid #fff; box-shadow: 0 0 0 2px var(--primary-light);
+}
+.timeline-item .tl-time { font-size: 12px; color: var(--text-light); }
+.timeline-item .tl-content { font-size: 13px; color: var(--text); margin-top: 2px; }
+
+/* 图表容器 */
+.chart-container { position: relative; height: 280px; }
+.chart-container-sm { position: relative; height: 200px; }
+
+/* 双栏布局 */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+/* 页面切换 */
+.page { display: none; }
+.page.active { display: block; }
+
+/* 空状态 */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-light); }
+.empty-state .icon { font-size: 48px; margin-bottom: 12px; }
+
+/* 步骤条 */
+.steps { display: flex; margin-bottom: 24px; }
+.step { flex: 1; text-align: center; position: relative; }
+.step::after { content: ''; position: absolute; top: 16px; left: 50%; width: 100%; height: 2px; background: var(--border); z-index: 0; }
+.step:last-child::after { display: none; }
+.step .step-num {
+  width: 32px; height: 32px; border-radius: 50%; background: var(--border);
+  color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; position: relative; z-index: 1;
+}
+.step.active .step-num { background: var(--primary-light); }
+.step.done .step-num { background: var(--success); }
+.step .step-label { font-size: 12px; color: var(--text-secondary); margin-top: 6px; }
+.step.active .step-label { color: var(--primary); font-weight: 500; }
+
+/* 响应式 */
+@media (max-width: 1200px) {
+  .stat-grid { grid-template-columns: repeat(2, 1fr); }
+  .two-col, .three-col { grid-template-columns: 1fr; }
+  .review-layout { grid-template-columns: 1fr; }
+}
+</style>
+<style>
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+</style>
+</head>
+<body>
+
+<!-- 登录页 -->
+<div id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="icon">📁</div>
+      <h1>档案智能查询与开放预审系统</h1>
+      <p>中南财经政法大学 · 档案馆校史馆</p>
+    </div>
+    <div class="login-form">
+      <div class="field">
+        <label>用户名</label>
+        <input type="text" id="loginUser" value="admin" placeholder="请输入用户名">
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input type="password" id="loginPass" value="123456" placeholder="请输入密码">
+      </div>
+      <div class="field">
+        <label>验证码</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" placeholder="请输入验证码" style="flex:1;">
+          <div style="width:100px;height:42px;background:#f0f2f5;border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;color:var(--primary);letter-spacing:2px;cursor:pointer;" onclick="this.textContent=Math.random().toString(36).substr(2,4).toUpperCase()">A3F9</div>
+        </div>
+      </div>
+      <button class="btn-login" onclick="doLogin()">登 录</button>
+      <div class="login-tip">根据用户ID自动识别角色 · 本地化部署 · 数据不上云</div>
+    </div>
+  </div>
+</div>
+
+<!-- 主应用 -->
+<div id="app">
+  <!-- 侧边栏 -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">档</div>
+      <div class="logo-text">档案智能系统<small>ZUEL Archive AI</small></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">档案服务</div>
+      <div class="nav-item" onclick="switchPage('keywordSearch',this)">
+        <span class="nav-icon">🔑</span> 关键字检索
+      </div>
+      <div class="nav-item" onclick="switchPage('semanticSearch',this)">
+        <span class="nav-icon">🧠</span> 语义检索
+      </div>
+      <div class="nav-item" onclick="switchPage('ocr',this)">
+        <span class="nav-icon">📷</span> OCR任务管理
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">开放预审</div>
+      <div class="nav-item" onclick="switchPage('reviewTasks',this)">
+        <span class="nav-icon">📋</span> 预审任务
+      </div>
+      <div class="nav-item" onclick="switchPage('reviewHistory',this)">
+        <span class="nav-icon">📁</span> 预审记录
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">数据管理</div>
+      <div class="nav-item" onclick="switchPage('sync',this)">
+        <span class="nav-icon">🔄</span> 数据同步
+      </div>
+      <div class="nav-item" onclick="switchPage('stats',this)">
+        <span class="nav-icon">📈</span> 统计分析
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">系统管理</div>
+      <div class="nav-item" onclick="switchPage('users',this)">
+        <span class="nav-icon">👥</span> 用户管理
+      </div>
+      <div class="nav-item" onclick="switchPage('online',this)">
+        <span class="nav-icon">🟢</span> 在线用户
+      </div>
+      <div class="nav-item" onclick="switchPage('roles',this)">
+        <span class="nav-icon">🔑</span> 角色权限
+      </div>
+      <div class="nav-item" onclick="switchPage('logs',this)">
+        <span class="nav-icon">📝</span> 审计日志
+      </div>
+    </div>
+  </div>
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <div class="breadcrumb">档案智能查询与开放预审系统 / <span id="currentPageName">关键字检索</span></div>
+    <div class="topbar-right">
+      <button class="icon-btn" title="通知">🔔<span class="dot"></span></button>
+      <button class="icon-btn" title="帮助">❓</button>
+      <div class="user-info" onclick="switchPage('profile',document.querySelector('.nav-item'))">
+        <div class="avatar">管</div>
+        <div>
+          <div class="user-name">管理员</div>
+          <div class="user-role">超级管理员</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 内容区 -->
+  <div class="content" id="contentArea">
+    <!-- 各页面将通过JS动态渲染 -->
+  </div>
+</div>
+
+<!-- 模态框容器 -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContainer"></div>
+</div>
+
+<script>
+// ========== 数据模拟 ==========
+const MOCK = {
+  stats: {
+    totalArchives: 125830,
+    digitized: 89456,
+    ocrProcessed: 67234,
+    openReviewed: 8234,
+    pendingReview: 2341,
+    todayVisits: 156,
+    todaySearches: 342,
+    ocrAccuracy: 94.6
+  },
+  archives: [
+    {id:'ZD2025-001',title:'关于2025年度教学改革项目的批复',year:2025,category:'行政档案',dept:'教务处',status:'已开放',snippet:'经校务会议研究决定，同意开展<mark>教学改革</mark>项目，项目编号JG2025-018，涉及课程体系建设、教学方法创新等内容...',score:98},
+    {id:'ZD2024-128',title:'中南财经政法大学2024年招生工作总结报告',year:2024,category:'行政档案',dept:'招生办公室',status:'已开放',snippet:'2024年度共录取本科生5230人，研究生2180人，留学生86人。<mark>教学改革</mark>背景下招生结构调整...',score:92},
+    {id:'ZD2023-056',title:'关于经济学院<mark>教学改革</mark>方案审批的函',year:2023,category:'教学档案',dept:'经济学院',status:'已开放',snippet:'经济学院提交的课程<mark>教学改革</mark>方案已经校学术委员会审议通过，涉及金融学、经济学等核心课程...',score:90},
+    {id:'ZD2001-345',title:'2001年学校财务决算报告',year:2001,category:'财务档案',dept:'财务处',status:'待预审',snippet:'本年度学校总收入3.2亿元，总支出2.8亿元。其中<mark>教学改革</mark>专项经费投入1200万元...',score:75},
+    {id:'ZD1999-078',title:'关于校庆五十周年系列活动的通知',year:1999,category:'行政档案',dept:'校长办公室',status:'预审中',snippet:'为庆祝建校五十周年，学校拟开展系列纪念活动，包括校史展览、学术论坛等...',score:68},
+    {id:'ZD2022-091',title:'研究生院关于学位授权点<mark>教学改革</mark>的请示',year:2022,category:'教学档案',dept:'研究生院',status:'已开放',snippet:'根据国务院学位委员会要求，我校拟对应用经济学等博士学位授权点进行<mark>教学改革</mark>...',score:88},
+    {id:'ZD2020-234',title:'2020年度科研项目管理与成果统计',year:2020,category:'科研档案',dept:'科研处',status:'已开放',snippet:'本年度新增国家级项目28项，省部级项目56项，横向课题122项，科研总经费达1.5亿元...',score:85},
+    {id:'ZD2018-067',title:'关于校园信息化建设规划的批复',year:2018,category:'行政档案',dept:'信息管理部',status:'已开放',snippet:'同意实施智慧校园三年建设规划（2018-2020），重点推进教学信息化、管理数字化...',score:82},
+  ],
+  ocrTasks: [
+    {id:'OCR-20260617-001',name:'2025年度行政档案OCR处理',total:1280,done:1024,failed:3,status:'processing',startTime:'2026-06-17 08:30',accuracy:95.2},
+    {id:'OCR-20260616-005',name:'经济学院教学档案批量识别',total:560,done:560,failed:0,status:'done',startTime:'2026-06-16 14:00',accuracy:96.8},
+    {id:'OCR-20260616-004',name:'历史档案（1990-2000）手写体识别',total:320,done:285,failed:12,status:'processing',startTime:'2026-06-16 09:15',accuracy:88.3},
+    {id:'OCR-20260615-003',name:'财务处凭证档案OCR',total:890,done:890,failed:2,status:'done',startTime:'2026-06-15 10:00',accuracy:94.1},
+    {id:'OCR-20260614-002',name:'校史馆老照片文字提取',total:150,done:150,failed:8,status:'done',startTime:'2026-06-14 13:30',accuracy:82.5},
+    {id:'OCR-20260614-001',name:'1995-1999年馆藏档案补录',total:2400,done:0,failed:0,status:'pending',startTime:'-',accuracy:0},
+  ],
+  reviewTasks: [
+    {id:'REV-2026-001',batch:'2025年第一批开放预审',total:560,aiDone:560,humanDone:0,pending:0,status:'processing',deadline:'2026-07-15'},
+    {id:'REV-2026-002',batch:'1999-2000年馆藏到期档案',total:1200,aiDone:0,humanDone:0,pending:1200,status:'pending',deadline:'2026-08-30'},
+    {id:'REV-2025-008',batch:'2024年第五批开放预审',total:320,aiDone:320,humanDone:0,pending:0,status:'done',deadline:'2025-12-30'},
+  ],
+  reviewItems: [
+    {id:'FW-1998-045',title:'关于1998年度财务预算执行情况的报告',year:1998,dept:'财务处',risk:'high',riskScore:78,sensitive:['财务数据','预算明细','人员薪酬'],aiSuggestion:'建议不开放',volumeId:'AJ-1998-001',volumeTitle:'1998年度财务处预决算卷'},
+    {id:'FW-1998-045-2',title:'1998年财务决算附表',year:1998,dept:'财务处',risk:'low',riskScore:12,sensitive:[],aiSuggestion:'建议开放',volumeId:'AJ-1998-001',volumeTitle:'1998年度财务处预决算卷'},
+    {id:'FW-1998-046',title:'关于校园基建工程验收的通报',year:1998,dept:'后勤管理处',risk:'low',riskScore:15,sensitive:[],aiSuggestion:'建议开放',volumeId:'AJ-1998-002',volumeTitle:'1998年基建工程验收卷'},
+    {id:'FW-1998-047',title:'1998年教职工考核结果汇总',year:1998,dept:'人事处',risk:'high',riskScore:85,sensitive:['个人隐私','人事考核','薪酬信息'],aiSuggestion:'建议不开放',volumeId:'AJ-1998-003',volumeTitle:'1998年人事考核卷'},
+    {id:'FW-1998-047-2',title:'1998年职称评审名单',year:1998,dept:'人事处',risk:'medium',riskScore:52,sensitive:['个人隐私'],aiSuggestion:'建议部分开放（脱敏后）',volumeId:'AJ-1998-003',volumeTitle:'1998年人事考核卷'},
+    {id:'FW-1998-048',title:'关于学科建设的若干意见',year:1998,dept:'学科建设办公室',risk:'low',riskScore:8,sensitive:[],aiSuggestion:'建议开放',volumeId:'AJ-1998-004',volumeTitle:'1998年学科建设卷'},
+    {id:'FW-1998-049',title:'关于学生奖惩决定的通报',year:1998,dept:'学生工作部',risk:'medium',riskScore:45,sensitive:['学生个人信息'],aiSuggestion:'建议部分开放（脱敏后）',volumeId:'AJ-1998-005',volumeTitle:'1998年学生管理卷'},
+    {id:'FW-1998-050',title:'1998年度科研项目管理规定',year:1998,dept:'科研处',risk:'low',riskScore:5,sensitive:[],aiSuggestion:'建议开放',volumeId:'AJ-1998-006',volumeTitle:'1998年科研管理卷'},
+    {id:'FW-1998-050-2',title:'科研项目结题报告汇总',year:1998,dept:'科研处',risk:'low',riskScore:10,sensitive:[],aiSuggestion:'建议开放',volumeId:'AJ-1998-006',volumeTitle:'1998年科研管理卷'},
+  ],
+  users: [
+    {name:'张明华',account:'zhangmh',role:'系统管理员',dept:'信息管理部',lastLogin:'2026-07-02 09:15',status:'正常',online:true},
+    {name:'李芳',account:'lifang',role:'预审管理员',dept:'档案馆',lastLogin:'2026-07-02 08:40',status:'正常',online:true},
+    {name:'王建国',account:'wangjg',role:'查档人员',dept:'查询利用室',lastLogin:'2026-07-01 16:20',status:'正常',online:false},
+    {name:'陈小红',account:'chenxh',role:'预审管理员',dept:'收集指导室',lastLogin:'2026-07-01 14:30',status:'正常',online:true},
+    {name:'刘伟',account:'liuwei',role:'档案馆员',dept:'档案馆',lastLogin:'2026-06-30 10:00',status:'正常',online:false},
+    {name:'赵静',account:'zhaojing',role:'查档人员',dept:'校史馆',lastLogin:'2026-06-28 09:45',status:'锁定',online:false},
+  ],
+  onlineUsers: [
+    {name:'张明华',account:'zhangmh',role:'系统管理员',ip:'10.20.1.100',loginTime:'2026-07-02 09:15:22',session:'2小时18分',activity:'用户管理页面',location:'信息管理部办公区'},
+    {name:'李芳',account:'lifang',role:'预审管理员',ip:'10.20.1.156',loginTime:'2026-07-02 08:40:10',session:'2小时53分',activity:'预审记录页面',location:'档案馆'},
+    {name:'陈小红',account:'chenxh',role:'预审管理员',ip:'10.20.1.142',loginTime:'2026-07-02 07:30:05',session:'4小时03分',activity:'AI预审工作台',location:'收集指导室'},
+  ],
+  logs: [
+    {time:'2026-07-02 19:30:15',user:'张明华',action:'登录系统',module:'系统管理',ip:'10.20.1.100',result:'成功',category:'login'},
+    {time:'2026-07-02 19:28:42',user:'李芳',action:'登录系统',module:'系统管理',ip:'10.20.1.156',result:'成功',category:'login'},
+    {time:'2026-07-02 19:25:08',user:'李芳',action:'导出AI预审结果表 REV-2026-001',module:'开放预审',ip:'10.20.1.156',result:'成功',category:'operation'},
+    {time:'2026-07-02 19:22:10',user:'王建国',action:'访问关键字检索页面',module:'关键字检索',ip:'10.20.1.88',result:'成功',category:'access'},
+    {time:'2026-07-02 19:20:33',user:'王建国',action:'检索关键词"教学改革"',module:'关键字检索',ip:'10.20.1.88',result:'成功',category:'access'},
+    {time:'2026-07-02 19:18:55',user:'陈小红',action:'查看预审记录（按卷视图）',module:'预审记录',ip:'10.20.1.142',result:'成功',category:'access'},
+    {time:'2026-07-02 19:15:00',user:'系统',action:'执行文件增量同步',module:'数据同步',ip:'10.20.1.1',result:'成功',category:'operation'},
+    {time:'2026-07-02 19:12:30',user:'张明华',action:'访问在线用户页面',module:'在线用户',ip:'10.20.1.100',result:'成功',category:'access'},
+    {time:'2026-07-02 19:10:22',user:'陈小红',action:'创建OCR任务OCR-20260617-001',module:'OCR管理',ip:'10.20.1.142',result:'成功',category:'operation'},
+    {time:'2026-07-02 19:05:18',user:'刘伟',action:'访问OCR任务管理页面',module:'OCR管理',ip:'10.20.1.120',result:'成功',category:'access'},
+    {time:'2026-07-02 19:00:00',user:'张明华',action:'修改用户"赵静"状态为锁定',module:'用户管理',ip:'10.20.1.100',result:'成功',category:'operation'},
+    {time:'2026-07-02 18:55:42',user:'王建国',action:'查看档案详情 ZD2025-001',module:'关键字检索',ip:'10.20.1.88',result:'成功',category:'access'},
+    {time:'2026-07-02 18:50:18',user:'刘伟',action:'下载OCR结果文件',module:'OCR管理',ip:'10.20.1.120',result:'成功',category:'operation'},
+    {time:'2026-07-02 18:45:20',user:'李芳',action:'访问预审任务页面',module:'预审任务',ip:'10.20.1.156',result:'成功',category:'access'},
+    {time:'2026-07-02 18:30:45',user:'未知用户',action:'登录失败（密码错误）',module:'系统管理',ip:'192.168.1.55',result:'失败',category:'login'},
+    {time:'2026-07-02 18:28:12',user:'未知用户',action:'登录失败（密码错误）',module:'系统管理',ip:'192.168.1.55',result:'失败',category:'login'},
+    {time:'2026-07-02 18:20:33',user:'陈小红',action:'访问语义检索页面',module:'语义检索',ip:'10.20.1.142',result:'成功',category:'access'},
+    {time:'2026-07-02 18:15:00',user:'张明华',action:'访问角色权限页面',module:'角色权限',ip:'10.20.1.100',result:'成功',category:'access'},
+    {time:'2026-07-02 18:10:08',user:'王建国',action:'退出系统',module:'系统管理',ip:'10.20.1.88',result:'成功',category:'login'},
+    {time:'2026-07-02 18:05:30',user:'张明华',action:'编辑角色"查档人员"权限',module:'角色权限',ip:'10.20.1.100',result:'成功',category:'operation'},
+    {time:'2026-07-02 18:00:00',user:'系统',action:'自动备份MySQL数据库',module:'系统维护',ip:'10.20.1.1',result:'成功',category:'operation'},
+    {time:'2026-07-02 17:50:15',user:'刘伟',action:'访问统计分析页面',module:'统计分析',ip:'10.20.1.120',result:'成功',category:'access'},
+    {time:'2026-07-02 17:45:30',user:'李芳',action:'下载预审档案压缩包 REV-2026-001',module:'开放预审',ip:'10.20.1.156',result:'成功',category:'operation'},
+    {time:'2026-07-02 17:40:22',user:'李芳',action:'访问数据同步页面',module:'数据同步',ip:'10.20.1.156',result:'成功',category:'access'},
+    {time:'2026-07-02 17:35:18',user:'陈小红',action:'强制下线用户"赵静"',module:'在线用户',ip:'10.20.1.142',result:'成功',category:'operation'},
+    {time:'2026-07-02 17:30:12',user:'王建国',action:'导出检索结果（8条）',module:'关键字检索',ip:'10.20.1.88',result:'成功',category:'operation'},
+    {time:'2026-07-02 17:25:00',user:'王建国',action:'登录系统',module:'系统管理',ip:'10.20.1.88',result:'成功',category:'login'},
+    {time:'2026-07-02 02:00:00',user:'系统',action:'执行数据库元数据同步（从中台中间库同步1,230条）',module:'数据同步',ip:'10.20.1.1',result:'成功',category:'operation'},
+  ],
+  syncHistory: [
+    {time:'2026-07-02 19:15:00',type:'增量同步',source:'档案管理系统共享目录',files:45,size:'128MB',status:'成功',duration:'2分15秒'},
+    {time:'2026-07-02 12:00:00',type:'定时同步',source:'档案管理系统共享目录',files:12,size:'34MB',status:'成功',duration:'45秒'},
+    {time:'2026-07-02 08:00:00',type:'定时同步',source:'档案管理系统共享目录',files:28,size:'89MB',status:'成功',duration:'1分30秒'},
+    {time:'2026-07-01 19:15:00',type:'增量同步',source:'档案管理系统共享目录',files:67,size:'201MB',status:'成功',duration:'3分20秒'},
+    {time:'2026-07-01 12:00:00',type:'定时同步',source:'档案管理系统共享目录',files:8,size:'22MB',status:'成功',duration:'28秒'},
+    {time:'2026-07-01 08:00:00',type:'定时同步',source:'档案管理系统共享目录',files:0,size:'0MB',status:'无更新',duration:'5秒'},
+  ]
+};
+
+// ========== 页面路由 ==========
+const PAGES = {
+  keywordSearch: { name:'关键字检索', render: renderKeywordSearch },
+  semanticSearch: { name:'语义检索', render: renderSemanticSearch },
+  ocr: { name:'OCR任务管理', render: renderOCR },
+  reviewTasks: { name:'预审任务', render: renderReviewTasks },
+  reviewHistory: { name:'预审记录', render: renderReviewHistory },
+  sync: { name:'数据同步', render: renderSync },
+  stats: { name:'统计分析', render: renderStats },
+  users: { name:'用户管理', render: renderUsers },
+  online: { name:'在线用户', render: renderOnlineUsers },
+  roles: { name:'角色权限', render: renderRoles },
+  logs: { name:'审计日志', render: renderLogs },
+};
+
+let currentPage = 'keywordSearch';
+
+function switchPage(pageKey, navEl) {
+  currentPage = pageKey;
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  if (navEl) navEl.classList.add('active');
+  const page = PAGES[pageKey];
+  if (page) {
+    document.getElementById('currentPageName').textContent = page.name;
+    document.getElementById('contentArea').innerHTML = page.render();
+    if (page.afterRender) page.afterRender();
+  }
+}
+
+// ========== 登录 ==========
+function doLogin() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('app').classList.add('show');
+  switchPage('keywordSearch', document.querySelector('.nav-item'));
+}
+
+// ========== 模态框 ==========
+function openModal(html) {
+  document.getElementById('modalContainer').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+// ========== 档案目录树组件 ==========
+const ARCHIVE_TREE_DATA = [
+  { id:'cat-admin', label:'行政档案', children:[
+    { id:'admin-2026', label:'2026年', children:[
+      { id:'admin-2026-xzb', label:'校长办公室' },
+      { id:'admin-2026-dwb', label:'党委办公室' },
+      { id:'admin-2026-rsc', label:'人事处' },
+      { id:'admin-2026-cwc', label:'财务处' },
+      { id:'admin-2026-bgs', label:'保卫处' },
+    ]},
+    { id:'admin-2025', label:'2025年', children:[
+      { id:'admin-2025-xzb', label:'校长办公室' },
+      { id:'admin-2025-dwb', label:'党委办公室' },
+      { id:'admin-2025-rsc', label:'人事处' },
+      { id:'admin-2025-cwc', label:'财务处' },
+    ]},
+    { id:'admin-2024', label:'2024年', children:[
+      { id:'admin-2024-xzb', label:'校长办公室' },
+      { id:'admin-2024-dwb', label:'党委办公室' },
+      { id:'admin-2024-rsc', label:'人事处' },
+      { id:'admin-2024-cwc', label:'财务处' },
+    ]},
+    { id:'admin-old', label:'2020-2023年', children:[
+      { id:'admin-old-xzb', label:'校长办公室' },
+      { id:'admin-old-dwb', label:'党委办公室' },
+      { id:'admin-old-rsc', label:'人事处' },
+    ]},
+  ]},
+  { id:'cat-teach', label:'教学档案', children:[
+    { id:'teach-2026', label:'2026年', children:[
+      { id:'teach-2026-jwc', label:'教务处' },
+      { id:'teach-2026-yjsy', label:'研究生院' },
+      { id:'teach-2026-zsb', label:'招生办公室' },
+    ]},
+    { id:'teach-2025', label:'2025年', children:[
+      { id:'teach-2025-jwc', label:'教务处' },
+      { id:'teach-2025-yjsy', label:'研究生院' },
+      { id:'teach-2025-zsb', label:'招生办公室' },
+    ]},
+    { id:'teach-2024', label:'2024年', children:[
+      { id:'teach-2024-jwc', label:'教务处' },
+      { id:'teach-2024-yjsy', label:'研究生院' },
+      { id:'teach-2024-zsb', label:'招生办公室' },
+    ]},
+    { id:'teach-old', label:'2015-2023年', children:[
+      { id:'teach-old-jwc', label:'教务处' },
+      { id:'teach-old-yjsy', label:'研究生院' },
+    ]},
+  ]},
+  { id:'cat-research', label:'科研档案', children:[
+    { id:'research-2026', label:'2026年', children:[
+      { id:'research-2026-kyc', label:'科研处' },
+      { id:'research-2026-xkb', label:'学科建设办公室' },
+    ]},
+    { id:'research-2025', label:'2025年', children:[
+      { id:'research-2025-kyc', label:'科研处' },
+      { id:'research-2025-xkb', label:'学科建设办公室' },
+    ]},
+    { id:'research-old', label:'2015-2024年', children:[
+      { id:'research-old-kyc', label:'科研处' },
+    ]},
+  ]},
+  { id:'cat-finance', label:'财务档案', children:[
+    { id:'finance-2026', label:'2026年', children:[
+      { id:'finance-2026-cwc', label:'财务处' },
+      { id:'finance-2026-sjc', label:'审计处' },
+    ]},
+    { id:'finance-2025', label:'2025年', children:[
+      { id:'finance-2025-cwc', label:'财务处' },
+      { id:'finance-2025-sjc', label:'审计处' },
+    ]},
+    { id:'finance-old', label:'2010-2024年', children:[
+      { id:'finance-old-cwc', label:'财务处' },
+    ]},
+  ]},
+  { id:'cat-personnel', label:'人事档案', children:[
+    { id:'personnel-2026', label:'2026年', children:[
+      { id:'personnel-2026-rsc', label:'人事处' },
+    ]},
+    { id:'personnel-2025', label:'2025年', children:[
+      { id:'personnel-2025-rsc', label:'人事处' },
+    ]},
+    { id:'personnel-old', label:'2010-2024年', children:[
+      { id:'personnel-old-rsc', label:'人事处' },
+    ]},
+  ]},
+  { id:'cat-construction', label:'基建档案', children:[
+    { id:'construction-2026', label:'2026年', children:[
+      { id:'construction-2026-hq', label:'后勤管理处' },
+      { id:'construction-2026-jz', label:'基建处' },
+    ]},
+    { id:'construction-old', label:'2010-2025年', children:[
+      { id:'construction-old-hq', label:'后勤管理处' },
+      { id:'construction-old-jz', label:'基建处' },
+    ]},
+  ]},
+  { id:'cat-av', label:'声像档案', children:[
+    { id:'av-2026', label:'2026年', children:[
+      { id:'av-2026-xcb', label:'宣传部' },
+      { id:'av-2026-dag', label:'档案馆' },
+    ]},
+    { id:'av-old', label:'2000-2025年', children:[
+      { id:'av-old-xcb', label:'宣传部' },
+      { id:'av-old-dag', label:'档案馆' },
+    ]},
+  ]},
+];
+
+// 树状态：每个context独立维护展开和选中
+const treeState = {};
+
+function initTreeState(ctx) {
+  if (!treeState[ctx]) {
+    treeState[ctx] = { expanded: new Set(), selected: new Set() };
+  }
+  return treeState[ctx];
+}
+
+function findNodeById(nodes, id) {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    if (n.children) {
+      const found = findNodeById(n.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function getLeafIds(node) {
+  if (!node.children) return [node.id];
+  return node.children.flatMap(getLeafIds);
+}
+
+function getAllLeafIds(nodes) {
+  return nodes.flatMap(getLeafIds);
+}
+
+function renderTreeNodes(nodes, ctx, depth) {
+  let html = '';
+  for (const node of nodes) {
+    const hasChildren = node.children && node.children.length > 0;
+    const state = initTreeState(ctx);
+    const isExpanded = state.expanded.has(node.id);
+    const leafIds = getLeafIds(node);
+    const selectedLeaves = leafIds.filter(id => state.selected.has(id));
+    const allSelected = selectedLeaves.length === leafIds.length && leafIds.length > 0;
+    const someSelected = selectedLeaves.length > 0 && !allSelected;
+    const checkboxState = allSelected ? 'checked' : '';
+    const indeterminate = someSelected ? 'data-indeterminate="true"' : '';
+
+    html += `<div class="tree-node">`;
+    html += `<div class="tree-node-row">`;
+    html += `<span class="tree-toggle ${hasChildren?'':'leaf'}" onclick="treeToggle('${node.id}','${ctx}')">${hasChildren?(isExpanded?'▼':'▶'):''}</span>`;
+    html += `<input type="checkbox" class="tree-checkbox" ${checkboxState} ${indeterminate} onclick="treeCheck('${node.id}','${ctx}', event)" />`;
+    html += `<span class="tree-label ${hasChildren?'folder':''}">${node.label}</span>`;
+    if (hasChildren) {
+      html += `<span class="tree-count">(${node.children.length})</span>`;
+    }
+    html += `</div>`;
+    if (hasChildren) {
+      html += `<div class="tree-children ${isExpanded?'show':''}" id="tree-children-${ctx}-${node.id}">`;
+      html += renderTreeNodes(node.children, ctx, depth+1);
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  return html;
+}
+
+function renderArchiveTree(ctx) {
+  initTreeState(ctx);
+  let html = `<div class="tree-toolbar">`;
+  html += `<span style="font-size:12px;color:var(--text-secondary);">选择档案范围（勾选目录节点可级联选择下级）</span>`;
+  html += `<div class="tree-actions">`;
+  html += `<button onclick="treeSelectAll('${ctx}')">全选</button>`;
+  html += `<button onclick="treeClearAll('${ctx}')">清空</button>`;
+  html += `<button onclick="treeExpandAll('${ctx}')">展开全部</button>`;
+  html += `<button onclick="treeCollapseAll('${ctx}')">折叠全部</button>`;
+  html += `</div>`;
+  html += `</div>`;
+  html += `<div class="tree-container" id="tree-container-${ctx}">`;
+  html += renderTreeNodes(ARCHIVE_TREE_DATA, ctx, 0);
+  html += `</div>`;
+  html += `<div class="tree-selected-bar" id="tree-selected-${ctx}"></div>`;
+  // Defer update to after DOM is ready
+  setTimeout(() => {
+    const c = document.getElementById(`tree-container-${ctx}`);
+    if (c) {
+      c.querySelectorAll('input.tree-checkbox[data-indeterminate="true"]').forEach(cb => { cb.indeterminate = true; });
+    }
+    updateTreeSelectedDisplay(ctx);
+  }, 0);
+  return html;
+}
+
+function treeToggle(nodeId, ctx) {
+  const state = initTreeState(ctx);
+  if (state.expanded.has(nodeId)) {
+    state.expanded.delete(nodeId);
+  } else {
+    state.expanded.add(nodeId);
+  }
+  refreshTree(ctx);
+}
+
+function treeCheck(nodeId, ctx, event) {
+  const state = initTreeState(ctx);
+  const node = findNodeById(ARCHIVE_TREE_DATA, nodeId);
+  if (!node) return;
+  const leafIds = getLeafIds(node);
+  const checkbox = event.target;
+  const isChecked = checkbox.checked;
+  if (isChecked) {
+    leafIds.forEach(id => state.selected.add(id));
+  } else {
+    leafIds.forEach(id => state.selected.delete(id));
+  }
+  refreshTree(ctx);
+}
+
+function treeSelectAll(ctx) {
+  const state = initTreeState(ctx);
+  getAllLeafIds(ARCHIVE_TREE_DATA).forEach(id => state.selected.add(id));
+  refreshTree(ctx);
+}
+
+function treeClearAll(ctx) {
+  const state = initTreeState(ctx);
+  state.selected.clear();
+  refreshTree(ctx);
+}
+
+function treeExpandAll(ctx) {
+  const state = initTreeState(ctx);
+  function expandAll(nodes) {
+    for (const n of nodes) {
+      if (n.children) { state.expanded.add(n.id); expandAll(n.children); }
+    }
+  }
+  expandAll(ARCHIVE_TREE_DATA);
+  refreshTree(ctx);
+}
+
+function treeCollapseAll(ctx) {
+  const state = initTreeState(ctx);
+  state.expanded.clear();
+  refreshTree(ctx);
+}
+
+function treeRemoveSelected(leafId, ctx) {
+  const state = initTreeState(ctx);
+  state.selected.delete(leafId);
+  refreshTree(ctx);
+}
+
+function refreshTree(ctx) {
+  const container = document.getElementById(`tree-container-${ctx}`);
+  if (container) {
+    container.innerHTML = renderTreeNodes(ARCHIVE_TREE_DATA, ctx, 0);
+  }
+  // Fix indeterminate checkboxes
+  if (container) {
+    container.querySelectorAll('input.tree-checkbox[data-indeterminate="true"]').forEach(cb => {
+      cb.indeterminate = true;
+    });
+  }
+  updateTreeSelectedDisplay(ctx);
+}
+
+function updateTreeSelectedDisplay(ctx) {
+  const state = initTreeState(ctx);
+  const bar = document.getElementById(`tree-selected-${ctx}`);
+  if (!bar) return;
+  if (state.selected.size === 0) {
+    bar.innerHTML = '<span class="tree-empty-hint">未选择任何档案范围（表示全部档案）</span>';
+    return;
+  }
+  // Build label path for each selected leaf
+  const labels = [];
+  function findPath(nodes, targetId, path) {
+    for (const n of nodes) {
+      const currentPath = [...path, n.label];
+      if (n.id === targetId) { labels.push({id:targetId, path:currentPath}); return true; }
+      if (n.children && findPath(n.children, targetId, currentPath)) return true;
+    }
+    return false;
+  }
+  state.selected.forEach(id => findPath(ARCHIVE_TREE_DATA, id, []));
+  // Show compact tags
+  let html = `<span style="color:var(--text-secondary);font-size:12px;margin-right:4px;">已选 ${labels.length} 项:</span>`;
+  labels.forEach(item => {
+    const shortLabel = item.path.length >= 3
+      ? `${item.path[item.path.length-2]} / ${item.path[item.path.length-1]}`
+      : item.path.join(' / ');
+    html += `<span class="tree-tag">${shortLabel}<span class="tag-remove" onclick="treeRemoveSelected('${item.id}','${ctx}')">x</span></span>`;
+  });
+  bar.innerHTML = html;
+}
+
+function getTreeSelectedSummary(ctx) {
+  const state = initTreeState(ctx);
+  if (state.selected.size === 0) return '全部档案';
+  return `已选 ${state.selected.size} 个档案范围`;
+}
+
+// ========== 页面渲染函数 ==========
+function renderDashboard() {
+  return `
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#e6f4ff;color:#1890ff;">📁</div>
+        <div class="stat-label">馆藏档案总量</div>
+        <div class="stat-value">${MOCK.stats.totalArchives.toLocaleString()}</div>
+        <div class="stat-trend up">↑ 本月新增 1,230 卷</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f6ffed;color:#52c41a;">📷</div>
+        <div class="stat-label">OCR已处理</div>
+        <div class="stat-value">${MOCK.stats.ocrProcessed.toLocaleString()}</div>
+        <div class="stat-trend up">↑ OCR准确率 ${MOCK.stats.ocrAccuracy}%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fff7e6;color:#fa8c16;">⏳</div>
+        <div class="stat-label">待AI预审档案</div>
+        <div class="stat-value">${MOCK.stats.pendingReview.toLocaleString()}</div>
+        <div class="stat-trend">其中AI预审完成 1,892 件</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f9f0ff;color:#722ed1;">🔍</div>
+        <div class="stat-label">今日检索次数</div>
+        <div class="stat-value">${MOCK.stats.todaySearches}</div>
+        <div class="stat-trend up">↑ 今日访客 ${MOCK.stats.todayVisits} 人次</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">档案数字化进度</span>
+          <button class="btn btn-sm">查看详情</button>
+        </div>
+        <div class="chart-container"><canvas id="chartDigitize"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">检索趋势（近7日）</span>
+          <button class="btn btn-sm">导出报表</button>
+        </div>
+        <div class="chart-container"><canvas id="chartSearchTrend"></canvas></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">OCR任务处理概况</span>
+          <span class="tag tag-blue">进行中 2</span>
+        </div>
+        <table class="data-table">
+          <thead><tr><th>任务名称</th><th>进度</th><th>准确率</th><th>状态</th></tr></thead>
+          <tbody>
+            ${MOCK.ocrTasks.slice(0,5).map(t => `
+              <tr>
+                <td class="ellipsis">${t.name}</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <div class="progress" style="flex:1;min-width:80px;">
+                      <div class="progress-bar" style="width:${t.total?Math.round(t.done/t.total*100):0}%;background:${t.status==='done'?'#52c41a':'#1890ff'};"></div>
+                    </div>
+                    <span style="font-size:12px;white-space:nowrap;">${t.total?Math.round(t.done/t.total*100):0}%</span>
+                  </div>
+                </td>
+                <td>${t.accuracy?`${t.accuracy}%`:'-'}</td>
+                <td>${t.status==='done'?'<span class="tag tag-green">已完成</span>':t.status==='processing'?'<span class="tag tag-blue">处理中</span>':'<span class="tag tag-gray">待处理</span>'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">AI预审任务进度</span>
+          <span class="tag tag-orange">待预审 ${MOCK.stats.pendingReview}</span>
+        </div>
+        <div class="chart-container-sm"><canvas id="chartReview"></canvas></div>
+        <div style="margin-top:16px;">
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="tl-time">2026-07-02 19:00</div>
+              <div class="tl-content">AI预审完成档案 FW-1998-046（建议开放）</div>
+            </div>
+            <div class="timeline-item">
+              <div class="tl-time">2026-07-02 16:30</div>
+              <div class="tl-content">AI预审批次完成 1998年度档案 共320件</div>
+            </div>
+            <div class="timeline-item">
+              <div class="tl-time">2026-07-02 14:00</div>
+              <div class="tl-content">陈小红 创建审核任务 REV-2026-001</div>
+            </div>
+            <div class="timeline-item">
+              <div class="tl-time">2026-07-02 08:00</div>
+              <div class="tl-content">系统自动执行文件增量同步（28个文件）</div>
+            </div>
+            <div class="timeline-item">
+              <div class="tl-time">2026-07-02 02:00</div>
+              <div class="tl-content">系统自动执行数据库元数据同步（1,230条记录）</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">快捷入口</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;">
+        <div style="text-align:center;padding:20px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;" onmouseover="this.style.borderColor='#2d6cdf'" onmouseout="this.style.borderColor='#e0e0e0'" onclick="switchPage('keywordSearch',document.querySelectorAll('.nav-item')[1])">
+          <div style="font-size:28px;margin-bottom:8px;">🔑</div>
+          <div style="font-size:13px;">关键字检索</div>
+        </div>
+        <div style="text-align:center;padding:20px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;" onmouseover="this.style.borderColor='#2d6cdf'" onmouseout="this.style.borderColor='#e0e0e0'" onclick="switchPage('ocr',document.querySelectorAll('.nav-item')[2])">
+          <div style="font-size:28px;margin-bottom:8px;">📷</div>
+          <div style="font-size:13px;">OCR任务</div>
+        </div>
+        <div style="text-align:center;padding:20px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;" onmouseover="this.style.borderColor='#2d6cdf'" onmouseout="this.style.borderColor='#e0e0e0'" onclick="switchPage('review',document.querySelectorAll('.nav-item')[3])">
+          <div style="font-size:28px;margin-bottom:8px;">🤖</div>
+          <div style="font-size:13px;">AI预审工作台</div>
+        </div>
+        <div style="text-align:center;padding:20px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;" onmouseover="this.style.borderColor='#2d6cdf'" onmouseout="this.style.borderColor='#e0e0e0'" onclick="switchPage('sync',document.querySelectorAll('.nav-item')[7])">
+          <div style="font-size:28px;margin-bottom:8px;">🔄</div>
+          <div style="font-size:13px;">数据同步</div>
+        </div>
+        <div style="text-align:center;padding:20px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;" onmouseover="this.style.borderColor='#2d6cdf'" onmouseout="this.style.borderColor='#e0e0e0'" onclick="switchPage('stats',document.querySelectorAll('.nav-item')[8])">
+          <div style="font-size:28px;margin-bottom:8px;">📈</div>
+          <div style="font-size:13px;">统计分析</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ========== 检索状态 ==========
+let searchScope = null; // null=全局, {id,label,path}=指定目录
+let searchLevel = 'all'; // all/project/volume/file
+let searchDimension = 'title'; // title/code/responsible (关键字检索维度)
+let searchTreeFilter = null; // null=全部, {id,label}=指定目录
+let searchYearFilter = null; // null=全部, year number
+
+// 项目级和案卷级mock数据
+const MOCK_PROJECTS = [
+  {id:'PJ-2025-001',title:'2025年度教学改革项目',year:2025,category:'行政档案',dept:'教务处',volumeCount:12,fileCount:156,status:'已开放'},
+  {id:'PJ-2024-001',title:'2024年招生工作项目',year:2024,category:'行政档案',dept:'招生办公室',volumeCount:8,fileCount:89,status:'已开放'},
+  {id:'PJ-2023-001',title:'经济学院教学改革项目',year:2023,category:'教学档案',dept:'经济学院',volumeCount:5,fileCount:67,status:'已开放'},
+  {id:'PJ-2022-001',title:'研究生学位授权点改革项目',year:2022,category:'教学档案',dept:'研究生院',volumeCount:6,fileCount:78,status:'已开放'},
+  {id:'PJ-2020-001',title:'2020年度科研项目集',year:2020,category:'科研档案',dept:'科研处',volumeCount:10,fileCount:134,status:'已开放'},
+  {id:'PJ-2018-001',title:'校园信息化建设规划项目',year:2018,category:'行政档案',dept:'信息管理部',volumeCount:4,fileCount:45,status:'已开放'},
+];
+const MOCK_VOLUMES = [
+  {id:'AJ-2025-001',title:'教学改革批复文件卷',year:2025,category:'行政档案',dept:'教务处',fileCount:15,status:'已开放',projectId:'PJ-2025-001'},
+  {id:'AJ-2025-002',title:'招生计划审批卷',year:2025,category:'行政档案',dept:'招生办公室',fileCount:12,status:'已开放',projectId:'PJ-2024-001'},
+  {id:'AJ-2024-001',title:'2024招生总结报告卷',year:2024,category:'行政档案',dept:'招生办公室',fileCount:23,status:'已开放',projectId:'PJ-2024-001'},
+  {id:'AJ-2023-001',title:'经济学院教改方案卷',year:2023,category:'教学档案',dept:'经济学院',fileCount:18,status:'已开放',projectId:'PJ-2023-001'},
+  {id:'AJ-2022-001',title:'学位授权点改革请示卷',year:2022,category:'教学档案',dept:'研究生院',fileCount:14,status:'已开放',projectId:'PJ-2022-001'},
+  {id:'AJ-2020-001',title:'科研项目管理卷',year:2020,category:'科研档案',dept:'科研处',fileCount:28,status:'已开放',projectId:'PJ-2020-001'},
+  {id:'AJ-2018-001',title:'信息化建设规划卷',year:2018,category:'行政档案',dept:'信息管理部',fileCount:11,status:'已开放',projectId:'PJ-2018-001'},
+  {id:'AJ-2001-001',title:'2001年财务决算卷',year:2001,category:'财务档案',dept:'财务处',fileCount:9,status:'待预审',projectId:''},
+  {id:'AJ-1999-001',title:'校庆五十周年活动卷',year:1999,category:'行政档案',dept:'校长办公室',fileCount:7,status:'预审中',projectId:''},
+];
+
+// ========== 通用检索辅助 ==========
+function computeSearchData() {
+  const catCounts = {};
+  const yearCounts = {};
+  MOCK.archives.forEach(a => {
+    catCounts[a.category] = (catCounts[a.category] || 0) + 1;
+    yearCounts[a.year] = (yearCounts[a.year] || 0) + 1;
+  });
+  const sortedYears = Object.keys(yearCounts).sort((a,b) => b - a);
+  const scopeLabel = searchScope ? searchScope.label : '全部档案';
+  return { catCounts, yearCounts, sortedYears, scopeLabel };
+}
+
+function renderLevelResults() {
+  let results, resultHtml;
+  if (searchLevel === 'project') {
+    results = MOCK_PROJECTS;
+    resultHtml = results.map(p => `
+      <div class="level-card" onclick="showProjectDetail('${p.id}')">
+        <div class="level-card-icon" style="background:#e6f4ff;color:#1890ff;">📦</div>
+        <div class="level-card-body">
+          <div class="level-card-title">${p.title}</div>
+          <div class="level-card-meta">
+            <span>📁 ${p.id}</span>
+            <span>📅 ${p.year}年</span>
+            <span>📂 ${p.category}</span>
+            <span>🏫 ${p.dept}</span>
+            <span>📚 ${p.volumeCount}卷 / ${p.fileCount}件</span>
+            <span class="tag tag-green">${p.status}</span>
+          </div>
+        </div>
+        <span style="color:var(--text-light);font-size:18px;">›</span>
+      </div>
+    `).join('');
+  } else if (searchLevel === 'volume') {
+    results = MOCK_VOLUMES;
+    resultHtml = results.map(v => `
+      <div class="level-card" onclick="showVolumeDetail('${v.id}')">
+        <div class="level-card-icon" style="background:#f6ffed;color:#52c41a;">📂</div>
+        <div class="level-card-body">
+          <div class="level-card-title">${v.title}</div>
+          <div class="level-card-meta">
+            <span>📁 ${v.id}</span>
+            <span>📅 ${v.year}年</span>
+            <span>📂 ${v.category}</span>
+            <span>🏫 ${v.dept}</span>
+            <span>📄 ${v.fileCount}件</span>
+            <span class="tag ${v.status==='已开放'?'tag-green':v.status==='预审中'?'tag-orange':'tag-gray'}">${v.status}</span>
+          </div>
+        </div>
+        <span style="color:var(--text-light);font-size:18px;">›</span>
+      </div>
+    `).join('');
+  } else {
+    results = MOCK.archives;
+    resultHtml = results.map(a => `
+      <div class="archive-item" onclick="showArchiveDetail('${a.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="flex:1;">
+            <div class="archive-title">${a.title}</div>
+            <div class="archive-meta">
+              <span>📄 ${a.id}</span>
+              <span>📅 ${a.year}年</span>
+              <span>📂 ${a.category}</span>
+              <span>🏫 ${a.dept}</span>
+              <span>${a.status==='已开放'?'<span class="tag tag-green">已开放</span>':a.status==='预审中'?'<span class="tag tag-orange">预审中</span>':'<span class="tag tag-gray">待预审</span>'}</span>
+            </div>
+            <div class="archive-snippet">${a.snippet}</div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  return { results, resultHtml };
+}
+
+function renderSemanticLevelResults() {
+  let results, resultHtml;
+  if (searchLevel === 'project') {
+    results = MOCK_PROJECTS;
+    resultHtml = results.map(p => `
+      <div class="level-card" onclick="showProjectDetail('${p.id}')">
+        <div class="level-card-icon" style="background:#e6f4ff;color:#1890ff;">📦</div>
+        <div class="level-card-body">
+          <div class="level-card-title">${p.title}</div>
+          <div class="level-card-meta">
+            <span>📁 ${p.id}</span>
+            <span>📅 ${p.year}年</span>
+            <span>📂 ${p.category}</span>
+            <span>🏫 ${p.dept}</span>
+            <span>📚 ${p.volumeCount}卷 / ${p.fileCount}件</span>
+            <span class="tag tag-green">${p.status}</span>
+          </div>
+        </div>
+        <span style="color:var(--text-light);font-size:18px;">›</span>
+      </div>
+    `).join('');
+  } else if (searchLevel === 'volume') {
+    results = MOCK_VOLUMES;
+    resultHtml = results.map(v => `
+      <div class="level-card" onclick="showVolumeDetail('${v.id}')">
+        <div class="level-card-icon" style="background:#f6ffed;color:#52c41a;">📂</div>
+        <div class="level-card-body">
+          <div class="level-card-title">${v.title}</div>
+          <div class="level-card-meta">
+            <span>📁 ${v.id}</span>
+            <span>📅 ${v.year}年</span>
+            <span>📂 ${v.category}</span>
+            <span>🏫 ${v.dept}</span>
+            <span>📄 ${v.fileCount}件</span>
+            <span class="tag ${v.status==='已开放'?'tag-green':v.status==='预审中'?'tag-orange':'tag-gray'}">${v.status}</span>
+          </div>
+        </div>
+        <span style="color:var(--text-light);font-size:18px;">›</span>
+      </div>
+    `).join('');
+  } else {
+    results = MOCK.archives;
+    resultHtml = results.map(a => `
+      <div class="archive-item" onclick="showArchiveDetail('${a.id}')">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div style="flex:1;">
+            <div class="archive-title">${a.title}</div>
+            <div class="archive-meta">
+              <span>📄 ${a.id}</span>
+              <span>📅 ${a.year}年</span>
+              <span>📂 ${a.category}</span>
+              <span>🏫 ${a.dept}</span>
+              <span>${a.status==='已开放'?'<span class="tag tag-green">已开放</span>':a.status==='预审中'?'<span class="tag tag-orange">预审中</span>':'<span class="tag tag-gray">待预审</span>'}</span>
+            </div>
+            <div class="archive-snippet">${a.snippet}</div>
+          </div>
+          <div style="text-align:center;margin-left:16px;flex-shrink:0;">
+            <div style="width:48px;height:48px;border-radius:50%;background:${a.score>=90?'#f6ffed':a.score>=75?'#fff7e6':'#fff1f0'};color:${a.score>=90?'#52c41a':a.score>=75?'#fa8c16':'#ff4d4f'};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;border:2px solid currentColor;">
+              ${a.score}
+            </div>
+            <div style="font-size:11px;color:var(--text-light);margin-top:4px;">相关度</div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+  return { results, resultHtml };
+}
+
+function renderSearchSidebar(sortedYears, yearCounts) {
+  return `
+    <div class="search-sidebar">
+      <div class="filter-card">
+        <div class="filter-card-title">📂 按目录筛选 <span class="filter-reset-btn" onclick="resetTreeFilter()">重置</span></div>
+        ${renderResultTreeFilter(ARCHIVE_TREE_DATA, 0)}
+      </div>
+      <div class="filter-card">
+        <div class="filter-card-title">📅 按年份筛选 <span class="filter-reset-btn" onclick="resetYearFilter()">重置</span></div>
+        ${sortedYears.map(y => `
+          <div class="filter-year-item ${searchYearFilter===parseInt(y)?'active':''}" onclick="filterByYear(${y})">
+            <span>${y}年</span>
+            <span class="filter-year-count">${yearCounts[y]}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function renderScopeSelector(scopeLabel) {
+  return `
+    <div class="scope-selector">
+      <button class="scope-btn" onclick="toggleSearchScope(event)">
+        📂 <span class="scope-text" id="scopeLabelText">${scopeLabel}</span> ▼
+      </button>
+      <div class="scope-popover" id="scopePopover">
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;">选择检索范围（不选则全局搜索）</div>
+        <div id="scopeTreeContainer" style="max-height:320px;overflow:auto;">
+          ${renderScopeTreeNodes(ARCHIVE_TREE_DATA, 0)}
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;border-top:1px solid var(--border-light);padding-top:10px;">
+          <button class="btn btn-sm" style="flex:1;" onclick="clearSearchScope()">全部档案</button>
+          <button class="btn btn-primary btn-sm" style="flex:1;" onclick="closeSearchScope()">确定</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderLevelSelect() {
+  return `
+    <select class="level-select" id="searchLevelSelect" onchange="changeSearchLevel(this.value)">
+      <option value="all" ${searchLevel==='all'?'selected':''}>全部</option>
+      <option value="project" ${searchLevel==='project'?'selected':''}>项目级</option>
+      <option value="volume" ${searchLevel==='volume'?'selected':''}>案卷</option>
+      <option value="file" ${searchLevel==='file'?'selected':''}>卷内</option>
+    </select>
+  `;
+}
+
+// ========== 关键字检索 ==========
+function renderKeywordSearch() {
+  const { yearCounts, sortedYears, scopeLabel } = computeSearchData();
+  const { results, resultHtml } = renderLevelResults();
+  const dimLabels = { title:'题目', code:'档号', responsible:'责任者' };
+
+  return `
+    <div class="card" style="padding:20px;">
+      <div class="search-box">
+        ${renderScopeSelector(scopeLabel)}
+        ${renderLevelSelect()}
+        <select class="level-select" id="searchDimensionSelect" onchange="changeSearchDimension(this.value)">
+          <option value="title" ${searchDimension==='title'?'selected':''}>题目</option>
+          <option value="code" ${searchDimension==='code'?'selected':''}>档号</option>
+          <option value="responsible" ${searchDimension==='responsible'?'selected':''}>责任者</option>
+        </select>
+        <div class="input-wrap">
+          <span class="search-icon">🔑</span>
+          <input type="text" placeholder="输入关键词进行精准检索，如：教学改革、招生计划、财务预算..." value="教学改革" id="searchInput">
+        </div>
+        <button class="btn btn-primary" onclick="doSearch()">检 索</button>
+      </div>
+    </div>
+
+    <div class="search-layout">
+      ${renderSearchSidebar(sortedYears, yearCounts)}
+      <div class="search-main">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="font-size:13px;color:var(--text-secondary);">
+            检索结果 <strong style="color:var(--primary);">${results.length}</strong> 条，耗时 0.05 秒
+            ${searchScope ? `<span class="tag tag-blue" style="margin-left:8px;">范围: ${searchScope.label}</span>` : ''}
+            ${searchTreeFilter ? `<span class="tag tag-blue" style="margin-left:4px;">目录: ${searchTreeFilter.label}</span>` : ''}
+            ${searchYearFilter ? `<span class="tag tag-blue" style="margin-left:4px;">年份: ${searchYearFilter}</span>` : ''}
+            <span class="tag tag-gray" style="margin-left:8px;">精准匹配 · ${dimLabels[searchDimension]||'题目'}</span>
+          </div>
+          <div class="filter-bar" style="margin:0;">
+            <select style="height:32px;"><option>按年度降序</option><option>按年度升序</option><option>按档号排序</option></select>
+            <button class="btn btn-sm">📥 导出结果</button>
+          </div>
+        </div>
+        <div class="archive-grid">
+          ${resultHtml}
+        </div>
+        <div class="pagination">
+          <button disabled>上一页</button>
+          <button class="active">1</button>
+          <button>2</button>
+          <button>3</button>
+          <button>...</button>
+          <button>12</button>
+          <button>下一页</button>
+          <span style="font-size:12px;color:var(--text-light);margin-left:8px;">共 ${results.length * 12} 条</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ========== 语义检索 ==========
+function renderSemanticSearch() {
+  const { yearCounts, sortedYears, scopeLabel } = computeSearchData();
+  const { results, resultHtml } = renderSemanticLevelResults();
+
+  return `
+    <div class="card" style="padding:20px;">
+      <div class="search-box">
+        ${renderScopeSelector(scopeLabel)}
+        ${renderLevelSelect()}
+        <div class="input-wrap">
+          <span class="search-icon">🧠</span>
+          <input type="text" placeholder="输入语义描述进行语义检索，如：关于教学改革的相关文件、近年招生工作总结..." value="教学改革相关文件" id="searchInput">
+        </div>
+        <button class="btn btn-primary" onclick="doSearch()">检 索</button>
+      </div>
+    </div>
+
+    <div class="search-layout">
+      ${renderSearchSidebar(sortedYears, yearCounts)}
+      <div class="search-main">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <div style="font-size:13px;color:var(--text-secondary);">
+            检索结果 <strong style="color:var(--primary);">${results.length}</strong> 条，耗时 0.23 秒
+            ${searchScope ? `<span class="tag tag-blue" style="margin-left:8px;">范围: ${searchScope.label}</span>` : ''}
+            ${searchTreeFilter ? `<span class="tag tag-blue" style="margin-left:4px;">目录: ${searchTreeFilter.label}</span>` : ''}
+            ${searchYearFilter ? `<span class="tag tag-blue" style="margin-left:4px;">年份: ${searchYearFilter}</span>` : ''}
+            <span class="tag tag-purple" style="margin-left:8px;">🤖 AI语义增强</span>
+          </div>
+          <div class="filter-bar" style="margin:0;">
+            <select style="height:32px;"><option>相关度排序</option><option>按年度降序</option><option>按年度升序</option></select>
+            <button class="btn btn-sm">📥 导出结果</button>
+          </div>
+        </div>
+        <div class="archive-grid">
+          ${resultHtml}
+        </div>
+        <div class="pagination">
+          <button disabled>上一页</button>
+          <button class="active">1</button>
+          <button>2</button>
+          <button>3</button>
+          <button>...</button>
+          <button>12</button>
+          <button>下一页</button>
+          <span style="font-size:12px;color:var(--text-light);margin-left:8px;">共 ${results.length * 12} 条</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ========== 检索辅助函数 ==========
+function reRenderSearch() {
+  const content = document.getElementById('contentArea');
+  if (content) {
+    content.innerHTML = PAGES[currentPage].render();
+    document.getElementById('currentPageName').textContent = PAGES[currentPage].name;
+  }
+}
+
+function changeSearchDimension(dim) {
+  searchDimension = dim;
+  reRenderSearch();
+}
+
+function renderScopeTreeNodes(nodes, depth) {
+  let html = '';
+  for (const node of nodes) {
+    const hasChildren = node.children && node.children.length > 0;
+    const isSelected = searchScope && searchScope.id === node.id;
+    html += `<div class="tree-node">`;
+    html += `<div class="tree-node-row" style="cursor:pointer;" onclick="selectSearchScope('${node.id}','${node.label.replace(/'/g,"\\'")}')">`;
+    html += `<span class="tree-toggle ${hasChildren?'':'leaf'}" onclick="event.stopPropagation();scopeTreeToggle('${node.id}')">${hasChildren?'▶':''}</span>`;
+    html += `<span class="tree-label ${hasChildren?'folder':''}" style="${isSelected?'color:var(--primary);font-weight:600;':''}">${isSelected?'✓ ':''}${node.label}</span>`;
+    html += `</div>`;
+    if (hasChildren) {
+      html += `<div class="tree-children" id="scope-tree-${node.id}">`;
+      html += renderScopeTreeNodes(node.children, depth+1);
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  return html;
+}
+
+function scopeTreeToggle(nodeId) {
+  const el = document.getElementById('scope-tree-' + nodeId);
+  if (el) {
+    el.classList.toggle('show');
+    const toggle = el.previousSibling.querySelector('.tree-toggle');
+    if (toggle) toggle.textContent = el.classList.contains('show') ? '▼' : '▶';
+  }
+}
+
+function toggleSearchScope(e) {
+  if (e) e.stopPropagation();
+  const popover = document.getElementById('scopePopover');
+  if (popover) popover.classList.toggle('show');
+}
+
+function closeSearchScope() {
+  const popover = document.getElementById('scopePopover');
+  if (popover) popover.classList.remove('show');
+}
+
+function selectSearchScope(id, label) {
+  searchScope = { id, label };
+  const labelEl = document.getElementById('scopeLabelText');
+  if (labelEl) labelEl.textContent = label;
+  closeSearchScope();
+  // Re-render search
+  reRenderSearch();
+}
+
+function clearSearchScope() {
+  searchScope = null;
+  const labelEl = document.getElementById('scopeLabelText');
+  if (labelEl) labelEl.textContent = '全部档案';
+  closeSearchScope();
+  reRenderSearch();
+}
+
+function changeSearchLevel(level) {
+  searchLevel = level;
+  reRenderSearch();
+}
+
+function renderResultTreeFilter(nodes, depth) {
+  let html = '';
+  for (const node of nodes) {
+    const hasChildren = node.children && node.children.length > 0;
+    // Count results in this node
+    const count = countResultsInNode(node);
+    if (count === 0 && depth > 0) continue; // Skip empty nodes
+    const isActive = searchTreeFilter && searchTreeFilter.id === node.id;
+    html += `<div class="tree-node">`;
+    html += `<div class="filter-tree-node ${isActive?'active':''}" onclick="filterByTreeNode('${node.id}','${node.label.replace(/'/g,"\\'")}')" style="padding-left:${depth*12+4}px;">`;
+    if (hasChildren) {
+      html += `<span style="cursor:pointer;font-size:10px;margin-right:2px;" onclick="event.stopPropagation();toggleFilterTreeNode('${node.id}')">▶</span>`;
+    } else {
+      html += `<span style="width:10px;margin-right:2px;"></span>`;
+    }
+    html += `<span style="flex:1;">${node.label}</span>`;
+    html += `<span class="filter-tree-count">${count}</span>`;
+    html += `</div>`;
+    if (hasChildren) {
+      html += `<div class="filter-tree-children" id="filter-tree-${node.id}" style="display:none;">`;
+      html += renderResultTreeFilter(node.children, depth+1);
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  return html;
+}
+
+function countResultsInNode(node) {
+  // For prototype: count archives matching this node's category
+  const catMap = {
+    'cat-admin':'行政档案', 'cat-teach':'教学档案', 'cat-research':'科研档案',
+    'cat-finance':'财务档案', 'cat-personnel':'人事档案', 'cat-construction':'基建档案', 'cat-av':'声像档案'
+  };
+  if (catMap[node.id]) {
+    return MOCK.archives.filter(a => a.category === catMap[node.id]).length;
+  }
+  if (!node.children) return 0;
+  return node.children.reduce((sum, child) => sum + countResultsInNode(child), 0);
+}
+
+function toggleFilterTreeNode(nodeId) {
+  const el = document.getElementById('filter-tree-' + nodeId);
+  if (el) {
+    el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  }
+}
+
+function filterByTreeNode(id, label) {
+  if (searchTreeFilter && searchTreeFilter.id === id) {
+    searchTreeFilter = null; // Toggle off
+  } else {
+    searchTreeFilter = { id, label };
+  }
+  reRenderSearch();
+}
+
+function resetTreeFilter() {
+  searchTreeFilter = null;
+  reRenderSearch();
+}
+
+function filterByYear(year) {
+  if (searchYearFilter === year) {
+    searchYearFilter = null;
+  } else {
+    searchYearFilter = year;
+  }
+  reRenderSearch();
+}
+
+function resetYearFilter() {
+  searchYearFilter = null;
+  reRenderSearch();
+}
+
+function showProjectDetail(id) {
+  openModal(`
+    <div class="modal-header">
+      <h3>项目详情 - ${id}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:16px;">
+        <p style="font-size:14px;margin-bottom:12px;">该项目包含以下案卷，点击案卷可查看卷内文件：</p>
+        <div class="archive-grid">
+          ${MOCK_VOLUMES.filter(v => v.projectId === id).map(v => `
+            <div class="level-card" onclick="closeModal();showVolumeDetail('${v.id}')">
+              <div class="level-card-icon" style="background:#f6ffed;color:#52c41a;">📂</div>
+              <div class="level-card-body">
+                <div class="level-card-title">${v.title}</div>
+                <div class="level-card-meta">
+                  <span>📁 ${v.id}</span>
+                  <span>📅 ${v.year}年</span>
+                  <span>📄 ${v.fileCount}件</span>
+                  <span class="tag tag-green">${v.status}</span>
+                </div>
+              </div>
+              <span style="color:var(--text-light);font-size:18px;">›</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">关闭</button>
+    </div>
+  `);
+}
+
+function showVolumeDetail(id) {
+  const vol = MOCK_VOLUMES.find(v => v.id === id);
+  if (!vol) return;
+  openModal(`
+    <div class="modal-header">
+      <h3>案卷详情 - ${id}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:16px;">
+        <div style="margin-bottom:16px;padding:12px;background:#f0f7ff;border-radius:8px;">
+          <strong>${vol.title}</strong><br>
+          <span style="font-size:12px;color:var(--text-secondary);">年度：${vol.year} | 门类：${vol.category} | 归口单位：${vol.dept} | 文件数：${vol.fileCount}</span>
+        </div>
+        <p style="font-size:14px;margin-bottom:12px;">卷内文件列表：</p>
+        <table class="data-table">
+          <thead><tr><th>序号</th><th>文件编号</th><th>题名</th><th>年度</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody>
+            ${Array.from({length:Math.min(vol.fileCount,8)}, (_,i) => {
+              const fileNum = i + 1;
+              return `<tr>
+                <td>${fileNum}</td>
+                <td>${vol.id}-${String(fileNum).padStart(3,'0')}</td>
+                <td class="ellipsis">${vol.title.replace('卷','')}第${fileNum}件</td>
+                <td>${vol.year}</td>
+                <td><span class="tag tag-green">${vol.status}</span></td>
+                <td><button class="btn-link" onclick="closeModal();showArchiveDetail('${vol.id}-${String(fileNum).padStart(3,'0')}')">查看</button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">关闭</button>
+    </div>
+  `);
+}
+
+function renderOCR() {
+  return `
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#e6f4ff;color:#1890ff;">📋</div>
+        <div class="stat-label">总任务数</div>
+        <div class="stat-value">${MOCK.ocrTasks.length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fff7e6;color:#fa8c16;">⚙️</div>
+        <div class="stat-label">处理中</div>
+        <div class="stat-value">2</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f6ffed;color:#52c41a;">✅</div>
+        <div class="stat-label">已完成</div>
+        <div class="stat-value">3</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f9f0ff;color:#722ed1;">🎯</div>
+        <div class="stat-label">平均准确率</div>
+        <div class="stat-value">91.4%</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">OCR任务列表</span>
+        <button class="btn btn-primary" onclick="showCreateOCR()">+ 新建OCR任务</button>
+      </div>
+      <div class="filter-bar">
+        <select><option>全部状态</option><option>处理中</option><option>已完成</option><option>待处理</option></select>
+        <input type="text" placeholder="搜索任务名称..." style="width:200px;">
+        <button class="btn btn-sm">查询</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>任务编号</th><th>任务名称</th><th>总数</th><th>已完成</th><th>失败</th><th>准确率</th><th>进度</th><th>状态</th><th>开始时间</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          ${MOCK.ocrTasks.map(t => `
+            <tr>
+              <td>${t.id}</td>
+              <td class="ellipsis">${t.name}</td>
+              <td>${t.total}</td>
+              <td>${t.done}</td>
+              <td>${t.failed?`<span style="color:var(--danger);">${t.failed}</span>`:'0'}</td>
+              <td>${t.accuracy?`<span style="color:${t.accuracy>=95?'var(--success)':t.accuracy>=90?'var(--warning)':'var(--danger)'};font-weight:600;">${t.accuracy}%</span>`:'-'}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div class="progress" style="width:80px;">
+                    <div class="progress-bar" style="width:${t.total?Math.round(t.done/t.total*100):0}%;background:${t.status==='done'?'#52c41a':'#1890ff'};"></div>
+                  </div>
+                  <span style="font-size:12px;">${t.total?Math.round(t.done/t.total*100):0}%</span>
+                </div>
+              </td>
+              <td>${t.status==='done'?'<span class="tag tag-green">已完成</span>':t.status==='processing'?'<span class="tag tag-blue">处理中</span>':'<span class="tag tag-gray">待处理</span>'}</td>
+              <td style="font-size:12px;">${t.startTime}</td>
+              <td>
+                <button class="btn-link" onclick="showOCRDetail('${t.id}')">详情</button>
+                ${t.status==='done'?'<button class="btn-link">下载</button>':''}
+                ${t.status==='pending'?'<button class="btn-link" style="color:var(--success);">启动</button>':''}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderReview() {
+  const item = MOCK.reviewItems[0];
+  return `
+    <div class="steps">
+      <div class="step done"><div class="step-num">✓</div><div class="step-label">数据同步</div></div>
+      <div class="step done"><div class="step-num">✓</div><div class="step-label">OCR识别</div></div>
+      <div class="step active"><div class="step-num">3</div><div class="step-label">AI预审</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-label">预审结果归档</div></div>
+    </div>
+
+    <div style="margin-bottom:16px;padding:12px 16px;background:linear-gradient(90deg,#e6f4ff,#f0f7ff);border-left:4px solid var(--primary);border-radius:6px;font-size:13px;color:var(--text-secondary);">
+      <span style="color:var(--primary);font-weight:600;">📌 流程说明：</span>
+      本系统对档案开放审核采用<span style="color:var(--primary);font-weight:600;">「AI智能预审 + 预审结果导出」</span>模式。系统自动完成敏感信息识别、风险评级、开放建议生成，审核人员可直接查看AI预审结果，并支持批量导出预审结果表格与对应档案原文压缩包。
+    </div>
+
+    <div class="review-layout">
+      <div class="review-doc-viewer">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="font-size:15px;">${item.title}</h3>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">
+              档案编号：${item.id} | 年度：${item.year} | 归口单位：${item.dept}
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-sm">上一页</button>
+            <span style="font-size:13px;margin:0 8px;">1 / 3</span>
+            <button class="btn btn-sm">下一页</button>
+          </div>
+        </div>
+        <div class="doc-page">
+          <p style="text-align:center;font-size:18px;font-weight:bold;margin-bottom:24px;">关于1998年度财务预算执行情况的报告</p>
+          <p style="text-indent:2em;">根据校务会议要求，现将1998年度财务预算执行情况报告如下：</p>
+          <p style="text-indent:2em;">一、预算执行总体情况</p>
+          <p style="text-indent:2em;">1998年度学校总收入为<span class="sensitive-mark" title="敏感信息：财务数据">人民币捌仟伍佰万元整（¥85,000,000）</span>，其中财政拨款<span class="sensitive-mark" title="敏感信息：财务数据">伍仟万元</span>，事业收入<span class="sensitive-mark" title="敏感信息：财务数据">贰仟万元</span>，其他收入壹仟伍佰万元。</p>
+          <p style="text-indent:2em;">二、支出情况</p>
+          <p style="text-indent:2em;">本年度总支出<span class="sensitive-mark" title="敏感信息：财务数据">柒仟捌佰万元</span>，其中人员经费支出<span class="sensitive-mark" title="敏感信息：人员薪酬">贰仟肆佰万元</span>（含<span class="sensitive-mark" title="敏感信息：人员薪酬">教职工工资、津贴及福利</span>），公用经费支出叁仟万元，基建支出贰仟肆佰万元。</p>
+          <p style="text-indent:2em;">三、预算执行分析</p>
+          <p style="text-indent:2em;">本年度预算执行情况总体良好，收入完成预算的102.3%，支出控制在预算范围内。各学院、各部门经费使用基本合理，但在个别项目中存在超支现象，建议下年度加强预算管理...</p>
+          <div class="page-num">第 1 页 / 共 3 页</div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:12px;">
+          <button class="btn btn-sm">🔍 查看原图</button>
+          <button class="btn btn-sm">📝 查看OCR文本</button>
+          <button class="btn btn-sm">📑 查看关联档案</button>
+          <button class="btn btn-sm">📥 下载此件原文</button>
+        </div>
+      </div>
+
+      <div class="review-panel">
+        <h4 style="font-size:14px;font-weight:600;margin-bottom:16px;color:var(--primary);">🤖 AI预审结果</h4>
+        <div class="ai-result">
+          <div class="risk-meter">
+            <div class="risk-circle risk-${item.risk}">${item.riskScore}</div>
+            <div style="font-size:13px;font-weight:600;color:${item.risk==='high'?'var(--danger)':item.risk==='medium'?'var(--warning)':'var(--success)'};">
+              ${item.risk==='high'?'高风险':item.risk==='medium'?'中风险':'低风险'}
+            </div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-top:4px;">AI风险评分（0-100）</div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">AI开放建议：</div>
+            <div style="padding:8px 12px;background:#fff;border-radius:4px;font-size:13px;font-weight:500;color:${item.risk==='high'?'var(--danger)':'var(--success)'};">
+              ${item.aiSuggestion}
+            </div>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">识别到的敏感信息：</div>
+            ${item.sensitive.length > 0 ? item.sensitive.map(s => `<span class="tag tag-red" style="margin-right:4px;margin-bottom:4px;">⚠️ ${s}</span>`).join('') : '<span style="font-size:13px;color:var(--success);">未识别到敏感信息</span>'}
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);font-size:12px;color:var(--text-light);">
+            模型：DeepSeek-32B | 置信度：92% | 预审时间：2026-07-02 14:30
+          </div>
+        </div>
+
+        <h4 style="font-size:14px;font-weight:600;margin-bottom:12px;color:var(--primary);">📋 预审依据规则</h4>
+        <div style="background:#fafafa;border-radius:var(--radius);padding:12px;font-size:12px;line-height:1.8;color:var(--text-secondary);">
+          <div>• 《中华人民共和国档案法》第二十七条</div>
+          <div>• 《各级国家档案馆开放档案办法》</div>
+          <div>• 《档案信息系统安全等级保护要求》</div>
+          <div>• 《中南财经政法大学档案管理办法》</div>
+          <div>• 自定义规则：财务数据 ≥ 100万元 自动标记</div>
+        </div>
+
+        <div style="margin-top:16px;padding:12px;background:#fffbe6;border:1px solid #ffe58f;border-radius:6px;font-size:12px;color:#ad6800;line-height:1.6;">
+          💡 <strong>使用提示：</strong>本系统仅完成AI预审，最终开放决定由档案馆人工研判。请通过「预审记录」页批量导出预审结果表格，或通过「预审任务」页导出对应档案原文压缩包。
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderReviewTasks() {
+  return `
+    <div style="margin-bottom:16px;padding:12px 16px;background:linear-gradient(90deg,#e6f4ff,#f0f7ff);border-left:4px solid var(--primary);border-radius:6px;font-size:13px;color:var(--text-secondary);">
+      <span style="color:var(--primary);font-weight:600;">📌 流程说明：</span>
+      系统对每批审核任务自动完成 AI 智能预审，生成风险评分、敏感信息标注、开放建议。<span style="color:var(--primary);font-weight:600;">审核人员无需在系统中进行人工复核</span>，可通过下方「导出预审结果表格」和「导出对应档案原文」按钮获取预审数据。
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">审核任务列表</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="showCreateReviewTask()">+ 新建审核任务</button>
+          <button class="btn btn-success" onclick="exportReviewTable()">📊 导出AI预审结果表格</button>
+          <button class="btn btn-warning" onclick="exportReviewArchive()">📦 导出对应档案原文压缩包</button>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th><input type="checkbox" onclick="toggleAllTasks(this)"></th><th>任务编号</th><th>批次名称</th><th>档案数</th><th>AI预审完成</th><th>预审通过率</th><th>高风险档案</th><th>截止日期</th><th>状态</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          ${MOCK.reviewTasks.map(t => {
+            const aiPassRate = Math.round((t.aiDone - Math.round(t.aiDone*0.087))/t.aiDone*100);
+            const highRisk = Math.round(t.aiDone*0.087);
+            return `
+            <tr>
+              <td><input type="checkbox" class="task-cb" data-id="${t.id}"></td>
+              <td>${t.id}</td>
+              <td>${t.batch}</td>
+              <td>${t.total}</td>
+              <td>${t.aiDone}/${t.total}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <div class="progress" style="width:80px;">
+                    <div class="progress-bar" style="width:${aiPassRate}%;background:#52c41a;"></div>
+                  </div>
+                  <span style="font-size:12px;">${aiPassRate}%</span>
+                </div>
+              </td>
+              <td>${highRisk > 0 ? `<span style="color:var(--danger);font-weight:600;">${highRisk}件</span>` : `<span style="color:var(--text-light);">0件</span>`}</td>
+              <td style="font-size:12px;">${t.deadline}</td>
+              <td>${t.status==='done'?'<span class="tag tag-green">已完成</span>':t.status==='processing'?'<span class="tag tag-blue">进行中</span>':'<span class="tag tag-gray">待启动</span>'}</td>
+              <td>
+                <button class="btn-link" onclick="exportReviewTable('${t.id}')">导出表格</button>
+                <button class="btn-link" onclick="exportReviewArchive('${t.id}')">导出档案</button>
+                <button class="btn-link">详情</button>
+              </td>
+            </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header"><span class="card-title">AI预审结果分布</span></div>
+        <div class="chart-container-sm"><canvas id="chartReviewTask"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">AI预审效率与质量</span></div>
+        <table class="data-table">
+          <thead><tr><th>指标</th><th>数值</th><th>说明</th></tr></thead>
+          <tbody>
+            <tr><td>AI预审平均耗时</td><td><strong>0.8秒/件</strong></td><td>DeepSeek-32B + 昇腾Atlas NPU</td></tr>
+            <tr><td>AI预审准确率</td><td><strong>91.3%</strong></td><td>与人工复核结果对比</td></tr>
+            <tr><td>敏感信息检出率</td><td><strong>97.8%</strong></td><td>包含人名/金额/日期/地点等</td></tr>
+            <tr><td>风险评级准确率</td><td><strong>89.5%</strong></td><td>高/中/低风险分级</td></tr>
+            <tr><td>单日处理能力</td><td><strong>10万+件</strong></td><td>批量任务并行处理</td></tr>
+            <tr><td>建议采纳率</td><td><strong>88.6%</strong></td><td>档案馆采纳AI建议比例</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ========== 预审记录视图状态 ==========
+let reviewViewMode = 'item'; // 'item' or 'volume'
+
+function renderReviewHistory() {
+  // Group items by department
+  const deptGroups = {};
+  MOCK.reviewItems.forEach(item => {
+    if (!deptGroups[item.dept]) deptGroups[item.dept] = [];
+    deptGroups[item.dept].push(item);
+  });
+
+  // Group items by volume
+  const volumeGroups = {};
+  MOCK.reviewItems.forEach(item => {
+    if (!volumeGroups[item.volumeId]) {
+      volumeGroups[item.volumeId] = { id: item.volumeId, title: item.volumeTitle, dept: item.dept, year: item.year, items: [] };
+    }
+    volumeGroups[item.volumeId].items.push(item);
+  });
+  // Compute volume-level suggestion: if any item suggests 不开放, the whole volume is 不开放
+  Object.values(volumeGroups).forEach(vol => {
+    const hasNotOpen = vol.items.some(i => i.aiSuggestion.includes('不开放'));
+    const hasPartial = vol.items.some(i => i.aiSuggestion.includes('部分'));
+    vol.overallSuggestion = hasNotOpen ? '建议不开放' : (hasPartial ? '建议部分开放（脱敏后）' : '建议开放');
+    vol.maxRisk = vol.items.reduce((max, i) => {
+      const order = { high: 3, medium: 2, low: 1 };
+      return order[i.risk] > order[max.risk] ? i : max;
+    }, { risk: 'low', riskScore: 0 });
+  });
+
+  // Group volumes by department
+  const volDeptGroups = {};
+  Object.values(volumeGroups).forEach(vol => {
+    if (!volDeptGroups[vol.dept]) volDeptGroups[vol.dept] = [];
+    volDeptGroups[vol.dept].push(vol);
+  });
+
+  const deptList = Object.keys(deptGroups).sort();
+
+  return `
+    <div style="margin-bottom:16px;padding:12px 16px;background:linear-gradient(90deg,#e6f4ff,#f0f7ff);border-left:4px solid var(--primary);border-radius:6px;font-size:13px;color:var(--text-secondary);">
+      <span style="color:var(--primary);font-weight:600;">📌 数据说明：</span>
+      审核记录表仅展示 AI 预审结果，包括风险评分、敏感信息识别、开放建议。系统不进行人工复核，最终开放决定由档案馆线下研判后录入。
+      <span style="color:var(--warning);">按卷查看时，案卷中任一件建议不公开则整卷建议不公开。</span>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">AI预审结果记录</span>
+        <div class="filter-bar" style="margin:0;">
+          <div style="display:inline-flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+            <button style="padding:6px 14px;font-size:13px;border:none;cursor:pointer;${reviewViewMode==='item'?'background:var(--primary);color:#fff;':'background:#fff;color:var(--text);'}" onclick="switchReviewView('item')">按件展示</button>
+            <button style="padding:6px 14px;font-size:13px;border:none;cursor:pointer;${reviewViewMode==='volume'?'background:var(--primary);color:#fff;':'background:#fff;color:var(--text);'}" onclick="switchReviewView('volume')">按卷展示</button>
+          </div>
+          <select><option>全部风险等级</option><option>高风险</option><option>中风险</option><option>低风险</option></select>
+          <select><option>全部建议</option><option>建议开放</option><option>建议延期开放</option><option>建议不开放</option><option>需脱敏开放</option></select>
+          <input type="date" style="height:34px;">
+          <span style="line-height:34px;">至</span>
+          <input type="date" style="height:34px;">
+          <button class="btn btn-sm">查询</button>
+          <button class="btn btn-success" onclick="exportReviewTable()">📊 导出表格</button>
+          <button class="btn btn-warning" onclick="exportReviewArchive()">📦 导出原文</button>
+        </div>
+      </div>
+
+      ${reviewViewMode === 'item' ? renderReviewByItem(deptGroups, deptList) : renderReviewByVolume(volDeptGroups)}
+
+      <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;padding:0 4px;">
+        <div style="font-size:13px;color:var(--text-secondary);">
+          共 <strong>${reviewViewMode === 'item' ? MOCK.reviewItems.length : Object.keys(volumeGroups).length}</strong> 条记录（已选 <span id="selectedCount">0</span> 条）
+        </div>
+        <div style="display:flex;gap:4px;">
+          <button class="btn btn-sm" disabled>上一页</button>
+          <button class="btn btn-sm" style="background:var(--primary);color:#fff;">1</button>
+          <button class="btn btn-sm" disabled>下一页</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">📦 导出说明</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="padding:16px;background:#f0f7ff;border-radius:8px;">
+          <div style="font-weight:600;color:var(--primary);margin-bottom:8px;">📊 AI预审结果表格</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+            • 格式：Excel (.xlsx) 或 CSV<br>
+            • 字段：档案编号、题名、年度、归口单位、风险评分、风险等级、敏感信息标签、开放建议、预审时间、预审耗时、AI模型版本、置信度<br>
+            • ${reviewViewMode === 'volume' ? '按卷导出时包含卷内文件明细和卷级汇总建议' : '按件导出每条文件的预审结果'}
+          </div>
+        </div>
+        <div style="padding:16px;background:#fffbe6;border-radius:8px;">
+          <div style="font-weight:600;color:#ad6800;margin-bottom:8px;">📦 对应档案原文压缩包</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.7;">
+            • 格式：ZIP 压缩包<br>
+            • 内容：档案原文图像（PDF/JPG/TIFF）、OCR识别文本、AI预审结果JSON、敏感信息标注XML<br>
+            • ${reviewViewMode === 'volume' ? '按卷打包，包含卷内所有文件' : '按件打包'}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderReviewByItem(deptGroups, deptList) {
+  return deptList.map(dept => {
+    const items = deptGroups[dept];
+    return `
+      <div style="margin-bottom:16px;">
+        <div style="padding:8px 12px;background:#f5f7fa;border-radius:var(--radius) var(--radius) 0 0;font-weight:600;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;">
+          🏫 ${dept}
+          <span style="font-size:12px;color:var(--text-secondary);font-weight:400;">(${items.length}件)</span>
+        </div>
+        <table class="data-table" style="border-radius:0 0 var(--radius) var(--radius);">
+          <thead>
+            <tr><th><input type="checkbox" onclick="toggleAllRecords(this)"></th><th>档案编号</th><th>题名</th><th>所属案卷</th><th>年度</th><th>AI风险</th><th>敏感信息</th><th>AI建议</th><th>预审时间</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            ${items.map((item, i) => `
+              <tr>
+                <td><input type="checkbox" class="record-cb" data-id="${item.id}"></td>
+                <td>${item.id}</td>
+                <td class="ellipsis">${item.title}</td>
+                <td style="font-size:12px;">${item.volumeId}</td>
+                <td>${item.year}</td>
+                <td>${item.risk==='high'?'<span class="tag tag-red">高</span>':item.risk==='medium'?'<span class="tag tag-orange">中</span>':'<span class="tag tag-green">低</span>'}</td>
+                <td>${item.sensitive.length>0 ? item.sensitive.slice(0,2).map(s=>`<span class="tag tag-red" style="font-size:11px;">${s}</span>`).join('') + (item.sensitive.length>2?`<span style="font-size:11px;color:var(--text-light);">+${item.sensitive.length-2}</span>`:'') : '<span style="font-size:11px;color:var(--success);">无</span>'}</td>
+                <td style="font-size:12px;">${item.aiSuggestion.includes('不开放')?'<span style="color:var(--danger);">'+item.aiSuggestion+'</span>':item.aiSuggestion.includes('部分')?'<span style="color:var(--warning);">'+item.aiSuggestion+'</span>':'<span style="color:var(--success);">'+item.aiSuggestion+'</span>'}</td>
+                <td style="font-size:12px;">2026-07-0${(i%9)+1} ${14+(i%8)}:30</td>
+                <td>
+                  <button class="btn-link" onclick="viewReviewDetail('${item.id}')">详情</button>
+                  <button class="btn-link" onclick="exportSingleArchive('${item.id}')">下载</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderReviewByVolume(volDeptGroups) {
+  return Object.keys(volDeptGroups).sort().map(dept => {
+    const vols = volDeptGroups[dept];
+    return `
+      <div style="margin-bottom:16px;">
+        <div style="padding:8px 12px;background:#f5f7fa;border-radius:var(--radius) var(--radius) 0 0;font-weight:600;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;">
+          🏫 ${dept}
+          <span style="font-size:12px;color:var(--text-secondary);font-weight:400;">(${vols.length}卷 / ${vols.reduce((s,v)=>s+v.items.length,0)}件)</span>
+        </div>
+        <table class="data-table" style="border-radius:0 0 var(--radius) var(--radius);">
+          <thead>
+            <tr><th><input type="checkbox" onclick="toggleAllRecords(this)"></th><th>案卷编号</th><th>案卷题名</th><th>年度</th><th>卷内件数</th><th>最高风险</th><th>卷级AI建议</th><th>预审时间</th><th>操作</th></tr>
+          </thead>
+          <tbody>
+            ${vols.map((vol, i) => `
+              <tr>
+                <td><input type="checkbox" class="record-cb" data-id="${vol.id}"></td>
+                <td>${vol.id}</td>
+                <td class="ellipsis">${vol.title}</td>
+                <td>${vol.year}</td>
+                <td><span style="font-weight:500;">${vol.items.length}</span> 件</td>
+                <td>${vol.maxRisk.risk==='high'?'<span class="tag tag-red">高</span>':vol.maxRisk.risk==='medium'?'<span class="tag tag-orange">中</span>':'<span class="tag tag-green">低</span>'}</td>
+                <td style="font-size:12px;">${vol.overallSuggestion.includes('不开放')?'<span style="color:var(--danger);font-weight:500;">'+vol.overallSuggestion+'</span>':vol.overallSuggestion.includes('部分')?'<span style="color:var(--warning);">'+vol.overallSuggestion+'</span>':'<span style="color:var(--success);">'+vol.overallSuggestion+'</span>'}</td>
+                <td style="font-size:12px;">2026-07-0${(i%9)+1} ${14+(i%8)}:30</td>
+                <td>
+                  <button class="btn-link" onclick="viewVolumeReviewDetail('${vol.id}')">查看卷内</button>
+                  <button class="btn-link" onclick="exportSingleArchive('${vol.id}')">下载整卷</button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+}
+
+function switchReviewView(mode) {
+  reviewViewMode = mode;
+  const content = document.getElementById('contentArea');
+  if (content) {
+    content.innerHTML = renderReviewHistory();
+    document.getElementById('currentPageName').textContent = PAGES[currentPage].name;
+  }
+}
+
+function viewVolumeReviewDetail(volumeId) {
+  const vol = MOCK.reviewItems.filter(i => i.volumeId === volumeId);
+  if (!vol.length) return;
+  const volTitle = vol[0].volumeTitle;
+  const hasNotOpen = vol.some(i => i.aiSuggestion.includes('不开放'));
+  const overallSuggestion = hasNotOpen ? '建议不开放' : '建议开放';
+  openModal(`
+    <div class="modal-header">
+      <h3>案卷预审详情 - ${volumeId}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="padding:16px;">
+        <div style="margin-bottom:16px;padding:12px;background:${hasNotOpen?'#fff1f0':'#f6ffed'};border-radius:8px;border-left:4px solid ${hasNotOpen?'var(--danger)':'var(--success)'};">
+          <strong>${volTitle}</strong><br>
+          <span style="font-size:13px;color:var(--text-secondary);">案卷编号：${volumeId} | 卷内件数：${vol.length} | 卷级建议：</span>
+          <span style="font-weight:600;color:${hasNotOpen?'var(--danger)':'var(--success)'};">${overallSuggestion}</span>
+          ${hasNotOpen ? '<br><span style="font-size:12px;color:var(--danger);">⚠️ 该案卷中存在建议不公开的文件，因此整卷建议不公开。</span>' : ''}
+        </div>
+        <table class="data-table">
+          <thead><tr><th>序号</th><th>文件编号</th><th>题名</th><th>AI风险</th><th>敏感信息</th><th>AI建议</th></tr></thead>
+          <tbody>
+            ${vol.map((item, i) => `
+              <tr>
+                <td>${i+1}</td>
+                <td>${item.id}</td>
+                <td class="ellipsis">${item.title}</td>
+                <td>${item.risk==='high'?'<span class="tag tag-red">高</span>':item.risk==='medium'?'<span class="tag tag-orange">中</span>':'<span class="tag tag-green">低</span>'}</td>
+                <td>${item.sensitive.length>0 ? item.sensitive.map(s=>`<span class="tag tag-red" style="font-size:11px;">${s}</span>`).join('') : '<span style="font-size:11px;color:var(--success);">无</span>'}</td>
+                <td style="font-size:12px;">${item.aiSuggestion.includes('不开放')?'<span style="color:var(--danger);">'+item.aiSuggestion+'</span>':item.aiSuggestion.includes('部分')?'<span style="color:var(--warning);">'+item.aiSuggestion+'</span>':'<span style="color:var(--success);">'+item.aiSuggestion+'</span>'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">关闭</button>
+    </div>
+  `);
+}
+
+function renderSync() {
+  return `
+    <div style="margin-bottom:16px;padding:12px 16px;background:linear-gradient(90deg,#e6f4ff,#f0f7ff);border-left:4px solid var(--primary);border-radius:6px;font-size:13px;color:var(--text-secondary);">
+      <span style="color:var(--primary);font-weight:600;">📌 同步说明：</span>
+      系统采用双通道数据同步机制：<strong>文件共享同步</strong>获取档案电子档文件，<strong>数据库定期同步</strong>通过只读账号从学校数据中台中间库获取档案元数据至本地MySQL。两种同步互不干扰，确保数据完整性。
+    </div>
+
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#e6f4ff;color:#1890ff;">🔄</div>
+        <div class="stat-label">文件同步状态</div>
+        <div class="stat-value" style="font-size:20px;color:var(--success);">● 运行中</div>
+        <div class="stat-trend">下次同步：今日 20:00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f6ffed;color:#52c41a;">📁</div>
+        <div class="stat-label">已同步文件</div>
+        <div class="stat-value">89,456</div>
+        <div class="stat-trend up">↑ 今日新增 85</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fff7e6;color:#fa8c16;">🗄️</div>
+        <div class="stat-label">数据库同步状态</div>
+        <div class="stat-value" style="font-size:20px;color:var(--success);">● 运行中</div>
+        <div class="stat-trend">下次同步：今日 02:00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f9f0ff;color:#722ed1;">📋</div>
+        <div class="stat-label">已同步元数据</div>
+        <div class="stat-value">125,830</div>
+        <div class="stat-trend up">↑ 今日新增 1,230 条</div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📁 文件共享同步配置</span>
+          <button class="btn btn-sm">编辑配置</button>
+        </div>
+        <div class="detail-row"><div class="detail-label">同步方式</div><div class="detail-value">文件共享 + 增量同步</div></div>
+        <div class="detail-row"><div class="detail-label">源目录</div><div class="detail-value">\\\\archive-server\\档案共享目录</div></div>
+        <div class="detail-row"><div class="detail-label">目标目录</div><div class="detail-value">/data/archive-sync/</div></div>
+        <div class="detail-row"><div class="detail-label">同步频率</div><div class="detail-value">每4小时（00:00, 04:00, 08:00, 12:00, 16:00, 20:00）</div></div>
+        <div class="detail-row"><div class="detail-label">同步策略</div><div class="detail-value">增量同步</div></div>
+        <div class="detail-row"><div class="detail-label">数据安全</div><div class="detail-value">单向同步，对源系统无损坏</div></div>
+        <div class="detail-row"><div class="detail-label">运行状态</div><div class="detail-value"><span class="tag tag-green">正常运行</span></div></div>
+        <div style="margin-top:12px;text-align:center;">
+          <button class="btn btn-primary btn-sm" onclick="alert('文件手动同步已触发，预计需要1-3分钟')">🔄 立即手动文件同步</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🗄️ 数据库同步配置</span>
+          <button class="btn btn-sm">编辑配置</button>
+        </div>
+        <div class="detail-row"><div class="detail-label">数据源</div><div class="detail-value">学校数据中台 · 中间库</div></div>
+        <div class="detail-row"><div class="detail-label">连接地址</div><div class="detail-value">10.20.1.200:3306 / mid_archive_db</div></div>
+        <div class="detail-row"><div class="detail-label">访问账号</div><div class="detail-value">archive_reader（只读权限）</div></div>
+        <div class="detail-row"><div class="detail-label">同步目标</div><div class="detail-value">本地MySQL: 127.0.0.1:3306 / archive_meta</div></div>
+        <div class="detail-row"><div class="detail-label">同步频率</div><div class="detail-value">每天 02:00 / 每周一 02:00 / 每月1日 02:00</div></div>
+        <div class="detail-row"><div class="detail-label">同步方式</div><div class="detail-value">全量同步</div></div>
+        <div class="detail-row"><div class="detail-label">运行状态</div><div class="detail-value"><span class="tag tag-green">正常运行</span></div></div>
+        <div style="margin-top:12px;text-align:center;">
+          <button class="btn btn-primary btn-sm" onclick="alert('数据库手动同步已触发，预计需要2-5分钟')">🔄 立即手动数据库同步</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">同步历史记录</span>
+        <div class="filter-bar" style="margin:0;">
+          <select id="syncTypeFilter"><option>全部类型</option><option>文件同步</option><option>数据库同步</option></select>
+          <button class="btn btn-sm">查询</button>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>同步时间</th><th>同步类型</th><th>数据源</th><th>同步方式</th><th>文件/记录数</th><th>数据量</th><th>耗时</th><th>状态</th></tr>
+        </thead>
+        <tbody>
+          ${[
+            {time:'2026-07-02 19:15:00',type:'文件同步',source:'档案管理系统共享目录',mode:'增量',files:'45个文件',size:'128MB',status:'成功',duration:'2分15秒'},
+            {time:'2026-07-02 02:00:00',type:'数据库同步',source:'学校数据中台中间库',mode:'全量',files:'125,830条记录',size:'1.2GB',status:'成功',duration:'32分15秒'},
+            {time:'2026-07-02 12:00:00',type:'文件同步',source:'档案管理系统共享目录',mode:'增量',files:'12个文件',size:'34MB',status:'成功',duration:'45秒'},
+            {time:'2026-07-01 19:15:00',type:'文件同步',source:'档案管理系统共享目录',mode:'增量',files:'67个文件',size:'201MB',status:'成功',duration:'3分20秒'},
+            {time:'2026-07-01 02:00:00',type:'数据库同步',source:'学校数据中台中间库',mode:'全量',files:'125,830条记录',size:'1.2GB',status:'成功',duration:'31分48秒'},
+            {time:'2026-07-01 12:00:00',type:'文件同步',source:'档案管理系统共享目录',mode:'增量',files:'8个文件',size:'22MB',status:'成功',duration:'28秒'},
+            {time:'2026-06-30 02:00:00',type:'数据库同步',source:'学校数据中台中间库',mode:'全量',files:'125,830条记录',size:'1.2GB',status:'成功',duration:'32分15秒'},
+          ].map(s => `
+            <tr>
+              <td style="font-size:12px;">${s.time}</td>
+              <td>${s.type==='文件同步'?'<span class="tag tag-blue">文件同步</span>':'<span class="tag tag-purple">数据库同步</span>'}</td>
+              <td style="font-size:12px;">${s.source}</td>
+              <td>${s.mode==='增量'?'<span class="tag tag-green">增量</span>':'<span class="tag tag-orange">全量</span>'}</td>
+              <td>${s.files}</td>
+              <td>${s.size}</td>
+              <td style="font-size:12px;">${s.duration}</td>
+              <td><span class="tag tag-green">成功</span></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderStats() {
+  return `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">按用户账号统计（ST-001）</span>
+        <button class="btn btn-sm">📥 导出报表</button>
+      </div>
+      <div class="filter-bar">
+        <select><option>全部用户</option><option>系统管理员</option><option>预审管理员</option><option>查档人员</option><option>档案馆员</option></select>
+        <select><option>本月</option><option>本季度</option><option>本年度</option><option>自定义时间</option></select>
+        <button class="btn btn-sm">查询</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>排名</th><th>用户账号</th><th>姓名</th><th>角色</th><th>检索次数</th><th>浏览条目</th><th>浏览文件</th><th>下载文件</th><th>打印文件</th><th>合计</th></tr>
+        </thead>
+        <tbody>
+          ${[
+            {rank:1,account:'wangjg',name:'王建国',role:'查档人员',search:186,browseItem:342,browseFile:156,download:28,print:12},
+            {rank:2,account:'zhaojing',name:'赵静',role:'查档人员',search:156,browseItem:289,browseFile:134,download:22,print:8},
+            {rank:3,account:'lifang',name:'李芳',role:'预审管理员',search:98,browseItem:156,browseFile:89,download:45,print:0},
+            {rank:4,account:'chenxh',name:'陈小红',role:'预审管理员',search:76,browseItem:134,browseFile:67,download:32,print:0},
+            {rank:5,account:'liuwei',name:'刘伟',role:'档案馆员',search:23,browseItem:45,browseFile:12,download:5,print:0},
+            {rank:6,account:'zhangmh',name:'张明华',role:'系统管理员',search:12,browseItem:28,browseFile:15,download:3,print:0},
+          ].map(u => `
+            <tr>
+              <td><strong>${u.rank}</strong></td>
+              <td>${u.account}</td>
+              <td>${u.name}</td>
+              <td><span class="tag ${u.role==='系统管理员'?'tag-purple':u.role==='预审管理员'?'tag-blue':u.role==='档案馆员'?'tag-orange':'tag-gray'}">${u.role}</span></td>
+              <td>${u.search}</td>
+              <td>${u.browseItem}</td>
+              <td>${u.browseFile}</td>
+              <td>${u.download}</td>
+              <td>${u.print}</td>
+              <td><strong style="color:var(--primary);">${u.search+u.browseItem+u.browseFile+u.download+u.print}</strong></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">按时间段统计（ST-002）</span>
+          <select style="height:32px;font-size:12px;"><option>按月统计</option><option>按周统计</option><option>按日统计</option><option>按季度统计</option><option>按年度统计</option></select>
+        </div>
+        <div class="chart-container"><canvas id="chartMonthly"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">按利用方式统计（ST-003）</span></div>
+        <div class="chart-container"><canvas id="chartCategory"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">利用方式明细统计</span></div>
+      <table class="data-table">
+        <thead><tr><th>利用方式</th><th>本月次数</th><th>本月占比</th><th>本年累计</th><th>趋势</th></tr></thead>
+        <tbody>
+          ${[
+            {method:'检索',month:1280,year:8560,trend:'up'},
+            {method:'条目浏览',month:2340,year:15680,trend:'up'},
+            {method:'文件浏览',month:1560,year:10230,trend:'flat'},
+            {method:'文件下载',month:320,year:2340,trend:'down'},
+            {method:'文件打印',month:85,year:680,trend:'flat'},
+          ].map(item => {
+            const total = 1280+2340+1560+320+85;
+            const pct = (item.month/total*100).toFixed(1);
+            return `
+            <tr>
+              <td><strong>${item.method}</strong></td>
+              <td>${item.month}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div class="progress" style="width:100px;"><div class="progress-bar" style="width:${pct}%;background:#1890ff;"></div></div>
+                  <span style="font-size:12px;">${pct}%</span>
+                </div>
+              </td>
+              <td>${item.year}</td>
+              <td>${item.trend==='up'?'📈 上升':item.trend==='down'?'📉 下降':'➡️ 平稳'}</td>
+            </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderUsers() {
+  return `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">用户列表</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text-secondary);">共 <strong style="color:var(--primary);font-size:16px;">${MOCK.users.length}</strong> 人 / 在线 <strong style="color:var(--success);">${MOCK.onlineUsers.length}</strong> 人</span>
+          <button class="btn btn-primary">+ 新增用户</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <select><option>全部角色</option><option>系统管理员</option><option>预审管理员</option><option>查档人员</option><option>档案馆员</option></select>
+        <select><option>全部状态</option><option>正常</option><option>锁定</option><option>在线</option></select>
+        <input type="text" placeholder="搜索用户名/账号..." style="width:200px;">
+        <button class="btn btn-sm">查询</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>姓名</th><th>账号</th><th>角色</th><th>所属部门</th><th>最后登录</th><th>状态</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          ${MOCK.users.map(u => `
+            <tr>
+              <td><div style="display:flex;align-items:center;gap:8px;"><div class="avatar" style="width:28px;height:28px;font-size:11px;background:linear-gradient(135deg,var(--primary),var(--primary-light));">${u.name[0]}</div>${u.name}${u.online?'<span style="width:6px;height:6px;border-radius:50%;background:var(--success);display:inline-block;margin-left:2px;box-shadow:0 0 4px var(--success);" title="在线"></span>':''}</div></td>
+              <td>${u.account}</td>
+              <td><span class="tag ${u.role==='系统管理员'?'tag-purple':u.role==='预审管理员'?'tag-blue':u.role==='档案馆员'?'tag-orange':'tag-gray'}">${u.role}</span></td>
+              <td>${u.dept}</td>
+              <td style="font-size:12px;">${u.lastLogin}</td>
+              <td>${u.status==='正常'?'<span class="tag tag-green">正常</span>':'<span class="tag tag-red">锁定</span>'}${u.online?' <span class="tag tag-blue">在线</span>':''}</td>
+              <td>
+                <button class="btn-link">编辑</button>
+                <button class="btn-link">重置密码</button>
+                ${u.online && u.role!=='系统管理员'?'<button class="btn-link" style="color:var(--warning);" onclick="forceOffline(\''+u.account+'\',\''+u.name+'\')">强制下线</button>':''}
+                ${u.status==='正常' && !u.online?'<button class="btn-link" style="color:var(--danger);">锁定</button>':''}
+                ${u.status==='锁定'?'<button class="btn-link" style="color:var(--success);">解锁</button>':''}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderOnlineUsers() {
+  const onlineUsers = MOCK.onlineUsers;
+  return `
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px;">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f6ffed;color:#52c41a;">🟢</div>
+        <div class="stat-label">当前在线</div>
+        <div class="stat-value" style="color:var(--success);">${onlineUsers.length}</div>
+        <div class="stat-trend">总注册用户 ${MOCK.users.length} 人</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#e6f4ff;color:#1890ff;">👤</div>
+        <div class="stat-label">管理员在线</div>
+        <div class="stat-value">${onlineUsers.filter(u=>u.role==='系统管理员').length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f9f0ff;color:#722ed1;">📋</div>
+        <div class="stat-label">预审管理员在线</div>
+        <div class="stat-value">${onlineUsers.filter(u=>u.role==='预审管理员').length}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fff7e6;color:#fa8c16;">🔍</div>
+        <div class="stat-label">查档人员在线</div>
+        <div class="stat-value">${onlineUsers.filter(u=>u.role==='查档人员').length}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">在线用户列表</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text-secondary);">实时刷新 · 每30秒自动更新</span>
+          <button class="btn btn-sm" onclick="refreshOnlineUsers()">🔄 刷新</button>
+        </div>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>姓名</th><th>账号</th><th>角色</th><th>IP地址</th><th>登录时间</th><th>会话时长</th><th>当前位置</th><th>当前活动</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          ${onlineUsers.map((u, i) => `
+            <tr id="online-row-${i}">
+              <td>
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <span style="width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;flex-shrink:0;box-shadow:0 0 4px var(--success);animation:pulse 2s infinite;"></span>
+                  <div class="avatar" style="width:28px;height:28px;font-size:11px;background:linear-gradient(135deg,var(--primary),var(--primary-light));">${u.name[0]}</div>
+                  ${u.name}
+                </div>
+              </td>
+              <td>${u.account}</td>
+              <td><span class="tag ${u.role==='系统管理员'?'tag-purple':u.role==='预审管理员'?'tag-blue':u.role==='档案馆员'?'tag-orange':'tag-gray'}">${u.role}</span></td>
+              <td style="font-size:12px;font-family:monospace;">${u.ip}</td>
+              <td style="font-size:12px;">${u.loginTime}</td>
+              <td style="font-size:12px;">${u.session}</td>
+              <td style="font-size:12px;">${u.location}</td>
+              <td><span class="tag tag-blue">${u.activity}</span></td>
+              <td>
+                ${u.role==='系统管理员'
+                  ? '<span style="font-size:12px;color:var(--text-light);">当前管理员</span>'
+                  : `<button class="btn-link" style="color:var(--danger);" onclick="forceOffline('${u.account}','${u.name}',${i})">强制下线</button>`
+                }
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function forceOffline(account, name, rowIndex) {
+  if (!confirm('确认强制用户「' + name + '（' + account + '）」下线？\n\n该用户当前会话将被立即终止，其未保存的操作可能丢失。')) return;
+  // Remove from onlineUsers array
+  const idx = MOCK.onlineUsers.findIndex(u => u.account === account);
+  if (idx >= 0) MOCK.onlineUsers.splice(idx, 1);
+  // Update user online status
+  const user = MOCK.users.find(u => u.account === account);
+  if (user) user.online = false;
+  // Re-render the current page
+  const content = document.getElementById('contentArea');
+  if (content) {
+    content.innerHTML = PAGES[currentPage].render();
+    document.getElementById('currentPageName').textContent = PAGES[currentPage].name;
+  }
+  // Add to logs
+  MOCK.logs.unshift({
+    time: new Date().toLocaleString('zh-CN', {hour12:false}).replace(/\//g,'-'),
+    user: '张明华', action: '强制用户 ' + name + '（' + account + '）下线',
+    module: '用户管理', ip: '10.20.1.100', result: '成功'
+  });
+  alert('已强制「' + name + '」下线，该用户会话已终止。');
+}
+
+function refreshOnlineUsers() {
+  const content = document.getElementById('contentArea');
+  if (content) {
+    content.innerHTML = PAGES[currentPage].render();
+    document.getElementById('currentPageName').textContent = PAGES[currentPage].name;
+  }
+}
+
+function renderRoles() {
+  const roles = [
+    {name:'系统管理员',users:1,desc:'系统全功能管理、用户管理、在线用户监控、系统配置',
+     menuPerms:['用户管理','角色权限','在线用户','强制下线','数据同步','审计日志'],
+     treePerms:'全部目录 · 全部权限'},
+    {name:'预审管理员',users:2,desc:'查看AI预审结果、导出预审表格、下载预审档案',
+     menuPerms:['预审任务','预审记录','关键字检索','语义检索'],
+     treePerms:'行政档案(案卷级:条目浏览)、教学档案(案卷级:条目浏览)'},
+    {name:'查档人员',users:2,desc:'档案检索查询、档案详情查看、证明制作',
+     menuPerms:['关键字检索','语义检索'],
+     treePerms:'行政档案(文件级:浏览/下载/打印)、教学档案(文件级:浏览/下载/打印)、财务档案(案卷级:条目浏览)'},
+    {name:'档案馆员',users:1,desc:'OCR任务管理、识别结果查看、档案检索',
+     menuPerms:['OCR任务管理','关键字检索','语义检索','数据同步'],
+     treePerms:'全部目录 · 案卷级:条目浏览、卷内级:浏览/下载/打印'},
+  ];
+  return `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">角色与权限</span>
+        <button class="btn btn-primary">+ 新增角色</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr><th>角色名称</th><th>用户数</th><th>描述</th><th>菜单权限</th><th>文档目录树权限</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          ${roles.map((r, i) => `
+            <tr>
+              <td><strong>${r.name}</strong></td>
+              <td>${r.users} 人</td>
+              <td style="font-size:12px;color:var(--text-secondary);max-width:180px;">${r.desc}</td>
+              <td style="max-width:260px;">${r.menuPerms.map(p => `<span class="tag tag-blue" style="margin:2px;font-size:11px;">${p}</span>`).join('')}</td>
+              <td style="font-size:11px;color:var(--text-secondary);max-width:220px;">${r.treePerms}</td>
+              <td><button class="btn-link" onclick="showRolePermEditor(${i})">编辑权限</button></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">文档目录树权限说明</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="padding:16px;background:#f0f7ff;border-radius:8px;">
+          <div style="font-weight:600;color:var(--primary);margin-bottom:10px;">📁 案卷级权限</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.8;">
+            <div>• <strong>条目浏览</strong> — 可查看案卷的目录条目信息（编号、题名、年度、归口单位等）</div>
+          </div>
+          <div style="margin-top:8px;padding:8px;background:#fff;border-radius:4px;font-size:12px;color:var(--text-light);">
+            适用层级：项目 → 案卷级目录节点
+          </div>
+        </div>
+        <div style="padding:16px;background:#f6ffed;border-radius:8px;">
+          <div style="font-weight:600;color:var(--success);margin-bottom:10px;">📄 卷内级 / 文件级权限</div>
+          <div style="font-size:13px;color:var(--text-secondary);line-height:1.8;">
+            <div>• <strong>文件浏览</strong> — 可在线查看档案原文内容</div>
+            <div>• <strong>文件下载</strong> — 可下载档案原文文件到本地</div>
+            <div>• <strong>条目浏览</strong> — 可查看卷内文件目录条目信息</div>
+            <div>• <strong>文件打印</strong> — 可打印档案原文</div>
+          </div>
+          <div style="margin-top:8px;padding:8px;background:#fff;border-radius:4px;font-size:12px;color:var(--text-light);">
+            适用层级：案卷 → 卷内文件级目录节点
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">密码安全策略</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="detail-row"><div class="detail-label">最小长度</div><div class="detail-value">12位以上</div></div>
+        <div class="detail-row"><div class="detail-label">复杂度要求</div><div class="detail-value">字母+数字+大小写+特殊符号</div></div>
+        <div class="detail-row"><div class="detail-label">有效期</div><div class="detail-value">30天（过期需更换）</div></div>
+        <div class="detail-row"><div class="detail-label">失败锁定</div><div class="detail-value">连续失败5次锁定账户</div></div>
+        <div class="detail-row"><div class="detail-label">会话超时</div><div class="detail-value">闲置30分钟自动退出</div></div>
+        <div class="detail-row"><div class="detail-label">传输加密</div><div class="detail-value">HTTPS / TLS 1.3</div></div>
+      </div>
+    </div>
+  `;
+}
+
+function showRolePermEditor(roleIdx) {
+  const roleNames = ['系统管理员','预审管理员','查档人员','档案馆员'];
+  const roleName = roleNames[roleIdx] || '自定义角色';
+  const allMenus = [
+    '关键字检索','语义检索','OCR任务管理','预审任务','预审记录','数据同步','统计分析',
+    '用户管理','在线用户','角色权限','审计日志'
+  ];
+  const adminMenus = allMenus; // 系统管理员拥有全部
+  const roleMenus = {
+    0: allMenus,
+    1: ['关键字检索','语义检索','预审任务','预审记录'],
+    2: ['关键字检索','语义检索'],
+    3: ['关键字检索','语义检索','OCR任务管理','数据同步'],
+  };
+  const currentMenus = roleMenus[roleIdx] || [];
+
+  openModal(`
+    <div class="modal-header">
+      <h3>编辑权限 - ${roleName}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body" style="max-height:600px;overflow:auto;">
+      <!-- Tab: 菜单权限 / 目录树权限 -->
+      <div style="display:flex;border-bottom:2px solid var(--border);margin-bottom:16px;">
+        <button id="permTabMenu" style="padding:8px 16px;border:none;background:none;font-size:14px;font-weight:600;cursor:pointer;color:var(--primary);border-bottom:2px solid var(--primary);margin-bottom:-2px;" onclick="switchPermTab('menu')">菜单权限</button>
+        <button id="permTabTree" style="padding:8px 16px;border:none;background:none;font-size:14px;font-weight:600;cursor:pointer;color:var(--text-secondary);margin-bottom:-2px;" onclick="switchPermTab('tree')">文档目录树权限</button>
+      </div>
+
+      <!-- 菜单权限 -->
+      <div id="permPanelMenu">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">勾选该角色可访问的功能菜单：</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+          ${allMenus.map(m => `
+            <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;font-size:13px;">
+              <input type="checkbox" ${currentMenus.includes(m)?'checked':''} style="margin:0;">
+              ${m}
+            </label>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- 目录树权限 -->
+      <div id="permPanelTree" style="display:none;">
+        <div style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">为每个目录节点配置档案数据操作权限：<span style="color:var(--warning);">案卷级可配置"条目浏览"；卷内级/文件级可配置"文件浏览""文件下载""条目浏览""文件打印"</span></div>
+        <div style="border:1px solid var(--border);border-radius:var(--radius);max-height:450px;overflow:auto;padding:8px;">
+          ${renderPermTree(ARCHIVE_TREE_DATA, 0, roleIdx)}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="closeModal();alert('权限已保存')">保存权限</button>
+    </div>
+  `);
+}
+
+function renderPermTree(nodes, depth, roleIdx) {
+  let html = '';
+  for (const node of nodes) {
+    const hasChildren = node.children && node.children.length > 0;
+    const isTopLevel = depth === 0; // 门类级
+    const isYearLevel = depth === 1; // 年度级
+    const isDeptLevel = depth === 2; // 部门级 (leaf for this tree, represents 案卷级)
+    // For this prototype: depth 0-1 = 案卷级, depth 2 (leaf) = 卷内级/文件级
+    const isVolumeLevel = depth <= 1;
+    const isFileLevel = depth === 2 || !hasChildren;
+
+    html += `<div style="margin-left:${depth * 16}px;">`;
+    html += `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:4px;${isTopLevel?'border-bottom:1px solid var(--border-light);':''}">`;
+    if (hasChildren) {
+      html += `<span style="cursor:pointer;font-size:10px;width:12px;" onclick="this.textContent=this.textContent==='▶'?'▼':'▶';this.parentElement.nextElementSibling.style.display=this.textContent==='▶'?'none':'block';">▼</span>`;
+    } else {
+      html += `<span style="width:12px;"></span>`;
+    }
+    html += `<span style="font-size:13px;font-weight:${isTopLevel?'600':'400'};flex:1;">${node.label}</span>`;
+
+    if (isVolumeLevel && hasChildren) {
+      // 案卷级权限: 条目浏览
+      html += `<label style="font-size:11px;display:flex;align-items:center;gap:3px;white-space:nowrap;"><input type="checkbox" ${roleIdx===0?'checked':''} style="margin:0;"> 条目浏览</label>`;
+    }
+    if (isFileLevel) {
+      // 卷内级/文件级权限
+      const filePerms = ['文件浏览','文件下载','条目浏览','文件打印'];
+      const checkedPerms = roleIdx === 0 ? filePerms : (roleIdx === 2 ? ['文件浏览','文件下载','条目浏览','文件打印'] : (roleIdx === 3 ? ['文件浏览','文件下载','条目浏览','文件打印'] : []));
+      filePerms.forEach(p => {
+        html += `<label style="font-size:11px;display:flex;align-items:center;gap:3px;white-space:nowrap;"><input type="checkbox" ${checkedPerms.includes(p)?'checked':''} style="margin:0;"> ${p}</label>`;
+      });
+    }
+    html += `</div>`;
+    if (hasChildren) {
+      html += `<div>${renderPermTree(node.children, depth+1, roleIdx)}</div>`;
+    }
+    html += `</div>`;
+  }
+  return html;
+}
+
+function switchPermTab(tab) {
+  const menuPanel = document.getElementById('permPanelMenu');
+  const treePanel = document.getElementById('permPanelTree');
+  const menuTab = document.getElementById('permTabMenu');
+  const treeTab = document.getElementById('permTabTree');
+  if (tab === 'menu') {
+    menuPanel.style.display = 'block';
+    treePanel.style.display = 'none';
+    menuTab.style.color = 'var(--primary)';
+    menuTab.style.borderBottom = '2px solid var(--primary)';
+    treeTab.style.color = 'var(--text-secondary)';
+    treeTab.style.borderBottom = 'none';
+  } else {
+    menuPanel.style.display = 'none';
+    treePanel.style.display = 'block';
+    menuTab.style.color = 'var(--text-secondary)';
+    menuTab.style.borderBottom = 'none';
+    treeTab.style.color = 'var(--primary)';
+    treeTab.style.borderBottom = '2px solid var(--primary)';
+  }
+}
+
+let logCategory = 'all'; // all/login/access/operation
+
+const LOG_CATEGORIES = [
+  { key:'all',       label:'全部日志',     icon:'📋' },
+  { key:'login',     label:'用户登录日志', icon:'🔑' },
+  { key:'access',    label:'功能访问日志', icon:'👁️' },
+  { key:'operation', label:'功能操作日志', icon:'⚙️' },
+];
+
+function switchLogCategory(cat) {
+  logCategory = cat;
+  const content = document.getElementById('contentArea');
+  if (content) content.innerHTML = renderLogs();
+}
+
+function renderLogs() {
+  // Count logs per category
+  const catCounts = { all: MOCK.logs.length, login: 0, access: 0, operation: 0 };
+  MOCK.logs.forEach(l => { if (catCounts[l.category] !== undefined) catCounts[l.category]++; });
+
+  // Filter logs by category
+  const filtered = logCategory === 'all' ? MOCK.logs : MOCK.logs.filter(l => l.category === logCategory);
+
+  // Category label map
+  const catLabelMap = { login:'用户登录', access:'功能访问', operation:'功能操作' };
+  const catColorMap = { login:'tag-blue', access:'tag-gray', operation:'tag-purple' };
+
+  return `
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">审计日志</span>
+        <div class="filter-bar" style="margin:0;">
+          <select><option>全部模块</option><option>系统管理</option><option>关键字检索</option><option>语义检索</option><option>OCR管理</option><option>开放预审</option><option>数据同步</option></select>
+          <select><option>全部结果</option><option>成功</option><option>失败</option></select>
+          <input type="date" style="height:34px;">
+          <input type="text" placeholder="搜索用户/操作..." style="width:160px;">
+          <button class="btn btn-sm">查询</button>
+          <button class="btn btn-sm">📥 导出日志</button>
+        </div>
+      </div>
+
+      <div class="log-tabs">
+        ${LOG_CATEGORIES.map(c => `
+          <div class="log-tab ${logCategory===c.key?'active':''}" onclick="switchLogCategory('${c.key}')">
+            <span>${c.icon}</span>
+            <span>${c.label}</span>
+            <span class="log-tab-count">${catCounts[c.key]}</span>
+          </div>
+        `).join('')}
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr><th>时间</th><th>日志分类</th><th>用户</th><th>操作</th><th>模块</th><th>IP地址</th><th>结果</th></tr>
+        </thead>
+        <tbody>
+          ${filtered.length > 0 ? filtered.map(log => `
+            <tr>
+              <td style="font-size:12px;white-space:nowrap;">${log.time}</td>
+              <td><span class="tag ${catColorMap[log.category]||'tag-gray'}">${catLabelMap[log.category]||'其他'}</span></td>
+              <td>${log.user}</td>
+              <td>${log.action}</td>
+              <td><span class="tag tag-gray">${log.module}</span></td>
+              <td style="font-size:12px;">${log.ip}</td>
+              <td>${log.result==='成功'?'<span class="tag tag-green">成功</span>':'<span class="tag tag-red">失败</span>'}</td>
+            </tr>
+          `).join('') : `
+            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--text-light);">该分类下暂无日志记录</td></tr>
+          `}
+        </tbody>
+      </table>
+      <div class="pagination">
+        <button disabled>上一页</button>
+        <button class="active">1</button>
+        <button>2</button>
+        <button>3</button>
+        <button>下一页</button>
+        <span style="font-size:12px;color:var(--text-light);margin-left:8px;">当前分类共 ${filtered.length} 条</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">日志统计</span></div>
+      <div class="two-col" style="margin:0;">
+        <div>
+          <div class="detail-row"><div class="detail-label">日志保留期</div><div class="detail-value">180天</div></div>
+          <div class="detail-row"><div class="detail-label">今日日志总数</div><div class="detail-value">${catCounts.all} 条</div></div>
+          <div class="detail-row"><div class="detail-label">用户登录日志</div><div class="detail-value">${catCounts.login} 条</div></div>
+          <div class="detail-row"><div class="detail-label">功能访问日志</div><div class="detail-value">${catCounts.access} 条</div></div>
+          <div class="detail-row"><div class="detail-label">功能操作日志</div><div class="detail-value">${catCounts.operation} 条</div></div>
+        </div>
+        <div>
+          <div class="detail-row"><div class="detail-label">今日失败操作</div><div class="detail-value"><span style="color:var(--danger);">${MOCK.logs.filter(l=>l.result==='失败').length} 次</span></div></div>
+          <div class="detail-row"><div class="detail-label">异常登录尝试</div><div class="detail-value"><span style="color:var(--danger);">${MOCK.logs.filter(l=>l.category==='login'&&l.result==='失败').length} 次</span></div></div>
+          <div class="detail-row"><div class="detail-label">审计记录要素</div><div class="detail-value">日期、时间、分类、主体标识、客体标识、结果</div></div>
+          <div class="detail-row"><div class="detail-label">重要事件覆盖</div><div class="detail-value">用户登录、功能访问、功能操作</div></div>
+          <div class="detail-row"><div class="detail-label">定期审计</div><div class="detail-value">每月自动生成审计报告</div></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMonitor() {
+  return `
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#e6f4ff;color:#1890ff;">🖥️</div>
+        <div class="stat-label">服务器CPU</div>
+        <div class="stat-value" style="color:var(--success);">23%</div>
+        <div class="progress" style="margin-top:8px;"><div class="progress-bar" style="width:23%;background:var(--success);"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f6ffed;color:#52c41a;">💾</div>
+        <div class="stat-label">内存使用</div>
+        <div class="stat-value" style="color:var(--success);">45%</div>
+        <div class="progress" style="margin-top:8px;"><div class="progress-bar" style="width:45%;background:var(--success);"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fff7e6;color:#fa8c16;">💿</div>
+        <div class="stat-label">磁盘使用</div>
+        <div class="stat-value" style="color:var(--warning);">68%</div>
+        <div class="progress" style="margin-top:8px;"><div class="progress-bar" style="width:68%;background:var(--warning);"></div></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#f9f0ff;color:#722ed1;">⚡</div>
+        <div class="stat-label">NPU利用率</div>
+        <div class="stat-value">56%</div>
+        <div class="progress" style="margin-top:8px;"><div class="progress-bar" style="width:56%;background:#722ed1;"></div></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-header"><span class="card-title">服务健康状态</span></div>
+        <table class="data-table">
+          <thead><tr><th>服务名称</th><th>版本</th><th>状态</th><th>响应时间</th><th>运行时长</th></tr></thead>
+          <tbody>
+            <tr><td>Web应用服务</td><td>v1.2.0</td><td><span class="tag tag-green">● 运行中</span></td><td>23ms</td><td>15天6小时</td></tr>
+            <tr><td>OCR引擎 (PaddleOCR)</td><td>v2.7</td><td><span class="tag tag-green">● 运行中</span></td><td>156ms</td><td>15天6小时</td></tr>
+            <tr><td>OCR引擎 (DeepSeek)</td><td>v1.0</td><td><span class="tag tag-green">● 运行中</span></td><td>89ms</td><td>15天6小时</td></tr>
+            <tr><td>Elasticsearch</td><td>v8.12</td><td><span class="tag tag-green">● 运行中</span></td><td>12ms</td><td>15天6小时</td></tr>
+            <tr><td>MySQL数据库</td><td>v8.0</td><td><span class="tag tag-green">● 运行中</span></td><td>3ms</td><td>15天6小时</td></tr>
+            <tr><td>Redis缓存</td><td>v7.2</td><td><span class="tag tag-green">● 运行中</span></td><td>1ms</td><td>15天6小时</td></tr>
+            <tr><td>AI推理服务</td><td>DeepSeek-32B</td><td><span class="tag tag-green">● 运行中</span></td><td>340ms</td><td>15天6小时</td></tr>
+            <tr><td>数据同步服务</td><td>v1.2.0</td><td><span class="tag tag-green">● 运行中</span></td><td>-</td><td>15天6小时</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">硬件配置</span></div>
+        <div style="font-size:13px;">
+          <div class="detail-row"><div class="detail-label">服务器型号</div><div class="detail-value">国产化推理工作站</div></div>
+          <div class="detail-row"><div class="detail-label">CPU</div><div class="detail-value">Kunpeng 920 · 64核 · 2.6GHz</div></div>
+          <div class="detail-row"><div class="detail-label">NPU/AI加速</div><div class="detail-value">昇腾 Atlas 300T · 32GB显存</div></div>
+          <div class="detail-row"><div class="detail-label">内存</div><div class="detail-value">256 GB DDR4</div></div>
+          <div class="detail-row"><div class="detail-label">系统盘</div><div class="detail-value">960 GB SSD</div></div>
+          <div class="detail-row"><div class="detail-label">数据盘</div><div class="detail-value">8 TB × 2 (RAID 1)</div></div>
+          <div class="detail-row"><div class="detail-label">操作系统</div><div class="detail-value">Kylin V10 (麒麟)</div></div>
+          <div class="detail-row"><div class="detail-label">部署方式</div><div class="detail-value">Docker容器化</div></div>
+          <div class="detail-row"><div class="detail-label">网络</div><div class="detail-value">校内局域网 · 数据不上云</div></div>
+          <div class="detail-row"><div class="detail-label">并发能力</div><div class="detail-value">实时推理并发 ≤ 10</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">告警信息</span></div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="padding:12px 16px;background:#fff7e6;border-radius:var(--radius);border-left:3px solid var(--warning);display:flex;align-items:center;gap:12px;">
+          <span style="font-size:18px;">⚠️</span>
+          <div style="flex:1;">
+            <div style="font-weight:500;font-size:13px;">磁盘使用率达到68%</div>
+            <div style="font-size:12px;color:var(--text-secondary);">数据盘使用量 5.4TB / 8TB，建议关注</div>
+          </div>
+          <span style="font-size:12px;color:var(--text-light);">2026-07-02 18:00</span>
+        </div>
+        <div style="padding:12px 16px;background:#fff1f0;border-radius:var(--radius);border-left:3px solid var(--danger);display:flex;align-items:center;gap:12px;">
+          <span style="font-size:18px;">🚨</span>
+          <div style="flex:1;">
+            <div style="font-weight:500;font-size:13px;">检测到异常登录尝试</div>
+            <div style="font-size:12px;color:var(--text-secondary);">IP 192.168.1.55 连续登录失败3次，已自动拦截</div>
+          </div>
+          <span style="font-size:12px;color:var(--text-light);">2026-07-02 18:30</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ========== 辅助函数 ==========
+function doSearch() {
+  const kw = document.getElementById('searchInput');
+  if (kw && kw.value) {
+    reRenderSearch();
+  }
+}
+// Close scope popover when clicking outside
+document.addEventListener('click', function(e) {
+  const popover = document.getElementById('scopePopover');
+  const selector = document.querySelector('.scope-selector');
+  if (popover && popover.classList.contains('show') && selector && !selector.contains(e.target)) {
+    popover.classList.remove('show');
+  }
+});
+function nextReviewItem() {
+  alert('已跳过当前档案，加载下一件...');
+}
+
+// ============ AI预审结果导出功能 ============
+
+/**
+ * 导出AI预审结果表格
+ * @param {string} taskId - 任务编号（可选，不传则导出全部）
+ */
+function exportReviewTable(taskId) {
+  const items = MOCK.reviewItems.map(item => ({
+    '档案编号': item.id,
+    '题名': item.title,
+    '年度': item.year,
+    '归口单位': item.dept,
+    '风险评分': item.riskScore,
+    '风险等级': item.risk === 'high' ? '高风险' : item.risk === 'medium' ? '中风险' : '低风险',
+    '敏感信息': item.sensitive.join('、') || '无',
+    'AI开放建议': item.aiSuggestion,
+    '预审时间': '2026-07-02 14:30',
+    '预审耗时(秒)': (0.6 + Math.random() * 0.5).toFixed(2),
+    'AI模型': 'DeepSeek-32B',
+    '置信度': '92%',
+  }));
+
+  // 模拟生成CSV
+  const headers = Object.keys(items[0]);
+  const csv = [
+    '\ufeff' + headers.join(','),
+    ...items.map(row => headers.map(h => `"${row[h]}"`).join(','))
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const fileName = taskId
+    ? `AI预审结果_${taskId}_${new Date().toISOString().slice(0,10)}.csv`
+    : `AI预审结果_全部任务_${new Date().toISOString().slice(0,10)}.csv`;
+  a.href = url;
+  a.download = fileName;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  showToast(`✅ AI预审结果表格已导出：${fileName}\\n共 ${items.length} 条记录`, 'success');
+}
+
+/**
+ * 导出对应档案原文压缩包
+ * @param {string} taskId - 任务编号（可选）
+ */
+function exportReviewArchive(taskId) {
+  const items = MOCK.reviewItems;
+  const fileList = items.map(i => `  📄 ${i.id}_${i.title.slice(0, 15)}...zip`).join('\\n');
+  showToast(
+    `📦 正在打包档案原文压缩包...\\n\\n` +
+    `任务编号：${taskId || '全部任务'}\\n` +
+    `档案数量：${items.length} 件\\n` +
+    `包含内容：原文图像、OCR文本、AI预审JSON、敏感标注XML\\n\\n` +
+    `文件清单：\\n${fileList}\\n\\n` +
+    `预计大小：约 156 MB\\n` +
+    `下载链接将自动生成...`,
+    'archive'
+  );
+  // 实际场景中会调用后端打包接口
+  setTimeout(() => {
+    showToast(`✅ 压缩包已生成：档案原文_${taskId || 'ALL'}_${new Date().toISOString().slice(0,10)}.zip（156 MB）`, 'success');
+  }, 2000);
+}
+
+/**
+ * 导出单件档案
+ */
+function exportSingleArchive(id) {
+  showToast(`📥 正在下载档案 ${id} 的原文压缩包...\\n包含：原文图像 + OCR文本 + AI预审结果`, 'archive');
+  setTimeout(() => {
+    showToast(`✅ 档案 ${id} 已下载完成`, 'success');
+  }, 1500);
+}
+
+/**
+ * 查看AI预审详情
+ */
+function viewReviewDetail(id) {
+  const item = MOCK.reviewItems.find(i => i.id === id);
+  if (!item) return;
+  openModal(`
+    <div class="modal-header">
+      <h3>AI预审详情 - ${item.id}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div style="padding:8px 0;">
+      <div class="detail-row"><div class="detail-label">档案编号</div><div class="detail-value">${item.id}</div></div>
+      <div class="detail-row"><div class="detail-label">题名</div><div class="detail-value">${item.title}</div></div>
+      <div class="detail-row"><div class="detail-label">年度</div><div class="detail-value">${item.year}</div></div>
+      <div class="detail-row"><div class="detail-label">归口单位</div><div class="detail-value">${item.dept}</div></div>
+      <div class="detail-row"><div class="detail-label">AI风险评分</div><div class="detail-value"><strong style="color:${item.risk==='high'?'var(--danger)':item.risk==='medium'?'var(--warning)':'var(--success)'};">${item.riskScore}/100（${item.risk==='high'?'高风险':item.risk==='medium'?'中风险':'低风险'}）</strong></div></div>
+      <div class="detail-row"><div class="detail-label">敏感信息</div><div class="detail-value">${item.sensitive.length>0 ? item.sensitive.map(s=>`<span class="tag tag-red" style="margin-right:4px;">${s}</span>`).join('') : '无'}</div></div>
+      <div class="detail-row"><div class="detail-label">AI开放建议</div><div class="detail-value">${item.aiSuggestion}</div></div>
+      <div class="detail-row"><div class="detail-label">AI模型</div><div class="detail-value">DeepSeek-32B（昇腾Atlas推理）</div></div>
+      <div class="detail-row"><div class="detail-label">置信度</div><div class="detail-value">92%</div></div>
+      <div class="detail-row"><div class="detail-label">预审时间</div><div class="detail-value">2026-07-02 14:30:25</div></div>
+      <div class="detail-row"><div class="detail-label">预审耗时</div><div class="detail-value">0.78秒</div></div>
+      <div style="margin-top:16px;text-align:right;">
+        <button class="btn btn-sm" onclick="exportSingleArchive('${item.id}')">📥 下载档案原文</button>
+        <button class="btn btn-primary" onclick="exportReviewTable()">📊 导出全部表格</button>
+      </div>
+    </div>
+  `);
+}
+
+/**
+ * 批量选择
+ */
+function toggleAllTasks(cb) {
+  document.querySelectorAll('.task-cb').forEach(c => c.checked = cb.checked);
+  updateSelectedCount();
+}
+function toggleAllRecords(cb) {
+  document.querySelectorAll('.record-cb').forEach(c => c.checked = cb.checked);
+  updateSelectedCount();
+}
+function updateSelectedCount() {
+  const checked = document.querySelectorAll('.task-cb:checked, .record-cb:checked');
+  const el = document.getElementById('selectedCount');
+  if (el) el.textContent = checked.length;
+}
+
+/**
+ * Toast 提示
+ */
+function showToast(msg, type = 'info') {
+  const old = document.getElementById('customToast');
+  if (old) old.remove();
+  const toast = document.createElement('div');
+  toast.id = 'customToast';
+  toast.style.cssText = `
+    position: fixed; top: 20px; right: 20px; z-index: 99999;
+    background: ${type === 'success' ? '#f6ffed' : type === 'archive' ? '#fffbe6' : '#e6f4ff'};
+    border: 1px solid ${type === 'success' ? '#b7eb8f' : type === 'archive' ? '#ffe58f' : '#91d5ff'};
+    border-left: 4px solid ${type === 'success' ? '#52c41a' : type === 'archive' ? '#fa8c16' : '#1890ff'};
+    color: ${type === 'success' ? '#389e0d' : type === 'archive' ? '#ad6800' : '#0050b3'};
+    padding: 16px 20px; border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    max-width: 480px; white-space: pre-wrap; font-size: 13px; line-height: 1.6;
+    animation: slideIn 0.3s ease-out;
+  `;
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), type === 'archive' ? 4000 : 3000);
+}
+function showArchiveDetail(id) {
+  const archive = MOCK.archives.find(a => a.id === id);
+  if (!archive) return;
+  openModal(`
+    <div class="modal-header">
+      <h3>档案详情 - ${archive.id}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-section">
+        <h4>📋 基本信息</h4>
+        <div class="detail-row"><div class="detail-label">案卷编号</div><div class="detail-value">${archive.id}</div></div>
+        <div class="detail-row"><div class="detail-label">题名</div><div class="detail-value">${archive.title}</div></div>
+        <div class="detail-row"><div class="detail-label">归档年度</div><div class="detail-value">${archive.year}年</div></div>
+        <div class="detail-row"><div class="detail-label">门类</div><div class="detail-value">${archive.category}</div></div>
+        <div class="detail-row"><div class="detail-label">归口单位</div><div class="detail-value">${archive.dept}</div></div>
+        <div class="detail-row"><div class="detail-label">开放状态</div><div class="detail-value">${archive.status==='已开放'?'<span class="tag tag-green">已开放</span>':archive.status==='预审中'?'<span class="tag tag-orange">预审中</span>':'<span class="tag tag-gray">待预审</span>'}</div></div>
+        <div class="detail-row"><div class="detail-label">检索相关度</div><div class="detail-value"><strong style="color:var(--primary);">${archive.score}%</strong></div></div>
+      </div>
+      <div class="detail-section">
+        <h4>📝 内容摘要</h4>
+        <p style="font-size:13px;line-height:1.8;color:var(--text);background:#f9f9f9;padding:16px;border-radius:var(--radius);">${archive.snippet.replace(/<mark>/g,'<span style="background:#fff3cd;color:#856404;padding:0 2px;border-radius:2px;">').replace(/<\/mark>/g,'</span>')}</p>
+      </div>
+      <div class="detail-section">
+        <h4>📄 档案原文</h4>
+        <div style="background:#fafafa;border:1px solid var(--border);border-radius:4px;padding:24px;font-family:'FangSong',serif;font-size:14px;line-height:2;">
+          <p style="text-align:center;font-weight:bold;margin-bottom:16px;">${archive.title}</p>
+          <p style="text-indent:2em;">${archive.snippet.replace(/<mark>/g,'').replace(/<\/mark>/g,'')}本档案共3页，以下为第1页内容...</p>
+          <p style="text-indent:2em;margin-top:12px;">详细内容包括：文件正文、附件材料、审批签字页等。该档案已于${archive.year}年归档保存，保管期限为永久。</p>
+        </div>
+      </div>
+      <div class="detail-section">
+        <h4>🔗 关联档案（AI推荐）</h4>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          ${MOCK.archives.filter(a => a.id !== id).slice(0,3).map(a => `
+            <div style="padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius);cursor:pointer;" onclick="closeModal();setTimeout(()=>showArchiveDetail('${a.id}'),200);">
+              <div style="font-size:13px;font-weight:500;">${a.title}</div>
+              <div style="font-size:12px;color:var(--text-secondary);">${a.id} | ${a.year}年 | ${a.dept}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">关闭</button>
+      <button class="btn">📥 下载档案</button>
+      <button class="btn btn-primary">🖨️ 打印证明</button>
+    </div>
+  `);
+}
+function showCreateOCR() {
+  openModal(`
+    <div class="modal-header">
+      <h3>新建OCR任务</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;">任务名称</label>
+        <input type="text" style="width:100%;height:38px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);" placeholder="如：2026年度行政档案OCR处理">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;font-weight:500;">档案范围（目录树选择）</label>
+        ${renderArchiveTree('ocr')}
+      </div>
+      <div style="padding:12px;background:#f0f7ff;border-radius:var(--radius);font-size:12px;color:var(--text-secondary);">
+        提示：OCR处理采用本地昇腾NPU推理，数据不上云。处理完成后识别结果将自动同步至Elasticsearch全文检索索引。
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="closeModal();alert('OCR任务已创建，系统将自动开始处理\\n档案范围：' + getTreeSelectedSummary('ocr'))">创建任务</button>
+    </div>
+  `);
+}
+
+function showCreateReviewTask() {
+  openModal(`
+    <div class="modal-header">
+      <h3>新建审核任务</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;">批次名称</label>
+        <input type="text" style="width:100%;height:38px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);" placeholder="如：2026年度行政档案开放预审">
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;font-weight:500;">档案范围（目录树选择）</label>
+        ${renderArchiveTree('review')}
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="display:block;font-size:13px;color:var(--text-secondary);margin-bottom:6px;">截止日期</label>
+        <input type="date" style="width:100%;height:38px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius);" value="2026-07-31">
+      </div>
+      <div style="padding:12px;background:#f0f7ff;border-radius:var(--radius);font-size:12px;color:var(--text-secondary);">
+        提示：系统将自动对所选档案范围执行AI预审，生成风险评分、敏感信息标注和开放建议。预审完成后可导出结果表格和档案原文压缩包。
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="closeModal();alert('审核任务已创建，AI预审将自动开始\\n档案范围：' + getTreeSelectedSummary('review'))">创建任务</button>
+    </div>
+  `);
+}
+function showOCRDetail(id) {
+  const task = MOCK.ocrTasks.find(t => t.id === id);
+  if (!task) return;
+  openModal(`
+    <div class="modal-header">
+      <h3>OCR任务详情 - ${task.id}</h3>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-section">
+        <h4>📋 任务信息</h4>
+        <div class="detail-row"><div class="detail-label">任务名称</div><div class="detail-value">${task.name}</div></div>
+        <div class="detail-row"><div class="detail-label">任务编号</div><div class="detail-value">${task.id}</div></div>
+        <div class="detail-row"><div class="detail-label">开始时间</div><div class="detail-value">${task.startTime}</div></div>
+        <div class="detail-row"><div class="detail-label">总文件数</div><div class="detail-value">${task.total}</div></div>
+        <div class="detail-row"><div class="detail-label">已处理</div><div class="detail-value">${task.done} / ${task.total}</div></div>
+        <div class="detail-row"><div class="detail-label">失败数</div><div class="detail-value">${task.failed}</div></div>
+        <div class="detail-row"><div class="detail-label">准确率</div><div class="detail-value">${task.accuracy?task.accuracy+'%':'-'}</div></div>
+      </div>
+      <div class="detail-section">
+        <h4>📊 处理进度</h4>
+        <div class="progress" style="height:20px;margin-bottom:8px;">
+          <div class="progress-bar" style="width:${task.total?Math.round(task.done/task.total*100):0}%;background:${task.status==='done'?'#52c41a':'#1890ff'};line-height:20px;color:#fff;text-align:center;font-size:12px;">${task.total?Math.round(task.done/task.total*100):0}%</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary);">
+          <span>已完成 ${task.done}</span>
+          <span>失败 ${task.failed}</span>
+          <span>剩余 ${task.total - task.done}</span>
+        </div>
+      </div>
+      <div class="detail-section">
+        <h4>🔍 识别质量分析</h4>
+        <table class="data-table">
+          <thead><tr><th>质量指标</th><th>数值</th><th>评价</th></tr></thead>
+          <tbody>
+            <tr><td>印刷体识别准确率</td><td>97.2%</td><td><span class="tag tag-green">优秀</span></td></tr>
+            <tr><td>手写体识别准确率</td><td>86.5%</td><td><span class="tag tag-blue">良好</span></td></tr>
+            <tr><td>复杂版式解析率</td><td>91.8%</td><td><span class="tag tag-green">优秀</span></td></tr>
+            <tr><td>表格识别准确率</td><td>93.4%</td><td><span class="tag tag-green">优秀</span></td></tr>
+            <tr><td>平均处理速度</td><td>0.8秒/页</td><td><span class="tag tag-green">高效</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal()">关闭</button>
+      ${task.status==='done'?'<button class="btn btn-primary">📥 下载结果</button>':''}
+    </div>
+  `);
+}
+
+// ========== Chart.js 图表渲染 ==========
+function loadChartJS(callback) {
+  if (window.Chart) { callback(); return; }
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+  script.onload = callback;
+  document.head.appendChild(script);
+}
+
+function initCharts() {
+  loadChartJS(() => {
+    // Dashboard charts
+    if (document.getElementById('chartDigitize')) {
+      new Chart(document.getElementById('chartDigitize'), {
+        type: 'doughnut',
+        data: {
+          labels: ['已数字化', '已OCR处理', '待处理'],
+          datasets: [{ data: [89456, 67234, 36374], backgroundColor: ['#1890ff','#52c41a','#e0e0e0'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+      });
+    }
+    if (document.getElementById('chartSearchTrend')) {
+      new Chart(document.getElementById('chartSearchTrend'), {
+        type: 'line',
+        data: {
+          labels: ['6/26','6/27','6/28','6/29','6/30','7/01','7/02'],
+          datasets: [
+            { label: '检索次数', data: [280,320,210,180,290,350,342], borderColor: '#1890ff', backgroundColor: 'rgba(24,144,255,0.1)', fill: true, tension: 0.4 },
+            { label: '访客人次', data: [120,145,80,65,130,160,156], borderColor: '#52c41a', backgroundColor: 'rgba(82,196,26,0.1)', fill: true, tension: 0.4 }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+    if (document.getElementById('chartReview')) {
+      new Chart(document.getElementById('chartReview'), {
+        type: 'doughnut',
+        data: {
+          labels: ['已开放', '预审中', '待预审', '不开放'],
+          datasets: [{ data: [8234, 1892, 2341, 456], backgroundColor: ['#52c41a','#fa8c16','#1890ff','#ff4d4f'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } }, cutout: '60%' }
+      });
+    }
+
+    // OCR chart
+    if (document.getElementById('chartOCR')) {
+      new Chart(document.getElementById('chartOCR'), {
+        type: 'bar',
+        data: {
+          labels: ['印刷体','手写体','表格','复杂版式','印章文字'],
+          datasets: [{ label: '准确率(%)', data: [97.2,86.5,93.4,88.1,79.3], backgroundColor: ['#52c41a','#fa8c16','#1890ff','#722ed1','#ff4d4f'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { max: 100 } } }
+      });
+    }
+
+    // Stats charts
+    if (document.getElementById('chartCategory')) {
+      new Chart(document.getElementById('chartCategory'), {
+        type: 'pie',
+        data: {
+          labels: ['检索','条目浏览','文件浏览','文件下载','文件打印'],
+          datasets: [{ data: [1280,2340,1560,320,85], backgroundColor: ['#1890ff','#52c41a','#fa8c16','#722ed1','#ff4d4f'] }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+      });
+    }
+    if (document.getElementById('chartMonthly')) {
+      new Chart(document.getElementById('chartMonthly'), {
+        type: 'bar',
+        data: {
+          labels: ['1月','2月','3月','4月','5月','6月'],
+          datasets: [
+            { label: '检索次数', data: [820,780,960,890,1120,1280], backgroundColor: '#1890ff' },
+            { label: '条目浏览', data: [1560,1480,1820,1750,2150,2340], backgroundColor: '#52c41a' },
+            { label: '文件浏览', data: [980,920,1240,1180,1420,1560], backgroundColor: '#fa8c16' },
+            { label: '文件下载', data: [280,220,350,310,380,320], backgroundColor: '#722ed1' },
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+
+    // Review task chart
+    if (document.getElementById('chartReviewTask')) {
+      new Chart(document.getElementById('chartReviewTask'), {
+        type: 'bar',
+        data: {
+          labels: ['REV-2026-001','REV-2026-002','REV-2025-008'],
+          datasets: [
+            { label: 'AI已预审', data: [560,0,320], backgroundColor: '#722ed1' },
+            { label: '待预审', data: [0,1200,0], backgroundColor: '#fa8c16' },
+            { label: '已完成', data: [0,0,320], backgroundColor: '#52c41a' }
+          ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+  });
+}
+
+// 页面渲染后初始化图表
+const origSwitchPage = switchPage;
+switchPage = function(pageKey, navEl) {
+  origSwitchPage(pageKey, navEl);
+  setTimeout(initCharts, 100);
+};
+
+// 初始化
+window.addEventListener('DOMContentLoaded', () => {
+  // 登录页默认显示
+});
+</script>
+</body>
+</html>

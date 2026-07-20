@@ -1,0 +1,379 @@
+$ python -m pytest archive-system/backend/tests/test_api.py -v --tb=line 2>&1
+[exit 1]
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.1.1, pluggy-1.6.0 -- D:\dev\LLM_OCR_fileScan\.venv\Scripts\python.EXE
+cachedir: .pytest_cache
+rootdir: D:\dev\LLM_OCR_fileScan\archive-system\backend
+configfile: pytest.ini
+plugins: anyio-4.14.2, cov-7.1.0
+collecting ... collected 14 items
+
+archive-system\backend\tests\test_api.py::TestAuth::test_login_dev_mode FAILED [  7%]
+archive-system\backend\tests\test_api.py::TestAuth::test_protected_route_no_token PASSED [ 14%]
+archive-system\backend\tests\test_api.py::TestAuth::test_protected_route_with_token FAILED [ 21%]
+archive-system\backend\tests\test_api.py::TestHealth::test_health PASSED [ 28%]
+archive-system\backend\tests\test_api.py::TestSearch::test_keyword_search_empty FAILED [ 35%]
+archive-system\backend\tests\test_api.py::TestSearch::test_advanced_search_with_filters FAILED [ 42%]
+archive-system\backend\tests\test_api.py::TestSearch::test_archive_detail FAILED [ 50%]
+archive-system\backend\tests\test_api.py::TestReview::test_preview_review FAILED [ 57%]
+archive-system\backend\tests\test_api.py::TestUsers::test_list_users FAILED [ 64%]
+archive-system\backend\tests\test_api.py::TestUsers::test_list_roles FAILED [ 71%]
+archive-system\backend\tests\test_api.py::TestLogs::test_list_logs FAILED [ 78%]
+archive-system\backend\tests\test_api.py::TestLogs::test_audit_summary FAILED [ 85%]
+archive-system\backend\tests\test_api.py::TestStats::test_stats_by_type FAILED [ 92%]
+archive-system\backend\tests\test_api.py::TestStats::test_stats_by_user FAILED [100%]
+
+================================== FAILURES ===================================
+E   ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+---------------------------- Captured stdout setup ----------------------------
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("roles")
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("archives")
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_tasks")
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_records")
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ocr_tasks")
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("operation_logs")
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,731 INFO sqlalchemy.engine.Engine COMMIT
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("users")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("roles")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("archives")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_records")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("ocr_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("operation_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("sync_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1145 COMMIT
+---------------------------- Captured stdout call -----------------------------
+2026-07-15 23:00:21,752 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,752 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+2026-07-15 23:00:21,752 INFO sqlalchemy.engine.Engine [generated in 0.00019s] ('testuser', 1, 0)
+2026-07-15 23:00:21,760 INFO sqlalchemy.engine.Engine ROLLBACK
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+INFO     sqlalchemy.engine.Engine:base.py:1906 [generated in 0.00019s] ('testuser', 1, 0)
+WARNING  passlib.handlers.bcrypt:bcrypt.py:622 (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+INFO     sqlalchemy.engine.Engine:base.py:1128 ROLLBACK
+D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py:655: ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+E   ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+---------------------------- Captured stdout setup ----------------------------
+2026-07-15 23:00:21,781 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,781 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-07-15 23:00:21,781 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("roles")
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("archives")
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_tasks")
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_records")
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ocr_tasks")
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("operation_logs")
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine COMMIT
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("users")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("roles")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("archives")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_records")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("ocr_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("operation_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("sync_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1145 COMMIT
+---------------------------- Captured stdout call -----------------------------
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+2026-07-15 23:00:21,794 INFO sqlalchemy.engine.Engine [cached since 0.04327s ago] ('admin', 1, 0)
+2026-07-15 23:00:21,805 INFO sqlalchemy.engine.Engine ROLLBACK
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+INFO     sqlalchemy.engine.Engine:base.py:1906 [cached since 0.04327s ago] ('admin', 1, 0)
+WARNING  passlib.handlers.bcrypt:bcrypt.py:622 (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+INFO     sqlalchemy.engine.Engine:base.py:1128 ROLLBACK
+D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py:655: ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+E   ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+---------------------------- Captured stdout setup ----------------------------
+2026-07-15 23:00:21,844 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,844 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-07-15 23:00:21,844 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,844 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("roles")
+2026-07-15 23:00:21,844 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,844 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("archives")
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_tasks")
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_records")
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ocr_tasks")
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("operation_logs")
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine COMMIT
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("users")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("roles")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("archives")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_records")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("ocr_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("operation_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("sync_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1145 COMMIT
+---------------------------- Captured stdout call -----------------------------
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine [cached since 0.1003s ago] ('test', 1, 0)
+2026-07-15 23:00:21,852 INFO sqlalchemy.engine.Engine ROLLBACK
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+INFO     sqlalchemy.engine.Engine:base.py:1906 [cached since 0.1003s ago] ('test', 1, 0)
+WARNING  passlib.handlers.bcrypt:bcrypt.py:622 (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+INFO     sqlalchemy.engine.Engine:base.py:1128 ROLLBACK
+D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py:655: ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+E   ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+---------------------------- Captured stdout setup ----------------------------
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("roles")
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("archives")
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_tasks")
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_records")
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ocr_tasks")
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("operation_logs")
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,868 INFO sqlalchemy.engine.Engine COMMIT
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("users")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("roles")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("archives")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_records")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("ocr_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("operation_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("sync_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1145 COMMIT
+---------------------------- Captured stdout call -----------------------------
+2026-07-15 23:00:21,874 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,874 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+2026-07-15 23:00:21,874 INFO sqlalchemy.engine.Engine [cached since 0.119s ago] ('test', 1, 0)
+2026-07-15 23:00:21,882 INFO sqlalchemy.engine.Engine ROLLBACK
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+INFO     sqlalchemy.engine.Engine:base.py:1906 [cached since 0.119s ago] ('test', 1, 0)
+WARNING  passlib.handlers.bcrypt:bcrypt.py:622 (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+INFO     sqlalchemy.engine.Engine:base.py:1128 ROLLBACK
+D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py:655: ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+E   ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+---------------------------- Captured stdout setup ----------------------------
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("roles")
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("archives")
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_tasks")
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_records")
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ocr_tasks")
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("operation_logs")
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,886 INFO sqlalchemy.engine.Engine COMMIT
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("users")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("roles")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("archives")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_records")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("ocr_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("operation_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("sync_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1145 COMMIT
+---------------------------- Captured stdout call -----------------------------
+2026-07-15 23:00:21,891 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,891 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+2026-07-15 23:00:21,891 INFO sqlalchemy.engine.Engine [cached since 0.136s ago] ('test', 1, 0)
+2026-07-15 23:00:21,891 INFO sqlalchemy.engine.Engine ROLLBACK
+------------------------------ Captured log call ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+INFO     sqlalchemy.engine.Engine:base.py:1906 [cached since 0.136s ago] ('test', 1, 0)
+WARNING  passlib.handlers.bcrypt:bcrypt.py:622 (trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+AttributeError: module 'bcrypt' has no attribute '__about__'
+INFO     sqlalchemy.engine.Engine:base.py:1128 ROLLBACK
+D:\dev\LLM_OCR_fileScan\.venv\lib\site-packages\passlib\handlers\bcrypt.py:655: ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+E   ValueError: password cannot be longer than 72 bytes, truncate manually if necessary (e.g. my_password[:72])
+---------------------------- Captured stdout setup ----------------------------
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("users")
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("roles")
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("archives")
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_tasks")
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("review_records")
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("ocr_tasks")
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("operation_logs")
+2026-07-15 23:00:21,902 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,907 INFO sqlalchemy.engine.Engine PRAGMA main.table_info("sync_logs")
+2026-07-15 23:00:21,907 INFO sqlalchemy.engine.Engine [raw sql] ()
+2026-07-15 23:00:21,907 INFO sqlalchemy.engine.Engine COMMIT
+----------------------------- Captured log setup ------------------------------
+INFO     sqlalchemy.engine.Engine:base.py:1096 BEGIN (implicit)
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("users")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("roles")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("archives")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("review_records")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("ocr_tasks")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("operation_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1901 PRAGMA main.table_info("sync_logs")
+INFO     sqlalchemy.engine.Engine:base.py:1906 [raw sql] ()
+INFO     sqlalchemy.engine.Engine:base.py:1145 COMMIT
+---------------------------- Captured stdout call -----------------------------
+2026-07-15 23:00:21,907 INFO sqlalchemy.engine.Engine BEGIN (implicit)
+2026-07-15 23:00:21,911 INFO sqlalchemy.engine.Engine SELECT users.id AS users_id, users.username AS users_username, users.name AS users_name, users.department AS users_department, users.contact AS users_contact, users.password_hash AS users_password_hash, users.role AS users_role, users.is_active AS users_is_active, users.login_attempts AS users_login_attempts, users.locked_until AS users_locked_until, users.password_updated_at AS users_password_updated_at, users.created_at AS users_created_at, users.updated_at AS users_updated_at 
+FROM users 
+WHERE users.username = ?
+ LIMIT ? OFFSET ?
+2026-07-15 23:00:21,911 INFO sqlalchemy.engine.Engine [cac
+
+[… truncated 35813 chars …]

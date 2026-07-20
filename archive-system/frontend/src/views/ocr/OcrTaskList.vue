@@ -9,7 +9,10 @@
             <td class="mono">#{{ t.id }}</td><td>{{ t.task_name }}</td>
             <td><div class="mini-bar"><div class="mini-bar-fill" :class="'mini-bar--'+barClass(t.status)" :style="{width:(t.processed_pages/t.total_pages*100||0)+'%'}"></div><span class="mini-bar-num">{{ t.processed_pages }}/{{ t.total_pages }} 页</span></div></td>
             <td><span class="risk-tag" :class="'risk-tag--'+barClass(t.status)">{{ statusLabel(t.status) }}</span></td>
-            <td><button class="btn-sm">详情</button><button v-if="t.status==='running'" class="btn-sm" style="margin-left:4px">暂停</button></td>
+            <td>
+              <button class="btn-sm" @click="handleTaskAction(t, 'detail')">详情</button>
+              <button v-if="t.status==='running'" class="btn-sm" style="margin-left:4px" @click="handleTaskAction(t, 'pause')">暂停</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -47,6 +50,17 @@ async function handleCreateTask() {
 }
 function barClass(s: string) { return { pending:'low',running:'mid',completed:'low',failed:'high' }[s]||'low' }
 function statusLabel(s: string) { return { pending:'待处理',running:'处理中',completed:'已完成',failed:'失败' }[s]||s }
+async function handleTaskAction(t: any, action: string) {
+  if (action === 'detail') {
+    ElMessage.info(`任务 #${t.id}: ${t.task_name} — ${t.status === 'running' ? '处理中' : t.status === 'completed' ? '已完成' : '待处理'}`)
+    return
+  }
+  try {
+    await ocrApi.updateTask(t.id, action)
+    ElMessage.success('操作成功')
+    fetchTasks()
+  } catch { ElMessage.error('操作失败') }
+}
 </script>
 
 <style scoped>

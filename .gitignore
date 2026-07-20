@@ -14,7 +14,7 @@ venv/
 .env
 .env.local
 
-# 数据库
+# 数据库.md
 *.db
 *.sqlite3
 
