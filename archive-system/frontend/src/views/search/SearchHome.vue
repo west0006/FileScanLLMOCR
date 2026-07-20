@@ -88,11 +88,10 @@
           </div>
           <div class="adv-field">
             <label>归档年度</label>
-            <div class="adv-range">
-              <input v-model.number="advancedForm.yearFrom" placeholder="起始" class="adv-input adv-input--sm" type="number" />
-              <span class="adv-sep">—</span>
-              <input v-model.number="advancedForm.yearTo" placeholder="截止" class="adv-input adv-input--sm" type="number" />
-            </div>
+            <select v-model="advancedForm.yearFrom" class="adv-select">
+              <option :value="undefined">全部年份</option>
+              <option v-for="y in yearOptions" :key="y" :value="y">{{ y }} 年</option>
+            </select>
           </div>
           <div class="adv-field">
             <label>档案门类</label>
@@ -259,6 +258,7 @@ const advancedForm = reactive({
   keywords: '', yearFrom: undefined as number | undefined, yearTo: undefined as number | undefined,
   category: '', department: '',
 })
+const yearOptions = Array.from({ length: new Date().getFullYear() - 1969 }, (_, i) => 1970 + i).reverse()
 
 const searched = ref(false)
 const loading = ref(false)
@@ -302,7 +302,7 @@ async function doSearch(resetPage = true) {
       const cat = advancedForm.category || activeCat.value || undefined
       const yf = advancedForm.yearFrom ?? activeYear.value ?? undefined
       const yt = advancedForm.yearTo ?? activeYear.value ?? undefined
-      res = await searchApi.advanced({ ...advancedForm, category: cat, year_from: yf, year_to: yt, ...base })
+      res = await searchApi.advanced({ ...advancedForm, category: cat, year_from: yf, year_to: yt || yf, ...base })
     } else {
       // 关键词 + 筛选: 有筛选条件时走 advanced，否则走 keyword
       if (activeCat.value || activeYear.value) {
