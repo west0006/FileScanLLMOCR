@@ -16,8 +16,10 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{ visible: boolean; title: string; width?: string; closeOnOverlay?: boolean }>()
-defineProps({ visible: Boolean, title: String, width: { type: String, default: '520px' }, closeOnOverlay: { type: Boolean, default: true } })
+withDefaults(defineProps<{ visible: boolean; title: string; width?: string; closeOnOverlay?: boolean }>(), {
+  width: '520px',
+  closeOnOverlay: true,
+})
 const emit = defineEmits(['close'])
 </script>
 
