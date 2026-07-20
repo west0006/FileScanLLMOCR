@@ -27,7 +27,7 @@ _OP_MAP = {
     "login": "login", "logout": "logout",
     "search": "search", "export": "export",
     "ocr": "ocr", "review": "review",
-    "user": "admin", "sync": "admin", "log": "admin",
+    "user": "admin", "sync": "admin", "log": "admin", "stats": "admin",
     "auth": "login",
 }
 

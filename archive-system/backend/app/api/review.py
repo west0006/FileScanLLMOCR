@@ -172,6 +172,15 @@ def list_review_records(user: dict = Depends(get_current_user), page: int = 1, p
         q = db.query(ReviewRecord)
         if risk_level: q = q.filter(ReviewRecord.risk_level == risk_level)
         if suggestion: q = q.filter(ReviewRecord.suggestion == suggestion)
+        if year_from or year_to or department:
+            archive_ids = [r.archive_id for r in q.all() if r.archive_id]
+            if archive_ids:
+                aq = db.query(Archive).filter(Archive.archive_id.in_(archive_ids))
+                if year_from: aq = aq.filter(Archive.year >= year_from)
+                if year_to: aq = aq.filter(Archive.year <= year_to)
+                if department: aq = aq.filter(Archive.department == department)
+                filtered_ids = [a.archive_id for a in aq.all()]
+                q = q.filter(ReviewRecord.archive_id.in_(filtered_ids))
         total = q.count()
         items = q.order_by(ReviewRecord.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
         # join Archive 补齐题名/年度/单位

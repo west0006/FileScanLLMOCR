@@ -251,7 +251,7 @@ async function doSearch() {
   page.value = 1
   try {
     let res: any
-    const base: any = { page: page.value, page_size: pageSize.value, level: searchLevel.value }
+    const base: any = { page: page.value, page_size: pageSize.value, level: searchLevel.value, sort: sortBy.value }
 
     if (searchMode.value === 'semantic') {
       res = await searchApi.semantic({ query: semanticQuery.value, ...base })

@@ -52,7 +52,7 @@ def search_keyword(
 
     es = get_es()
     if es is None:
-        return _fallback_search(keywords, page, page_size, t0, sort)
+        return _fallback_search(keywords, page, page_size, t0, sort, scope_nodes)
 
     query = _build_keyword_query(expanded, scope_nodes, level)
     return _execute_es_search(es, query, page, page_size, t0, sort)
@@ -170,15 +170,15 @@ def _build_keyword_query(
     }
 
 
-def _build_level_filter(level: str) -> list[dict]:
-    """层级筛选"""
-    if level == "project":
-        return [{"term": {"level": "project"}}]
-    elif level == "box":
-        return [{"term": {"level": "box"}}]
-    elif level == "file":
-        return [{"term": {"level": "file"}}]
-    return []
+def _build_level_filter(level: str, scope_nodes: list[str] | None = None) -> list[dict]:
+    """层级筛选 + 目录节点过滤"""
+    filters = []
+    if level == "project": filters.append({"term": {"level": "project"}})
+    elif level == "box": filters.append({"term": {"level": "box"}})
+    elif level == "file": filters.append({"term": {"level": "file"}})
+    if scope_nodes:
+        filters.append({"terms": {"category": scope_nodes}})
+    return filters
 
 
 def _add_semantic_boost(query: dict, intent: dict) -> dict:
@@ -291,7 +291,7 @@ def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, so
 
 # ==================== SQLite 降级 ====================
 
-def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score") -> dict:
+def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None) -> dict:
     """ES 不可用时的 SQLite 降级搜索"""
     db = SessionLocal()
     try:
@@ -303,6 +303,9 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: 
                     (Archive.title.contains(kw)) |
                     (Archive.ocr_text.contains(kw))
                 )
+        if scope_nodes:
+            # scope_nodes 格式: ["行政档案", "教学档案"] 等门类名
+            query = query.filter(Archive.category.in_(scope_nodes))
         total = query.count()
         if sort == "time_asc": query = query.order_by(Archive.year.asc())
         elif sort == "time_desc": query = query.order_by(Archive.year.desc())
