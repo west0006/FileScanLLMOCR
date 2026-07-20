@@ -7,6 +7,7 @@ from typing import Optional
 
 from app.core.security import get_current_user, apply_data_scope
 from app.core.database import SessionLocal
+from app.core.config import settings
 from app.models.models import Archive, OperationLog
 from app.services import search_service
 
