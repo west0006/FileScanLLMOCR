@@ -122,3 +122,54 @@ def quality_report(task_id: Optional[int] = None, user: dict = Depends(get_curre
         "low_confidence_count": 12,
         "common_errors": [],
     }
+
+
+# ===================== 调试/测试端点（无需认证） =====================
+
+class DebugOcrRequest(BaseModel):
+    text: Optional[str] = None
+    image_path: Optional[str] = None
+
+
+@router.post("/debug/test")
+def debug_ocr_test(req: DebugOcrRequest):
+    """
+    测试专用端点 — 同步识别，返回详细信息。
+    无需 Token，方便测试人员直接调用。
+    """
+    import time
+    from app.core.config import settings
+    from app.services.ocr_client import ocr_client
+
+    # 检测环境
+    debug_info = {
+        "mode": settings.OCR_MODE,
+        "ocr_available": settings.OCR_MODE == "real",
+        "celery_available": False,
+    }
+
+    # 检测 Celery
+    try:
+        from app.tasks.celery_app import celery_app
+        debug_info["celery_available"] = True
+    except Exception:
+        pass
+
+    # 同步识别
+    t0 = time.time()
+    image_path = req.image_path or "debug_test_sample"
+    result = ocr_client.recognize(image_path)
+
+    # Mock 模式下覆盖文本
+    if settings.OCR_MODE == "mock" and req.text:
+        result["text"] = req.text
+        result["confidence"] = 0.98
+
+    result["processing_time_ms"] = round((time.time() - t0) * 1000)
+    result["engine"] = "paddleocr" if settings.OCR_MODE == "real" else "mock"
+
+    return {
+        "mode": settings.OCR_MODE,
+        "result": result,
+        "debug": debug_info,
+    }
