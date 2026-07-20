@@ -252,7 +252,7 @@ const yearList = ref([
   { year: 2022, count: 9800 }, { year: 2021, count: 9200 }, { year: 2020, count: 8900 },
   { year: 2010, count: 7500 }, { year: 2000, count: 6800 }, { year: 1990, count: 5200 },
   { year: 1980, count: 3400 }, { year: 1970, count: 2100 },
-]
+])
 const keyword = ref('')
 const semanticQuery = ref('')
 const advancedForm = reactive({
