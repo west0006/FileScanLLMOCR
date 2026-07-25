@@ -32,8 +32,14 @@ def seed():
                      data_scope={"departments": []}),
             ])
 
-        # ---- 默认管理员 ----
-        if db.query(User).filter(User.username == "admin").count() == 0:
+        # ---- 默认管理员（始终确保为 system_admin） ----
+        admin_user = db.query(User).filter(User.username == "admin").first()
+        if admin_user:
+            # 已存在但可能被 dev 模式误创建为 reviewer → 修正
+            if admin_user.role != "system_admin":
+                admin_user.role = "system_admin"
+                db.commit()
+        else:
             db.add(User(
                 username="admin", name="系统管理员", department="档案馆",
                 password_hash=hash_password("Admin@123456"),
