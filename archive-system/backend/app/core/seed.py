@@ -126,6 +126,9 @@ def seed():
         print(f"   示例档案: {db.query(Archive).count()} 条")
         print(f"   预审记录: {db.query(ReviewRecord).count()} 条")
 
+        # ---- 生成模拟档案文件（供下载/预览测试） ----
+        _seed_mock_files()
+
     except Exception as e:
         db.rollback()
         print(f"⚠️ 种子数据插入失败: {e}")
@@ -135,3 +138,70 @@ def seed():
 
 if __name__ == "__main__":
     seed()
+
+
+def _seed_mock_files():
+    """生成模拟档案 TIFF 文件供下载/预览测试"""
+    import os
+
+    sync_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "sync_data",
+    )
+
+    mock_files = {
+        "1996-XZ-001": "1996/行政档案",
+        "1995-DQ-012": "1995/党群档案",
+        "2000-RS-015": "2000/人事档案",
+    }
+
+    try:
+        from PIL import Image, ImageDraw, ImageFont
+
+        for archive_id, subdir in mock_files.items():
+            target_dir = os.path.join(sync_dir, subdir)
+            os.makedirs(target_dir, exist_ok=True)
+            filepath = os.path.join(target_dir, f"{archive_id}.tiff")
+
+            if os.path.exists(filepath):
+                continue  # 已存在，跳过
+
+            # 生成模拟文档图像
+            img = Image.new("RGB", (800, 600), (255, 255, 248))
+            draw = ImageDraw.Draw(img)
+
+            font = None
+            for fp in [
+                "C:\\Windows\\Fonts\\simsun.ttc",
+                "C:\\Windows\\Fonts\\simhei.ttf",
+                "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            ]:
+                if os.path.exists(fp):
+                    try: font = ImageFont.truetype(fp, 18); break
+                    except: pass
+
+            lines = [
+                "中南财经政法大学档案",
+                f"档案编号: {archive_id}",
+                "",
+                "（此为系统自动生成的模拟档案文件，",
+                "用于测试原文下载和在线预览功能。）",
+            ]
+            y = 40
+            for line in lines:
+                draw.text((40, y), line, fill=(30, 30, 30), font=font)
+                y += 36
+
+            img.save(filepath, "TIFF")
+            print(f"  📄 模拟文件: {filepath}")
+
+    except ImportError:
+        # Pillow 不可用，创建空标记文件
+        for archive_id, subdir in mock_files.items():
+            target_dir = os.path.join(sync_dir, subdir)
+            os.makedirs(target_dir, exist_ok=True)
+            filepath = os.path.join(target_dir, f"{archive_id}.tiff")
+            if not os.path.exists(filepath):
+                with open(filepath, "w") as f:
+                    f.write("mock")
+                print(f"  📄 占位文件: {filepath}")

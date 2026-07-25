@@ -1,0 +1,51 @@
+# ============================================================
+# PaddleOCR CPU 容器镜像 (轻量级，无 CUDA 依赖)
+#
+# 构建:
+#   docker build -f deploy/docker/Dockerfile.ocr-cpu -t archive-ocr-cpu:latest .
+#
+# ============================================================
+
+FROM python:3.11-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    OCR_MODE=real
+
+# 系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1 \
+    libmagic1 curl \
+    fonts-wqy-zenhei fonts-wqy-microhei \
+    && rm -rf /var/lib/apt/lists/*
+
+# PaddlePaddle CPU
+RUN pip install --upgrade pip && \
+    pip install paddlepaddle==3.0.0
+
+# PaddleOCR + 结构分析
+RUN pip install "paddleocr>=2.9.0"
+
+# 图像处理
+RUN pip install opencv-python-headless>=4.9.0 shapely pyclipper \
+    imgaub lmdb tqdm Pillow>=10.2.0
+
+RUN pip install openpyxl matplotlib scipy
+
+# 预下载模型
+RUN python -c "\
+import os; os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'; \
+from paddleocr import PaddleOCR; \
+import numpy as np; \
+ocr = PaddleOCR(lang='ch', use_angle_cls=True, use_gpu=False, show_log=False); \
+dummy = np.zeros((64, 128, 3), dtype=np.uint8); \
+ocr.ocr(dummy, cls=True); \
+print('Models downloaded OK') \
+" 2>&1 | grep -v "NotOpenSSLWarning\|urllib3\|warnings.warn" || true
+
+WORKDIR /app
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "from paddleocr import PaddleOCR; print('healthy')" || exit 1
+
+CMD ["python", "-c", "from paddleocr import PaddleOCR; print('PaddleOCR CPU ready')"]

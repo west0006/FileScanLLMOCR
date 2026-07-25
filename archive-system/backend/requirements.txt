@@ -27,6 +27,15 @@ python-magic==0.4.27
 Pillow==10.2.0
 openpyxl==3.1.2
 
+# OCR 图像预处理
+opencv-python-headless>=4.9.0
+numpy>=1.26.0
+
+# PaddleOCR (按需安装 — 部署时使用 deploy/ocr_deploy.sh)
+# paddlepaddle-gpu==3.0.0
+# paddlepaddle==3.0.0
+# paddleocr>=2.9.0
+
 # 工具
 httpx==0.26.0
 python-dotenv==1.0.0

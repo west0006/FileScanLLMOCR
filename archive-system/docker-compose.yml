@@ -74,6 +74,38 @@ services:
       - redis
     restart: unless-stopped
 
+  # ===================== OCR Worker (PaddleOCR, 可选) =====================
+  ocr-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: archive-ocr
+    command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2 --queues=ocr
+    environment:
+      - APP_ENV=${APP_ENV:-development}
+      - OCR_MODE=${OCR_MODE:-mock}
+      - LLM_MODE=mock
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=archive
+      - DB_PASSWORD=${DB_PASSWORD:-archive123}
+      - DB_NAME=archive_db
+      - ES_HOST=elasticsearch
+      - ES_PORT=9200
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    volumes:
+      - ./backend:/app
+      - archive_uploads:/app/uploads
+      - archive_sync:/app/sync_data
+      - ocr_models:/root/.paddleocr
+    depends_on:
+      - mysql
+      - elasticsearch
+      - redis
+    restart: unless-stopped
+    profiles: ["ocr"]  # 默认不启动，通过 --profile ocr 激活
+
   # ===================== 前端 (开发模式) =====================
   frontend:
     build:
@@ -153,3 +185,4 @@ volumes:
   redis_data:
   archive_uploads:
   archive_sync:
+  ocr_models:

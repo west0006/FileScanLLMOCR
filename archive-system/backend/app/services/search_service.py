@@ -60,7 +60,7 @@ def search_keyword(
         return _fallback_search(keywords, page, page_size, t0, sort, scope_nodes, level, user)
 
     query = _build_keyword_query(expanded, scope_nodes, level, exact)
-    return _execute_es_search(es, query, page, page_size, t0, sort)
+    return _execute_es_search(es, query, page, page_size, t0, sort, user=user)
 
 
 def search_semantic(
@@ -86,7 +86,7 @@ def search_semantic(
     query = _build_keyword_query(keywords, scope_nodes)
     query = _add_semantic_boost(query, intent)
 
-    return _execute_es_search(es, query, page, page_size, t0, sort)
+    return _execute_es_search(es, query, page, page_size, t0, sort, user=user)
 
 
 def search_advanced(
@@ -98,6 +98,7 @@ def search_advanced(
     category: str | None = None,
     department: str | None = None,
     fonds_id: str | None = None,
+    fonds_ids: list[str] | None = None,
     retention_period: str | None = None,
     open_status: str | None = None,
     level: str = "all",
@@ -148,6 +149,8 @@ def search_advanced(
         filters.append({"term": {"file_code": file_code}})
     if fonds_id:
         filters.append({"term": {"fonds_id": fonds_id}})
+    if fonds_ids:
+        filters.append({"terms": {"fonds_id": fonds_ids}})
     if retention_period:
         filters.append({"term": {"retention_period": retention_period}})
     if open_status:
@@ -160,7 +163,7 @@ def search_advanced(
         }
     }
 
-    return _execute_es_search(es, query, page, page_size, t0, sort)
+    return _execute_es_search(es, query, page, page_size, t0, sort, user=user)
 
 
 # ==================== ES 查询构造 ====================
@@ -241,11 +244,74 @@ def _expand_synonyms(keywords: str) -> str:
     return " ".join(expanded)
 
 
+# ==================== 数据权限过滤（ES 层面） ====================
+
+def _build_data_scope_filters(user: dict) -> list[dict]:
+    """基于用户 tree_auth 构造 ES filter 子句"""
+    from app.core.security import ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
+
+    if user.get("role") in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+        return []
+
+    from app.core.database import SessionLocal
+    from app.models.models import User as UserModel
+
+    db = SessionLocal()
+    try:
+        u = db.query(UserModel).filter(UserModel.id == user.get("user_id")).first()
+        if not u or not u.tree_auth:
+            if u and u.department:
+                return [{"term": {"department": u.department}}]
+            return []
+
+        tree_auth = u.tree_auth
+        cats = set()
+        depts = set()
+        for node in tree_auth:
+            if "/" in node:
+                cat, dept = node.split("/", 1)
+                cats.add(cat)
+                depts.add(dept)
+            else:
+                cats.add(node)
+
+        filters = []
+        if cats and depts:
+            filters.append({
+                "bool": {
+                    "should": [
+                        {"terms": {"category": list(cats)}},
+                        {"terms": {"department": list(depts)}},
+                    ],
+                    "minimum_should_match": 1,
+                }
+            })
+        elif cats:
+            filters.append({"terms": {"category": list(cats)}})
+        elif depts:
+            filters.append({"terms": {"department": list(depts)}})
+        elif u.department:
+            filters.append({"term": {"department": u.department}})
+
+        return filters
+    finally:
+        db.close()
+
+
 # ==================== ES 执行 ====================
 
-def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, sort: str = "score") -> dict:
+def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, sort: str = "score", user: dict | None = None) -> dict:
     """执行 ES 搜索并格式化结果"""
     from_idx = (page - 1) * page_size
+
+    # 数据权限过滤 — ES 层面的 category/department 过滤
+    if user:
+        data_filters = _build_data_scope_filters(user)
+        if data_filters:
+            if "bool" not in query:
+                query = {"bool": {"must": [query]}}
+            existing_filters = query["bool"].get("filter", [])
+            query["bool"]["filter"] = existing_filters + data_filters
 
     sort_clause = [{"_score": "desc"}]
     if sort == "time_asc": sort_clause = [{"year": "asc"}]

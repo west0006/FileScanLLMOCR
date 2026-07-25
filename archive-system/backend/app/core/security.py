@@ -92,6 +92,49 @@ def require_role(*allowed_roles: str):
     return checker
 
 
+def require_permission(module: str):
+    """
+    依赖工厂：检查当前用户是否有指定模块的操作权限。
+
+    从 Role.permissions JSON 中读取，如 {"search": true, "review": true, "ocr": false}
+    system_admin / archive_admin 始终放行
+    """
+
+    async def checker(user: dict = Depends(get_current_user)):
+        # 管理员始终放行
+        if user["role"] in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+            return user
+
+        # dev 模式：放行
+        if settings.APP_ENV == "development":
+            return user
+
+        # 查用户角色权限
+        from app.core.database import SessionLocal
+        from app.models.models import Role, User as UserModel
+
+        db = SessionLocal()
+        try:
+            u = db.query(UserModel).filter(UserModel.id == user["user_id"]).first()
+            if not u:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="用户不存在")
+
+            role = db.query(Role).filter(Role.name == u.role).first()
+            if role and role.permissions:
+                perms = role.permissions
+                if perms.get("all") or perms.get(module):
+                    return user
+
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"权限不足 (模块: {module})",
+            )
+        finally:
+            db.close()
+
+    return checker
+
+
 # 预设角色常量
 ROLE_SYSTEM_ADMIN = "system_admin"
 ROLE_ARCHIVE_ADMIN = "archive_admin"

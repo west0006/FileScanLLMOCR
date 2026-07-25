@@ -111,3 +111,37 @@ def logout(user: dict = Depends(get_current_user)):
 @router.get("/me")
 def get_me(user: dict = Depends(get_current_user)):
     return user
+
+
+@router.get("/permissions")
+def get_permissions(user: dict = Depends(get_current_user)):
+    """获取当前用户的模块级权限列表（供前端菜单控制）"""
+    from app.core.security import ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
+    from app.core.database import SessionLocal
+    from app.models.models import Role, User as UserModel
+
+    # 管理员拥有全部权限
+    if user["role"] in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+        return {
+            "role": user["role"],
+            "permissions": {
+                "search": True, "ocr": True, "review": True,
+                "sync": True, "user": True, "log": True, "stats": True,
+                "all": True,
+            },
+        }
+
+    db = SessionLocal()
+    try:
+        u = db.query(UserModel).filter(UserModel.id == user["user_id"]).first()
+        if u:
+            role = db.query(Role).filter(Role.name == u.role).first()
+            if role and role.permissions:
+                return {"role": user["role"], "permissions": role.permissions}
+        # 回退：reviewer 默认权限
+        return {
+            "role": user["role"],
+            "permissions": {"search": True, "review": True},
+        }
+    finally:
+        db.close()

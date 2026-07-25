@@ -1,0 +1,70 @@
+# ============================================================
+# PaddleOCR 独立服务编排
+#
+# 自动检测 GPU 环境:
+#   docker compose -f deploy/docker/docker-compose.ocr.yml up -d
+#
+# 强制 CPU:
+#   OCR_USE_GPU=0 docker compose -f deploy/docker/docker-compose.ocr.yml up -d
+#
+# 手动选择:
+#   docker compose -f deploy/docker/docker-compose.ocr.yml --profile gpu up -d
+#   docker compose -f deploy/docker/docker-compose.ocr.yml --profile cpu up -d
+# ============================================================
+
+services:
+  # ===================== OCR Worker (GPU) =====================
+  ocr-worker-gpu:
+    profiles: ["gpu"]
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.ocr-gpu
+    container_name: archive-ocr-gpu
+    environment:
+      - OCR_MODE=real
+      - PADDLE_DEVICE=gpu
+    volumes:
+      - archive_ocr_models:/root/.paddleocr
+      - archive_ocr_sync:/app/sync_data:ro
+      - archive_ocr_output:/app/output
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "from paddleocr import PaddleOCR; print('ok')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+  # ===================== OCR Worker (CPU) =====================
+  ocr-worker-cpu:
+    profiles: ["cpu"]
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile.ocr-cpu
+    container_name: archive-ocr-cpu
+    environment:
+      - OCR_MODE=real
+      - PADDLE_DEVICE=cpu
+    volumes:
+      - archive_ocr_models:/root/.paddleocr
+      - archive_ocr_sync:/app/sync_data:ro
+      - archive_ocr_output:/app/output
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "from paddleocr import PaddleOCR; print('ok')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+volumes:
+  archive_ocr_models:
+  archive_ocr_sync:
+  archive_ocr_output:

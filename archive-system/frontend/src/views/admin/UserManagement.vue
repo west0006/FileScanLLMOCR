@@ -9,7 +9,9 @@
             <td class="mono">{{ u.username }}</td><td>{{ u.name }}</td><td>{{ u.department || '—' }}</td><td>{{ roleLabel(u.role) }}</td>
             <td><span class="risk-tag" :class="u.is_active?'risk-tag--low':'risk-tag--high'">{{ u.is_active?'正常':'停用' }}</span></td>
             <td>
-              <button class="btn-sm" @click="toggleUser(u)">{{ u.is_active ? '停用' : '启用' }}</button>
+              <button class="btn-sm" @click="openEdit(u)">编辑</button>
+              <button class="btn-sm" style="margin-left:4px" @click="openResetPwd(u)">密码</button>
+              <button class="btn-sm" style="margin-left:4px" @click="toggleUser(u)">{{ u.is_active ? '停用' : '启用' }}</button>
             </td>
           </tr>
           <tr v-if="users.length === 0"><td colspan="6" style="text-align:center;padding:40px;color:var(--c-text-muted)">暂无用户</td></tr>
@@ -34,6 +36,36 @@
         </div>
       </div>
     </div>
+
+    <!-- 编辑弹窗 -->
+    <div v-if="showEdit" class="modal-overlay" @click.self="showEdit=false">
+      <div class="modal-card">
+        <div class="modal-head"><h3>编辑用户</h3><button class="modal-close" @click="showEdit=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+        <div class="modal-body">
+          <div class="form-group"><label>姓名</label><input v-model="editForm.name" class="field-input" /></div>
+          <div class="form-group"><label>部门</label><input v-model="editForm.department" class="field-input" /></div>
+          <div class="form-group"><label>角色</label><select v-model="editForm.role" class="field-input"><option value="reviewer">审核员</option><option value="archive_admin">档案管理员</option><option value="system_admin">系统管理员</option></select></div>
+          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
+            <button class="btn-sm" @click="showEdit=false">取消</button>
+            <button class="btn-primary" @click="doEdit">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 重置密码弹窗 -->
+    <div v-if="showResetPwd" class="modal-overlay" @click.self="showResetPwd=false">
+      <div class="modal-card">
+        <div class="modal-head"><h3>重置密码 — {{ resetTarget?.username }}</h3><button class="modal-close" @click="showResetPwd=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+        <div class="modal-body">
+          <div class="form-group"><label>新密码（不少于12个字符）</label><input v-model="resetPwd" class="field-input" type="password" /></div>
+          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
+            <button class="btn-sm" @click="showResetPwd=false">取消</button>
+            <button class="btn-primary" @click="doResetPassword">重置</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -48,6 +80,36 @@ const creating = ref(false)
 const errorMsg = ref('')
 
 const form = reactive({ username: '', name: '', role: 'reviewer', password: '' })
+
+// Edit
+const showEdit = ref(false)
+const editForm = reactive({ id: 0, name: '', department: '', role: '' })
+function openEdit(u: any) {
+  editForm.id = u.id; editForm.name = u.name; editForm.department = u.department || ''; editForm.role = u.role
+  showEdit.value = true
+}
+async function doEdit() {
+  try {
+    await userApi.update(editForm.id, { name: editForm.name, department: editForm.department, role: editForm.role })
+    ElMessage.success('已保存')
+    showEdit.value = false
+    fetchUsers()
+  } catch { ElMessage.error('保存失败') }
+}
+
+// Reset password
+const showResetPwd = ref(false)
+const resetTarget = ref<any>(null)
+const resetPwd = ref('')
+function openResetPwd(u: any) { resetTarget.value = u; resetPwd.value = ''; showResetPwd.value = true }
+async function doResetPassword() {
+  if ((resetPwd.value || '').length < 12) { ElMessage.warning('密码不少于12个字符'); return }
+  try {
+    await userApi.resetPassword(resetTarget.value.id, resetPwd.value)
+    ElMessage.success('密码已重置')
+    showResetPwd.value = false
+  } catch { ElMessage.error('重置失败') }
+}
 
 function roleLabel(r: string) { return { system_admin:'系统管理员',archive_admin:'档案管理员',reviewer:'审核员' }[r]||r }
 

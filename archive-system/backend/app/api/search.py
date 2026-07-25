@@ -41,6 +41,7 @@ class AdvancedSearchRequest(BaseModel):
     category: Optional[str] = None
     department: Optional[str] = None
     fonds_id: Optional[str] = None
+    fonds_ids: Optional[list[str]] = None
     retention_period: Optional[str] = None
     open_status: Optional[str] = None
     level: Optional[str] = "all"
@@ -75,6 +76,7 @@ def advanced_search(req: AdvancedSearchRequest, request: Request, user: dict = D
         keywords=req.keywords, author=req.author, file_code=req.file_code,
         year_from=req.year_from, year_to=req.year_to,
         category=req.category, department=req.department, fonds_id=req.fonds_id,
+        fonds_ids=req.fonds_ids,
         retention_period=req.retention_period, open_status=req.open_status,
         level=req.level, page=req.page, page_size=req.page_size, sort=req.sort, user=user,
     )
@@ -115,7 +117,9 @@ def archive_detail(archive_id: str, user: dict = Depends(get_current_user)):
                     "fonds_id": a.fonds_id, "retention_period": a.retention_period,
                     "security_level": a.security_level, "level": a.level or "file",
                     "open_status": a.open_status or "未审核", "file_count": a.file_count,
-                    "ocr_status": a.ocr_status}
+                    "ocr_status": a.ocr_status,
+                    "ocr_engine": a.ocr_engine or "", "ocr_model_version": a.ocr_model_version or "",
+                    "ocr_duration_ms": a.ocr_duration_ms or 0}
         return {"archive_id": archive_id, "error": "not_found"}
     finally:
         db.close()

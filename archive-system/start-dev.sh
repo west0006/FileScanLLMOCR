@@ -36,4 +36,11 @@ echo "📄 API 文档:    http://localhost:8000/docs"
 echo "🔍 API 健康检:  http://localhost:8000/api/health"
 echo "🖥️  前端页面:    http://localhost:3000"
 echo ""
+
+# OCR 服务提示
+echo "💡 启动 OCR 服务 (需 PaddleOCR):"
+echo "   docker compose --profile ocr up -d ocr-worker"
+echo "   或本地部署: bash deploy/ocr_deploy.sh && export OCR_MODE=real"
+echo ""
+
 echo "📊 默认管理员:   admin / Admin@123456"

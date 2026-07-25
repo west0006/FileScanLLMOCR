@@ -1,9 +1,11 @@
 # ============================================================
 # 一键安装所有依赖
 # 用法: .\install.ps1
+#       .\install.ps1 -WithOCR  (含 PaddleOCR 部署)
+#       .\install.ps1 -BackendOnly
 # ============================================================
 
-param([switch]$BackendOnly, [switch]$FrontendOnly)
+param([switch]$BackendOnly, [switch]$FrontendOnly, [switch]$WithOCR)
 
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
@@ -45,18 +47,27 @@ if (-not $FrontendOnly) {
     # 文件处理
     & $py -m pip install Pillow==10.2.0 openpyxl==3.1.2 python-magic==0.4.27
 
+    # OCR 图像预处理 (轻量)
+    & $py -m pip install opencv-python-headless numpy
+
     # 工具
     & $py -m pip install httpx==0.26.0 python-dotenv==1.0.0
 
     # 敏感词加速（可选，安装失败不影响）
     try { & $py -m pip install pyahocorasick } catch { Write-Host "  [!] pyahocorasick 安装失败（非必需，将使用降级方案）" -ForegroundColor Yellow }
 
-    # OCR（本地开发可选，~500MB，Windows 下可能无预编译包）
-    Write-Host "  跳过 PaddleOCR 安装（本地开发使用 OCR_MODE=mock）" -ForegroundColor DarkGray
-    Write-Host "  如需安装: pip install paddlepaddle paddleocr" -ForegroundColor DarkGray
-
     # 测试
     & $py -m pip install pytest==8.0.0 pytest-cov==4.1.0 pytest-asyncio==0.23.3
+
+    # ==================== OCR 部署（可选） ====================
+    if ($WithOCR) {
+        Write-Host ""
+        Write-Host "  [OCR] 部署 PaddleOCR-VL..." -ForegroundColor Cyan
+        & $py "$root\deploy\ocr_deploy.ps1"
+    } else {
+        Write-Host "  跳过 PaddleOCR 安装（本地开发使用 OCR_MODE=mock）" -ForegroundColor DarkGray
+        Write-Host "  如需安装: .\install.ps1 -WithOCR" -ForegroundColor DarkGray
+    }
 
     Write-Host "  [OK] 后端依赖安装完成" -ForegroundColor Green
 }

@@ -202,6 +202,7 @@ async function triggerFileSync() {
     const res = await syncApi.triggerFile(fileConfig.sync_mode)
     fileMsg.value = { type: 'success', text: `同步已启动 (ID: #${res.data.sync_id})` }
     ElMessage.success('文件同步已启动')
+    pollProgress(res.data.sync_id)
     setTimeout(() => { fileMsg.value = null; fetchHistory() }, 3000)
   } catch {
     fileMsg.value = { type: 'error', text: '启动失败' }
@@ -227,6 +228,26 @@ async function triggerDbSync() {
 
 function statusLabel(s: string) {
   return { pending: '等待中', running: '执行中', completed: '已完成', failed: '失败', queued: '已排队' }[s] || s
+}
+
+// 轮询同步进度
+let _pollTimer: any = null
+async function pollProgress(syncId: number) {
+  const poll = async () => {
+    try {
+      const res = await syncApi.getProgress(syncId)
+      const s = res.data?.status || ''
+      if (s === 'completed' || s === 'failed') {
+        clearInterval(_pollTimer)
+        fetchHistory()
+        const msg = s === 'completed' ? '同步完成' : '同步失败'
+        ElMessage({ message: msg, type: s === 'completed' ? 'success' : 'error' })
+      }
+    } catch { /* ignore */ }
+  }
+  clearInterval(_pollTimer)
+  _pollTimer = setInterval(poll, 3000)
+  poll()
 }
 </script>
 

@@ -72,11 +72,21 @@ app.include_router(stats.router, prefix="/api/stats", tags=["查询统计"])
 
 @app.get("/api/health")
 def health_check():
+    from app.core.config import settings
     es_ok = False
+    es_info = {}
     try:
         from app.core.database import get_es
         es = get_es()
-        es_ok = es is not None and es.ping()
+        if es is not None:
+            es_info_resp = es.info()
+            es_ok = True
+            es_info = {
+                "version": es_info_resp.get("version", {}).get("number", ""),
+                "cluster": es_info_resp.get("cluster_name", ""),
+            }
+            idx = f"{settings.ES_INDEX_PREFIX}_fulltext"
+            es_info["index_exists"] = es.indices.exists(index=idx)
     except Exception:
         pass
 
@@ -88,4 +98,5 @@ def health_check():
         "llm_mode": settings.LLM_MODE,
         "ocr_mode": settings.OCR_MODE,
         "es_available": es_ok,
+        "es_info": es_info,
     }

@@ -1,4 +1,4 @@
-"""OCR 识别 API — 任务管理 + 结果查看 + 质量报告"""
+"""OCR 识别 API — 任务管理 + 结果查看 + 质量报告 + 版面分析"""
 
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
@@ -17,6 +17,10 @@ class CreateOcrTaskRequest(BaseModel):
     year_to: Optional[int] = None
     category: Optional[str] = None
     department: Optional[str] = None
+    engine: Optional[str] = "paddleocr"  # paddleocr | mock
+    enable_preprocess: Optional[bool] = True
+    priority: Optional[int] = 0  # 0=普通, 1=高, 2=紧急
+    enable_preprocess: Optional[bool] = True
 
 
 @router.post("/tasks")
@@ -29,6 +33,7 @@ def create_ocr_task(req: CreateOcrTaskRequest, user: dict = Depends(get_current_
             filter_criteria={"year_from": req.year_from, "year_to": req.year_to,
                              "category": req.category, "department": req.department},
             created_by=user["user_id"],
+            priority=req.priority or 0,
         )
         db.add(task)
         db.commit()
@@ -80,6 +85,7 @@ def list_ocr_tasks(user: dict = Depends(get_current_user), page: int = 1, page_s
         return {"total": total, "page": page, "page_size": page_size,
                 "items": [{"id": t.id, "task_name": t.task_name, "total_pages": t.total_pages,
                             "processed_pages": t.processed_pages, "status": t.status,
+                            "priority": t.priority or 0,
                             "created_at": str(t.created_at)} for t in items]}
     finally:
         db.close()
@@ -138,8 +144,16 @@ def quality_report(task_id: Optional[int] = None, user: dict = Depends(get_curre
         confidences = [a.ocr_confidence for a in archives if a.ocr_confidence is not None]
         overall = round(sum(confidences) / len(confidences), 4) if confidences else 0
 
-        # 低置信度 (< 0.7)
-        low_conf = [a for a in archives if a.ocr_confidence is not None and a.ocr_confidence < 0.7]
+        # 低置信度 (< 0.7) — 附带 OCR 文本前 200 字供抽查
+        low_conf = []
+        for a in archives:
+            if a.ocr_confidence is not None and a.ocr_confidence < 0.7:
+                low_conf.append({
+                    "archive_id": a.archive_id,
+                    "title": a.title,
+                    "confidence": a.ocr_confidence,
+                    "ocr_preview": (a.ocr_text or "")[:200],
+                })
 
         # 常见错误类型统计
         error_counts: dict[str, int] = {}
@@ -160,6 +174,26 @@ def quality_report(task_id: Optional[int] = None, user: dict = Depends(get_curre
         }
     finally:
         db.close()
+
+
+# ===================== 版面分析 =====================
+
+@router.post("/detect")
+def detect_structure(image_path: str, user: dict = Depends(get_current_user)):
+    """版面分析 — 检测标题/表格/段落/印章"""
+    from app.services.ocr_client import ocr_client
+    return ocr_client.recognize_structure(image_path)
+
+
+# ===================== 模型信息 =====================
+
+@router.get("/models")
+def ocr_models_info(user: dict = Depends(get_current_user)):
+    """OCR 引擎信息 — GPU/CPU 状态 + 模型版本"""
+    from app.services.ocr_client import ocr_client
+    info = ocr_client.get_info()
+    info["ocr_mode"] = info.get("mode", "mock")
+    return info
 
 
 # ===================== 调试/测试端点（无需认证） =====================

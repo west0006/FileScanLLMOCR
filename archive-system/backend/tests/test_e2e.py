@@ -227,3 +227,14 @@ class TestFullFlow:
         assert resp.status_code == 200
         data = resp.json()
         assert data["status"] == "ok"
+
+    def test_25_archive_download(self):
+        """原文下载"""
+        token = get_token()
+        resp = client.get(
+            "/api/search/archives/1996-XZ-001/download",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert resp.status_code in (200, 404)
+        if resp.status_code == 200:
+            assert "content-disposition" in str(resp.headers).lower() or len(resp.content) > 0

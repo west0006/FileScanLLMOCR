@@ -59,6 +59,9 @@ class Archive(Base):
     ocr_text = Column(Text)                             # OCR 全文
     ocr_status = Column(String(20), default="pending")  # pending/processing/done/failed
     ocr_confidence = Column(Float)
+    ocr_engine = Column(String(50))       # paddleocr / mock
+    ocr_model_version = Column(String(50)) # PP-OCRv5 / mock-v1
+    ocr_duration_ms = Column(Integer)      # 总识别耗时(ms)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -106,6 +109,7 @@ class OcrTask(Base):
     total_pages = Column(Integer, default=0)
     processed_pages = Column(Integer, default=0)
     status = Column(String(20), default="pending")
+    priority = Column(Integer, default=0)  # 0=普通, 1=高, 2=紧急
     filter_criteria = Column(JSON)
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -124,6 +128,7 @@ class OperationLog(Base):
     description = Column(Text)
     target_id = Column(String(200))
     ip_address = Column(String(50))
+    user_agent = Column(String(300))
     result = Column(String(20))  # success/failure
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 

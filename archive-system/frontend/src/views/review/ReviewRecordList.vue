@@ -3,10 +3,13 @@
     <!-- 页头 -->
     <div class="page-head">
       <h2>预审记录</h2>
-      <button class="btn-export" @click="handleExport">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        导出 Excel
-      </button>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span v-if="selectedIds.length" class="selected-badge">已选 {{ selectedIds.length }} 条</span>
+        <button class="btn-export" @click="handleExport" :disabled="selectedIds.length === 0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出 Excel
+        </button>
+      </div>
     </div>
 
     <!-- 筛选 -->
@@ -34,7 +37,7 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th style="width:40px"><input type="checkbox" /></th>
+            <th style="width:40px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
             <th>档案编号</th>
             <th>题名</th>
             <th style="width:70px">年度</th>
@@ -47,7 +50,7 @@
         </thead>
         <tbody>
           <tr v-for="row in records" :key="row.archive_id" @click="showDetail(row)" class="clickable">
-            <td><input type="checkbox" @click.stop /></td>
+            <td><input type="checkbox" :checked="selectedIds.includes(row.id)" @click.stop @change="toggleOne(row.id)" /></td>
             <td class="mono">{{ row.archive_id }}</td>
             <td class="title-cell">{{ row.title }}</td>
             <td>{{ row.year }}</td>
@@ -100,15 +103,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { reviewApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const records = ref<any[]>([])
 const selected = ref<any>(null)
+const selectedIds = ref<number[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
+
+const allSelected = computed(() => records.value.length > 0 && records.value.every(r => selectedIds.value.includes(r.id)))
+
+function toggleAll() {
+  if (allSelected.value) { selectedIds.value = [] }
+  else { selectedIds.value = records.value.map(r => r.id) }
+}
+function toggleOne(id: number) {
+  const idx = selectedIds.value.indexOf(id)
+  if (idx >= 0) selectedIds.value.splice(idx, 1)
+  else selectedIds.value.push(id)
+}
 
 const filters = ref({
   risk_level: '', suggestion: '', year_from: undefined as number | undefined, year_to: undefined as number | undefined,
@@ -141,8 +157,10 @@ async function showDetail(row: any) {
 }
 async function handleExport() {
   try {
-    const res = await reviewApi.export({ archive_ids: [] })
+    const ids = selectedIds.value.length ? selectedIds.value : []
+    const res = await reviewApi.export({ archive_ids: ids })
     ElMessage.success(`导出成功: ${res.data.file} (${res.data.count} 条)`)
+    selectedIds.value = []
   } catch { ElMessage.error('导出失败') }
 }
 </script>
@@ -160,6 +178,11 @@ async function handleExport() {
   transition: all var(--t-fast);
 }
 .btn-export:hover { border-color: var(--c-accent); color: var(--c-accent); }
+.btn-export:disabled { opacity: 0.4; cursor: not-allowed; }
+.selected-badge {
+  padding: 2px 12px; border-radius: var(--r-full); font-size: var(--fs-xs);
+  background: var(--c-accent-light); color: var(--c-accent); font-weight: var(--fw-semibold);
+}
 
 /* 筛选 */
 .filter-bar {

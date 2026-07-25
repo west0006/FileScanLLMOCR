@@ -70,7 +70,16 @@
                   <button :disabled="curPage >= imagePages.length - 1" @click="curPage++">下一页 &gt;</button>
                 </div>
                 <div class="image-main" v-if="imagePages[curPage]">
+                  <!-- PDF 使用 iframe 在线预览 -->
+                  <iframe
+                    v-if="imagePages[curPage].format === 'pdf'"
+                    :src="'/api/sync/files/' + imagePages[curPage].path"
+                    class="archive-pdf"
+                    frameborder="0"
+                  />
+                  <!-- 图像直接显示 -->
                   <img
+                    v-else
                     :src="'/api/sync/files/' + imagePages[curPage].path"
                     :alt="imagePages[curPage].filename"
                     @error="onImageError"
@@ -261,6 +270,7 @@ onMounted(async () => {
 .image-nav span { font-size: var(--fs-sm); color: var(--c-text); }
 .image-main { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f5f5f5; }
 .archive-image { max-width: 100%; max-height: 100%; object-fit: contain; }
+.archive-pdf { width: 100%; height: 100%; min-height: 500px; border: none; }
 .image-file-list {
   display: flex; gap: 4px; padding: 8px; overflow-x: auto;
   border-top: 1px solid var(--c-border-light); background: var(--c-bg);

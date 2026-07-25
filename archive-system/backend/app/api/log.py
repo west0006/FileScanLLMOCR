@@ -102,11 +102,84 @@ def export_logs(format: str = "excel", filters: dict = {}, user: dict = Depends(
 
 @router.get("/audit/summary")
 def audit_summary(user: dict = Depends(get_current_user)):
-    """安全审计摘要"""
+    """安全审计摘要 — 含异常检测"""
+    from datetime import datetime, timedelta
+    from sqlalchemy import func
+
     db = SessionLocal()
     try:
         total = db.query(OperationLog).count()
         failed = db.query(OperationLog).filter(OperationLog.result == "failure").count()
-        return {"total_operations": total, "failed_operations": failed, "anomalies": []}
+
+        anomalies = []
+        now = datetime.utcnow()
+
+        # 1. 最近1小时内大量失败登录（≥5次）
+        one_hour_ago = now - timedelta(hours=1)
+        failed_logins = (
+            db.query(OperationLog.username, func.count().label("cnt"))
+            .filter(
+                OperationLog.operation_type == "login",
+                OperationLog.result == "failure",
+                OperationLog.created_at >= one_hour_ago,
+            )
+            .group_by(OperationLog.username)
+            .having(func.count() >= 5)
+            .all()
+        )
+        for row in failed_logins:
+            anomalies.append({
+                "type": "暴力破解风险",
+                "severity": "high",
+                "detail": f"用户 {row[0]} 在1小时内失败登录 {row[1]} 次",
+                "time": str(now),
+            })
+
+        # 2. 非工作时间操作（凌晨0-6点）
+        night_ops = (
+            db.query(OperationLog)
+            .filter(
+                func.extract("hour", OperationLog.created_at).between(0, 5),
+                OperationLog.created_at >= now - timedelta(days=1),
+            )
+            .count()
+        )
+        if night_ops >= 3:
+            anomalies.append({
+                "type": "非工作时间操作",
+                "severity": "medium",
+                "detail": f"过去24小时内有 {night_ops} 次凌晨(0-6点)操作",
+                "time": str(now),
+            })
+
+        # 3. 连续失败操作（最近100条中连续失败≥5次）
+        recent = (
+            db.query(OperationLog)
+            .order_by(OperationLog.created_at.desc())
+            .limit(100)
+            .all()
+        )
+        consecutive_fails = 0
+        for log in recent:
+            if log.result == "failure":
+                consecutive_fails += 1
+                if consecutive_fails >= 5:
+                    break
+            else:
+                consecutive_fails = 0
+        if consecutive_fails >= 5:
+            anomalies.append({
+                "type": "连续操作失败",
+                "severity": "medium",
+                "detail": f"最近100条日志中连续失败 {consecutive_fails} 次",
+                "time": str(now),
+            })
+
+        return {
+            "total_operations": total,
+            "failed_operations": failed,
+            "anomalies": anomalies,
+            "anomaly_count": len(anomalies),
+        }
     finally:
         db.close()

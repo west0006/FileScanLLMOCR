@@ -1,0 +1,68 @@
+# ============================================================
+# PaddleOCR GPU 容器镜像
+#
+# 构建:
+#   docker build -f deploy/docker/Dockerfile.ocr-gpu -t archive-ocr-gpu:latest .
+#
+# 运行 (需要 nvidia-docker):
+#   docker run --gpus all archive-ocr-gpu:latest python -c "from paddleocr import PaddleOCR; print('OK')"
+#
+# ============================================================
+
+FROM nvidia/cuda:12.4-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    OCR_MODE=real
+
+# 系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3.11-dev python3-pip \
+    libgl1-mesa-glx libglib2.0-0 libsm6 libxext6 libxrender-dev libgomp1 \
+    libmagic1 curl wget ca-certificates \
+    # 字体 (中文支持)
+    fonts-wqy-zenhei fonts-wqy-microhei \
+    && ln -sf /usr/bin/python3.11 /usr/bin/python \
+    && ln -sf /usr/bin/pip3 /usr/bin/pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python 依赖
+RUN pip install --upgrade pip setuptools wheel
+
+# PaddlePaddle GPU (CUDA 12)
+RUN pip install paddlepaddle-gpu==3.0.0 -f https://www.paddlepaddle.org.cn/whl/linux/cuda12/stable.html
+
+# PaddleOCR + 结构分析
+RUN pip install "paddleocr>=2.9.0" paddleclas
+
+# 图像处理
+RUN pip install opencv-python-headless>=4.9.0 shapely pyclipper \
+    imgaug lmdb tqdm Pillow>=10.2.0
+
+# 额外 (表格/Excel)
+RUN pip install openpyxl matplotlib scipy
+
+# 预下载模型 (构建时触发)
+RUN python -c "\
+import os; os.environ['DISABLE_MODEL_SOURCE_CHECK'] = 'True'; \
+from paddleocr import PaddleOCR; \
+import numpy as np; \
+ocr = PaddleOCR(lang='ch', use_angle_cls=True, use_gpu=True, show_log=False); \
+dummy = np.zeros((64, 128, 3), dtype=np.uint8); \
+ocr.ocr(dummy, cls=True); \
+print('Models downloaded OK') \
+" 2>&1 | grep -v "NotOpenSSLWarning\|urllib3\|warnings.warn" || true
+
+# 工作目录
+WORKDIR /app
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD python -c "from paddleocr import PaddleOCR; print('healthy')" || exit 1
+
+CMD ["python", "-c", "\
+from paddleocr import PaddleOCR; \
+import paddle; \
+print(f'PaddleOCR ready | GPU: {paddle.is_compiled_with_cuda()} | Devices: {paddle.device.cuda.device_count() if paddle.is_compiled_with_cuda() else 0}') \
+"]

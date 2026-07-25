@@ -19,8 +19,8 @@ from app.core.logging import get_logger
 
 _mw_log = get_logger("middleware")
 
-# 需要记录的 GET 操作前缀
-_LOG_GET_PREFIXES = ("/api/search/", "/api/log/", "/api/stats/")
+# 需要记录的 GET 操作前缀（含页面访问）
+_LOG_GET_PREFIXES = ("/api/search/", "/api/log/", "/api/stats/", "/api/ocr/", "/api/review/", "/api/sync/", "/api/user/")
 
 # 操作类型映射
 _OP_MAP = {
@@ -35,6 +35,7 @@ _OP_MAP = {
 def _write_log_sync(
     user_id: int, username: str, op_type: str, module: str,
     description: str, target_id: str, ip: str, result: str,
+    user_agent: str = "",
 ):
     """同步写日志（在独立线程中执行）"""
     db = SessionLocal()
@@ -48,6 +49,7 @@ def _write_log_sync(
             target_id=target_id,
             ip_address=ip,
             result=result,
+            user_agent=user_agent,
         )
         db.add(log)
         db.commit()
@@ -120,12 +122,13 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
 
         # 异步写日志
         ip = request.client.host if request.client else ""
+        user_agent = request.headers.get("User-Agent", "")[:300]  # 截断防止过长
         # 未提供自定义描述时，补充用户姓名
         if not custom_desc and user_name:
             description = f"[{user_name}] {description}"
         threading.Thread(
             target=_write_log_sync,
-            args=(user_id, username, op_type, op_tag, description, "", ip, result),
+            args=(user_id, username, op_type, op_tag, description, "", ip, result, user_agent),
             daemon=True,
         ).start()
 

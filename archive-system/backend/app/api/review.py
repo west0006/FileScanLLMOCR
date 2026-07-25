@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, apply_data_scope
 from app.core.database import SessionLocal
 from app.models.models import ReviewTask, ReviewRecord, Archive
 from app.services.review_service import hybrid_review
@@ -173,14 +173,23 @@ def list_review_records(user: dict = Depends(get_current_user), page: int = 1, p
         q = db.query(ReviewRecord)
         if risk_level: q = q.filter(ReviewRecord.risk_level == risk_level)
         if suggestion: q = q.filter(ReviewRecord.suggestion == suggestion)
+
+        # 数据权限：先查出用户可访问的档案 ID
+        aq = apply_data_scope(user, db.query(Archive), Archive)
+        allowed_ids = [a.archive_id for a in aq.all()]
+        if allowed_ids:
+            q = q.filter(ReviewRecord.archive_id.in_(allowed_ids))
+        else:
+            q = q.filter(False)  # 无权限 → 空
+
         if year_from or year_to or department:
             archive_ids = [r.archive_id for r in q.all() if r.archive_id]
             if archive_ids:
-                aq = db.query(Archive).filter(Archive.archive_id.in_(archive_ids))
-                if year_from: aq = aq.filter(Archive.year >= year_from)
-                if year_to: aq = aq.filter(Archive.year <= year_to)
-                if department: aq = aq.filter(Archive.department == department)
-                filtered_ids = [a.archive_id for a in aq.all()]
+                aq2 = db.query(Archive).filter(Archive.archive_id.in_(archive_ids))
+                if year_from: aq2 = aq2.filter(Archive.year >= year_from)
+                if year_to: aq2 = aq2.filter(Archive.year <= year_to)
+                if department: aq2 = aq2.filter(Archive.department == department)
+                filtered_ids = [a.archive_id for a in aq2.all()]
                 q = q.filter(ReviewRecord.archive_id.in_(filtered_ids))
         total = q.count()
         items = q.order_by(ReviewRecord.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()

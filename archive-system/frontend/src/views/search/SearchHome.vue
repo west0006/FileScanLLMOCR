@@ -107,6 +107,12 @@
             <label>归口单位</label>
             <input v-model="advancedForm.department" placeholder="可选" class="adv-input" />
           </div>
+          <div class="adv-field">
+            <label>全宗号</label>
+            <el-select v-model="selectedFondsIds" multiple placeholder="全部全宗" collapse-tags class="adv-multi">
+              <el-option v-for="f in fondsOptions" :key="f" :label="f" :value="f" />
+            </el-select>
+          </div>
           <button class="search-btn" style="align-self:flex-end" @click="doSearch">高级检索</button>
         </div>
       </div>
@@ -260,6 +266,9 @@ const advancedForm = reactive({
 })
 const yearOptions = Array.from({ length: new Date().getFullYear() - 1969 }, (_, i) => 1970 + i).reverse()
 
+const fondsOptions = ['XZ', 'DQ', 'JX', 'CW', 'RS', 'KY', 'JJ', 'SX']
+const selectedFondsIds = ref<string[]>([])
+
 const searched = ref(false)
 const loading = ref(false)
 const results = ref<any[]>([])
@@ -302,7 +311,11 @@ async function doSearch(resetPage = true) {
       const cat = advancedForm.category || activeCat.value || undefined
       const yf = advancedForm.yearFrom ?? activeYear.value ?? undefined
       const yt = advancedForm.yearTo ?? activeYear.value ?? undefined
-      res = await searchApi.advanced({ ...advancedForm, category: cat, year_from: yf, year_to: yt || yf, ...base })
+      res = await searchApi.advanced({
+        ...advancedForm, category: cat, year_from: yf, year_to: yt || yf,
+        fonds_ids: selectedFondsIds.value.length ? selectedFondsIds.value : undefined,
+        ...base,
+      })
     } else {
       // 关键词 + 筛选: 有筛选条件时走 advanced，否则走 keyword
       if (activeCat.value || activeYear.value) {
@@ -521,6 +534,7 @@ async function handleExport() {
   outline: none;
   cursor: pointer;
 }
+.adv-multi { min-width: 180px; }
 .adv-range { display: flex; align-items: center; gap: 6px; }
 .adv-sep { color: var(--c-text-muted); }
 
