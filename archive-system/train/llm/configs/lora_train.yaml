@@ -1,15 +1,18 @@
 # ============================================================
 # LLaMA-Factory LoRA 微调配置
-# 目标模型: DeepSeek-R1-Distill-Qwen-32B / Qwen3-32B
+# 目标模型: Qwen2.5-3B-Instruct
+# 硬件: GTX 1660 Super 6GB
 # 任务: 档案开放审核 (SFT)
 #
 # 部署到 LLaMA-Factory 服务器:
-#   将本文件放入 LLaMA-Factory 项目目录
-#   或通过 Web UI (http://10.11.13.100:7860/) 上传
+#   通过 Web UI → Train 标签页上传此文件
+#   或放入 LLaMA-Factory 项目目录
+#
+# 访问: 向日葵 → 学校主机(10.11.10.32) → 浏览器 → http://10.11.13.100:7860
 # ============================================================
 
 ### model
-model_name_or_path: Qwen/Qwen2.5-32B-Instruct  # 或 DeepSeek-R1-Distill-Qwen-32B
+model_name_or_path: Qwen/Qwen2.5-3B-Instruct
 trust_remote_code: true
 
 ### method
@@ -17,39 +20,36 @@ stage: sft
 do_train: true
 finetuning_type: lora
 lora_target: q_proj,v_proj,k_proj,o_proj
-lora_rank: 32
-lora_alpha: 64
-lora_dropout: 0.1
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
 use_rslora: true
 
 ### dataset
 dataset: archive_review
 template: qwen
-cutoff_len: 4096
+cutoff_len: 2048
 overwrite_cache: true
-preprocessing_num_workers: 4
+preprocessing_num_workers: 2
 
 ### output
 output_dir: ./output/lora-archive-review-v1
-logging_steps: 10
-save_steps: 200
+logging_steps: 5
+save_steps: 100
 plot_loss: true
 
 ### train
-per_device_train_batch_size: 2
-gradient_accumulation_steps: 8
-learning_rate: 2.0e-4
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 16
+learning_rate: 5.0e-5
 num_train_epochs: 3
 lr_scheduler_type: cosine
-warmup_ratio: 0.1
+warmup_ratio: 0.05
 bf16: false
 fp16: true
+max_grad_norm: 1.0
 
 ### eval
 val_size: 0.1
-per_device_eval_batch_size: 2
-eval_steps: 200
-
-### 昇腾 NPU 设置 (如果 LLaMA-Factory 绑定了昇腾)
-# use_npu: true
-# npu_visible_devices: 0,1
+per_device_eval_batch_size: 1
+eval_steps: 100
