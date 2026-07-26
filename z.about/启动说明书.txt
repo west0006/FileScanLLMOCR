@@ -1,7 +1,7 @@
 ============================================
   档案智能查询与开放审核系统
   启动说明书 & 注意事项
-  2026-07-15
+  2026-07-25  (v1.0 | 79/79 功能)
 ============================================
 
 一、环境要求
@@ -10,6 +10,8 @@
 - Node.js 18+
 - Windows 10+ / macOS / Linux
 - Git
+- Docker（可选，用于 ES/MySQL/Redis）
+- NVIDIA GPU（可选，用于 PaddleOCR 真实识别）
 
 二、快速启动（Windows PowerShell）
 ----------------------------------------------
@@ -25,7 +27,8 @@
 4. 浏览器访问：
    前端: http://localhost:3000
    后端API文档: http://localhost:8000/docs
-   登录: 用户名 admin，密码 Admin@123456（开发模式任意账密自动创建，角色 reviewer）
+   登录: 用户名 admin，密码 Admin@123456
+         （开发模式任意账密自动创建，角色 reviewer；admin 固定为 system_admin）
 
 5. 按任意键停止所有服务。
 
@@ -36,73 +39,95 @@
    cd frontend
    npm run dev
 
-四、运行测试
+四、Docker 启动（含 ES / MySQL / Redis）
 ----------------------------------------------
-   python -m pytest archive-system/backend/tests/ -v
+  docker compose up -d --build
+  docker compose --profile ocr up -d   # 可选：启动 PaddleOCR Worker
+
+五、PaddleOCR 部署（可选，需 GPU）
+----------------------------------------------
+  .\install.ps1 -WithOCR              # 一键部署 PaddleOCR-VL
+  python deploy/ocr_env_detect.py     # 检测 GPU/CUDA 环境
+  python deploy/ocr_verify.py         # 功能验证（6 项检查）
+
+六、运行测试
+----------------------------------------------
+  python -m pytest archive-system/backend/tests/ -v
+  共 94 个测试用例，全部通过。
 
 
-五、注意事项
+七、注意事项
 ----------------------------------------------
 
 1. 【数据库模式】
-   开发环境默认使用 SQLite（文件: backend/archive_dev.db）。
-   生产环境需设 DB_MODE=mysql 并配置 MySQL 连接。
-   切换方式：修改 .env 中的 DB_MODE 字段。
+   开发环境默认使用 SQLite（文件: backend/archive_dev.db），
+   首次启动自动建表 + 种子数据（admin + 5条档案 + 5条预审记录）。
+   生产环境设 DB_MODE=mysql 并配置连接。
 
 2. 【AI 模式】
-   开发环境 LLM_MODE=mock（模拟审核结果）。
+   开发环境 LLM_MODE=mock（规则引擎 + 模拟 LLM 评分）。
    连接真实 LLaMA-Factory 需设 LLM_MODE=real。
-   LLaMA-Factory 地址：http://10.11.13.100:7860 （需通过向日葵访问学校主机）
+   LLaMA-Factory 地址：http://10.11.13.100:7860
+   访问方式：向日葵 → 学校主机(10.11.10.32) → 浏览器。
+   LoRA 微调配置：train/llm/configs/lora_train.yaml（适配 Qwen2.5-3B + 6GB显存）
 
-3. 【敏感配置】
-   .env 文件包含密码和密钥，已加入 .gitignore，不会推送到 GitHub。
-   生产环境务必修改 JWT_SECRET 和数据库密码。
+3. 【OCR 模式】
+   开发环境 OCR_MODE=mock（确定性哈希模拟）。
+   真实识别需安装 PaddleOCR：
+     .\install.ps1 -WithOCR
+     $env:OCR_MODE = "real"
+   Docker: docker compose --profile ocr up -d
 
-4. 【认证机制】
-   开发模式：用户名不存在则自动创建（默认 reviewer 权限），密码不校验。
-   生产模式：严格校验密码 + 5次失败锁定15分钟 + 密码30天过期。
+4. 【Elasticsearch】
+   本地无需 ES（自动降级为 SQLite 全文搜索，支持关键词+同义词）。
+   生产环境需启动 ES 并运行初始化：
+     bash backend/scripts/init_es.sh
 
-5. 【密码策略】
-   生产模式下密码要求：不少于12个字符，包含大小写字母、数字、特殊符号。
-   同一密码有效期30天。
+5. 【Celery 任务】
+   本地无需 Redis（Celery 自动降级为 memory:// 同步执行）。
+   生产环境需 Redis + Celery Worker。
 
-6. 【端口占用】
-   后端默认 8000，前端默认 3000。
-   如端口被占用，修改 start.ps1 中的端口号。
+6. 【认证机制】
+   开发模式：用户名不存在则自动创建（reviewer），密码不校验。
+   生产模式：密码校验 + 5次失败锁定15分钟 + 30天密码过期。
 
-7. 【前端代理】
-   前端 Vite 开发服务器自动将 /api 请求代理到 http://localhost:8000。
-   如果后端地址不同，修改 frontend/vite.config.ts。
+7. 【用户权限】
+   admin 为 system_admin（全部权限/菜单）。
+   角色权限可在「角色权限」页配置（search/ocr/review/sync/user/log/stats 7 模块）。
+   目录树授权支持大类→子部门自动继承。
+   数据权限（案卷级/卷内级）已强制生效。
 
-8. 【Elasticsearch】
-   本地开发无需 ES（自动降级为 SQLite 全文搜索）。
-   Docker 环境或生产环境需启动 ES 服务。
+8. 【敏感配置】
+   .env 文件已加入 .gitignore。生产环境务必修改：
+   - JWT_SECRET（随机 32 位字符串）
+   - DB_PASSWORD（MySQL 密码）
+   - APP_ENV=production
 
-9. 【Celery 任务】
-   本地开发无需 Redis（Celery 降级为同步执行模式）。
-   生产环境需启动 Redis 和 Celery Worker。
+9. 【密码策略】
+   不少于 12 个字符。有效期 30 天（生产模式强制检查）。
 
-10.【浏览器兼容】
-    Chrome 90+ / Firefox 88+ / Edge 90+ / 国产浏览器极速模式。
-    不支持 IE。
+10.【端口占用】
+    后端 8000，前端 3000。冲突时修改 start.ps1 / vite.config.ts。
 
-11.【种子数据】
-    首次启动自动插入演示数据：
-    - 5 条示例档案
-    - 5 条预审记录
-    - 默认管理员 admin
+11.【浏览器兼容】
+    Chrome 90+ / Firefox 88+ / Edge 90+。不支持 IE。
 
 12.【主题色】
-    主色 #10B981（翡翠绿），侧边栏点击 Logo 可折叠/展开。
+    主色 #10B981（翡翠绿）。侧边栏点击 Logo 可折叠/展开。
 
-13.【GitHub 仓库】
+13.【种子数据】
+    首次启动自动插入：
+    - admin 管理员（system_admin）
+    - 3 个预设角色（system_admin / archive_admin / reviewer）
+    - 5 条示例档案（含 OCR 全文 + 预审结论）
+    - 5 条预审记录
+    - 3 个模拟 TIFF 文件（sync_data/ 目录，供下载/预览测试）
+
+14.【GitHub】
     https://github.com/west0006/FileScanLLMOCR.git
 
-14.【已知限制】
-    - 原文 TIFF 在线浏览已支持（Pillow 转码 → PNG 缓存），PDF 预览待接入 pdf.js
-    - 数据同步需配置共享目录路径后才生效（SyncManagement 页配置）
-    - 统计图表需 ECharts（已集成，前端 dev 模式自动加载）
-    - LLaMA-Factory 微调待学校主机验证
-    - 安全测试（渗透/漏洞扫描）待部署后执行
-    - 关联检索/知识图谱未实现
-    - 数据权限过滤（案卷级/卷内级）未强制
+15.【待外部资源完成事项】
+    - LLaMA-Factory LoRA 微调（配置+数据就绪，需学校主机执行）
+    - PaddleOCR GPU 真实推理（deploy/ 脚本就绪，需 GPU）
+    - ES 全文检索投产（init_es.sh 就绪，需 Docker）
+    - 生产环境切换（.env 配置就绪，需 MySQL/Redis）
