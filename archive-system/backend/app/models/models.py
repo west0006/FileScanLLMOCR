@@ -62,6 +62,7 @@ class Archive(Base):
     ocr_engine = Column(String(50))       # paddleocr / mock
     ocr_model_version = Column(String(50)) # PP-OCRv5 / mock-v1
     ocr_duration_ms = Column(Integer)      # 总识别耗时(ms)
+    entities = Column(JSON, default=list)   # NLP 抽取的实体列表
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

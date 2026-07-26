@@ -50,6 +50,20 @@
             </router-link>
           </div>
         </div>
+
+        <!-- 知识图谱实体 -->
+        <div class="info-card" v-if="entitySummary && Object.keys(entitySummary).length">
+          <h3 class="info-card-title">🧠 知识图谱</h3>
+          <div class="entity-section" v-for="(names, type) in entitySummary" :key="type">
+            <div class="entity-type">{{ typeLabel(type) }}</div>
+            <div class="entity-tags">
+              <span v-for="n in names.slice(0,5)" :key="n" class="entity-tag">{{ n }}</span>
+            </div>
+          </div>
+          <div class="kg-footer" v-if="kgInfo">
+            <span>关联档案 {{ kgInfo.related_count }} 件</span><span>·</span><span>实体 {{ kgInfo.entity_count }} 个</span>
+          </div>
+        </div>
       </div>
 
       <!-- 右侧：原文 -->
@@ -138,6 +152,13 @@ const imageInfo = ref<any>(null)
 const imagePages = ref<any[]>([])
 const curPage = ref(0)
 const related = ref<any[]>([])
+const entitySummary = ref<Record<string, string[]> | null>(null)
+const kgInfo = ref<any>(null)
+
+function typeLabel(t: string): string {
+  const m: Record<string,string> = {PERSON:'👤 人物',ORG:'🏛️ 机构',DATE:'📅 日期',DOC_ID:'📄 文件编号',EVENT:'📌 事件',LOCATION:'📍 地点'}
+  return m[t] || t
+}
 
 function onImageError() {
   // 图片加载失败，静默降级
@@ -160,6 +181,13 @@ onMounted(async () => {
     // 关联档案
     const rel = await searchApi.related(archiveId).catch(() => ({ data: { related: [] } }))
     related.value = rel.data.related || []
+
+    // 知识图谱
+    const kg = await searchApi.knowledgeGraph(archiveId).catch(() => ({ data: null }))
+    if (kg.data) {
+      entitySummary.value = kg.data.center_summary || null
+      kgInfo.value = kg.data
+    }
   } catch {
     archive.value = { archive_id: archiveId, title: '示例档案', year: 1996, category: '行政档案', department: '学校办公室', retention_period: '永久', security_level: '内部', file_count: 3 }
     ocrContent.value = 'OCR 文本加载中...'
@@ -254,6 +282,17 @@ onMounted(async () => {
 .related-title { font-size: var(--fs-sm); color: var(--c-text); font-weight: var(--fw-medium); line-height: 1.4; }
 .related-meta { font-size: var(--fs-xs); color: var(--c-text-muted); margin-top: 2px; display: flex; gap: 6px; }
 .related-reason { color: var(--c-accent); margin-left: auto; }
+
+/* 知识图谱 */
+.entity-section { margin-bottom: 10px; }
+.entity-type { font-size: var(--fs-xs); color: var(--c-text-muted); font-weight: var(--fw-semibold); margin-bottom: 4px; }
+.entity-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.entity-tag {
+  display: inline-block; padding: 2px 8px; border-radius: var(--r-full);
+  font-size: 11px; background: var(--c-accent-light); color: var(--c-accent);
+  font-weight: var(--fw-medium);
+}
+.kg-footer { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--c-border-light); font-size: var(--fs-xs); color: var(--c-text-muted); display: flex; gap: 6px; }
 
 /* 图像查看器 */
 .image-viewer { display: flex; flex-direction: column; height: 500px; }

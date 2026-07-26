@@ -10,6 +10,7 @@ export const searchApi = {
   image: (id: string, page?: number) => api.get(`/search/archives/${id}/image`, { params: { page } }),
   download: (id: string, page?: number) => api.get(`/search/archives/${id}/download`, { params: { page }, responseType: 'blob' }),
   related: (id: string) => api.get(`/search/archives/${id}/related`),
+  knowledgeGraph: (id: string) => api.get(`/search/archives/${id}/knowledge-graph`),
   export: (data: any) => api.post('/search/export', data),
   facets: () => api.get('/search/facets'),
 }

@@ -173,6 +173,77 @@ def archive_download(archive_id: str, page: int = 1, user: dict = Depends(get_cu
         db.close()
 
 
+@router.get("/archives/{archive_id}/knowledge-graph")
+def archive_knowledge_graph(archive_id: str, depth: int = 1, user: dict = Depends(get_current_user)):
+    """
+    档案知识图谱 — 基于实体共现的关联网络
+
+    返回以当前档案为中心的实体-档案关系图:
+    - nodes: 档案节点 + 实体节点
+    - edges: 档案-实体 和 档案-档案 关联边
+    """
+    from app.services.entity_extractor import extract_entities, extract_entity_summary, find_shared_entities
+
+    db = SessionLocal()
+    try:
+        center = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+        if not center:
+            return {"archive_id": archive_id, "nodes": [], "edges": []}
+
+        if not center.entities and center.ocr_text:
+            center.entities = extract_entities(center.ocr_text)
+            db.commit()
+
+        center_entities = center.entities or []
+        center_summary = extract_entity_summary(center_entities)
+
+        nodes, edges, node_ids = [], [], {archive_id}
+
+        nodes.append({
+            "id": archive_id, "type": "archive",
+            "label": center.title[:20], "year": center.year, "category": center.category,
+        })
+
+        entity_ids = set()
+        for e in center_entities:
+            eid = f"E-{e['type']}-{e['name']}"
+            if eid not in entity_ids:
+                entity_ids.add(eid)
+                nodes.append({"id": eid, "type": "entity", "label": e["name"], "entityType": e["type"]})
+            edges.append({"source": archive_id, "target": eid, "type": "has_entity"})
+
+        candidates = db.query(Archive).filter(
+            Archive.archive_id != archive_id,
+            Archive.ocr_text.isnot(None), Archive.ocr_text != "",
+        ).limit(200).all()
+
+        for c in candidates:
+            if not c.entities and c.ocr_text:
+                c.entities = extract_entities(c.ocr_text)
+            shared = find_shared_entities(center_entities, c.entities or [])
+            if shared and c.archive_id not in node_ids:
+                node_ids.add(c.archive_id)
+                nodes.append({
+                    "id": c.archive_id, "type": "archive",
+                    "label": c.title[:20], "year": c.year, "category": c.category,
+                })
+                edges.append({
+                    "source": archive_id, "target": c.archive_id, "type": "shared_entity",
+                    "shared": [f"{s['type']}:{s['name']}" for s in shared[:5]],
+                })
+            if len(node_ids) > 15:
+                break
+
+        db.commit()
+        return {
+            "archive_id": archive_id, "center_summary": center_summary,
+            "nodes": nodes, "edges": edges,
+            "entity_count": len(entity_ids), "related_count": len(node_ids) - len(entity_ids) - 1,
+        }
+    finally:
+        db.close()
+
+
 @router.get("/archives/{archive_id}/related")
 def archive_related(archive_id: str, limit: int = 5, user: dict = Depends(get_current_user)):
     """关联档案推荐 — 规则引擎：同门类/同单位/同时期/标题相似"""
