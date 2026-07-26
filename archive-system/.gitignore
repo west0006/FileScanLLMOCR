@@ -16,6 +16,12 @@ docker-compose.override.yml
 *.db
 *.sqlite3
 
+# 训练数据（生成产物）
+train/data/
+
+# 测试缓存
+.pytest_cache/
+
 # 上传和同步数据
 uploads/
 sync_data/
