@@ -1,5 +1,11 @@
 <template>
   <div class="online-page">
+    <div class="stats-grid-sm">
+      <div class="stat-card"><div class="stat-icon stat-icon--green">🟢</div><div class="stat-label">当前在线</div><div class="stat-value">{{ users.length }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--amber">👤</div><div class="stat-label">管理员在线</div><div class="stat-value">{{ users.filter((u:any)=>u.role?.includes('admin')).length }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--purple">📋</div><div class="stat-label">审核员在线</div><div class="stat-value">{{ users.filter((u:any)=>u.role==='reviewer'||u.role==='审核员').length }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--blue">🔄</div><div class="stat-label">自动刷新</div><div class="stat-value" style="font-size:14px">30秒</div></div>
+    </div>
     <div class="page-head">
       <h2>在线用户</h2>
       <span class="page-head-count">{{ users.length }} 人在线</span>
@@ -39,6 +45,10 @@ function roleLabel(r: string): string {
 }
 
 onMounted(async () => {
+  await fetchOnlineUsers()
+  setInterval(fetchOnlineUsers, 30000) // 30秒自动刷新
+})
+async function fetchOnlineUsers() {
   try {
     const res = await userApi.listOnline?.() || await userApi.list({})
     users.value = (res.data.items || []).map((u: any) => ({
@@ -59,6 +69,8 @@ onMounted(async () => {
 
 <style scoped>
 .online-page { max-width: var(--page-max); margin: 0 auto; }
+.stats-grid-sm{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stats-grid-sm .stat-card{padding:14px}.stats-grid-sm .stat-value{font-size:22px}
 .page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
 .page-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-semibold); margin: 0; }
 .page-head-count { font-size: var(--fs-base); color: var(--c-accent); font-weight: var(--fw-semibold); }

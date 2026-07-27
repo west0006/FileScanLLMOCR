@@ -1,12 +1,23 @@
 <template>
   <div class="page">
-    <div class="page-head"><h2>用户管理</h2><button class="btn-primary" @click="openCreate">新建用户</button></div>
+    <div class="page-head">
+      <h2>用户管理 <span class="user-count">共 {{ total }} 人</span></h2>
+      <button class="btn-primary" @click="openCreate">新建用户</button>
+    </div>
+    <div class="filter-bar">
+      <select v-model="roleFilter" class="filter-select"><option value="">全部角色</option><option value="system_admin">系统管理员</option><option value="archive_admin">档案管理员</option><option value="reviewer">审核员</option></select>
+      <select v-model="statusFilter" class="filter-select"><option value="">全部状态</option><option value="1">正常</option><option value="0">停用</option></select>
+      <input v-model="searchKeyword" placeholder="搜索用户名/姓名" class="filter-input" @keyup.enter="fetchUsers()" />
+      <button class="btn-accent-sm" @click="fetchUsers()">查询</button>
+    </div>
     <div class="card">
       <table class="data-table">
-        <thead><tr><th>用户名</th><th>姓名</th><th>所属部门</th><th>角色</th><th style="width:80px">状态</th><th style="width:140px">操作</th></tr></thead>
+        <thead><tr><th>姓名</th><th>用户名</th><th>所属部门</th><th>角色</th><th>最后登录</th><th style="width:80px">状态</th><th style="width:180px">操作</th></tr></thead>
         <tbody>
           <tr v-for="u in users" :key="u.id">
-            <td class="mono">{{ u.username }}</td><td>{{ u.name }}</td><td>{{ u.department || '—' }}</td><td>{{ roleLabel(u.role) }}</td>
+            <td><span class="online-dot" :class="u.is_active?'dot--on':'dot--off'"></span>{{ u.name }}</td>
+            <td class="mono">{{ u.username }}</td><td>{{ u.department || '—' }}</td><td>{{ roleLabel(u.role) }}</td>
+            <td class="text-sm">{{ u.last_login_at || u.created_at?.substring(0,10) || '—' }}</td>
             <td><span class="risk-tag" :class="u.is_active?'risk-tag--low':'risk-tag--high'">{{ u.is_active?'正常':'停用' }}</span></td>
             <td>
               <button class="btn-sm" @click="openEdit(u)">编辑</button>
@@ -80,6 +91,7 @@ const showCreate = ref(false)
 const creating = ref(false)
 const errorMsg = ref('')
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
+const roleFilter = ref(''); const statusFilter = ref(''); const searchKeyword = ref('')
 
 const form = reactive({ username: '', name: '', role: 'reviewer', password: '' })
 
@@ -119,7 +131,12 @@ onMounted(() => fetchUsers())
 
 async function fetchUsers() {
   try {
-    const res = await userApi.list({ page: page.value, page_size: pageSize.value })
+    const res = await userApi.list({
+      page: page.value, page_size: pageSize.value,
+      role: roleFilter.value || undefined,
+      is_active: statusFilter.value ? statusFilter.value === '1' : undefined,
+      keyword: searchKeyword.value || undefined,
+    })
     users.value = res.data.items || []
     total.value = res.data.total || 0
   } catch { /* ignore */ }
@@ -153,4 +170,11 @@ async function toggleUser(u: any) {
 <style scoped>
 .page{max-width:var(--page-max);margin:0 auto}.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.page-head h2{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin:0}.btn-primary{height:36px;padding:0 20px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-sm);font-weight:var(--fw-semibold);cursor:pointer}.btn-primary:hover{background:var(--c-accent-hover);opacity:1}.btn-primary:disabled{opacity:.6;cursor:not-allowed}.card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);overflow:hidden}.data-table{width:100%;border-collapse:collapse}.data-table th{padding:12px 16px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--c-bg);border-bottom:1px solid var(--c-border)}.data-table td{padding:12px 16px;font-size:var(--fs-sm);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}.mono{font-family:'SF Mono','Fira Code',monospace;font-size:var(--fs-xs)}.btn-sm{height:30px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-xs);cursor:pointer}.btn-sm:hover{border-color:var(--c-accent);color:var(--c-accent)}.risk-tag{padding:2px 10px;border-radius:var(--r-full);font-size:11px;font-weight:var(--fw-bold)}.risk-tag--low{background:#F0FDF4;color:var(--c-success)}.risk-tag--high{background:#FEF2F2;color:var(--c-danger)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}.modal-card{width:480px;background:var(--c-surface);border-radius:var(--r-lg);box-shadow:var(--s-dropdown)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--c-border-light)}.modal-head h3{margin:0;font-size:var(--fs-lg)}.modal-close{width:32px;height:32px;border-radius:var(--r-sm);border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--c-text-muted)}.modal-close:hover{background:var(--c-bg)}.modal-body{padding:24px}.form-group{margin-bottom:16px}.form-group label{display:block;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}.field-input{height:40px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-base);background:var(--c-bg);outline:none;font-family:var(--font);width:100%}.field-input:focus{border-color:var(--c-accent)}.error-msg{padding:8px 12px;background:#FEF2F2;color:var(--c-danger);border-radius:var(--r-sm);font-size:var(--fs-sm)}
 .pager{margin-top:16px;display:flex;justify-content:center}
+.user-count{font-size:var(--fs-base);font-weight:var(--fw-normal);color:var(--c-text-muted)}
+.filter-bar{display:flex;gap:8px;align-items:center;padding:10px 14px;margin-bottom:16px;background:var(--c-surface);border-radius:var(--r-md);border:1px solid var(--c-border)}
+.filter-select{height:32px;padding:0 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-xs);background:var(--c-bg);outline:none;cursor:pointer}
+.filter-input{height:32px;padding:0 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-xs);background:var(--c-bg);outline:none;width:160px}
+.btn-accent-sm{height:32px;padding:0 14px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-xs);cursor:pointer}.btn-accent-sm:hover{background:var(--c-accent-hover)}
+.online-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:middle}.dot--on{background:var(--c-success)}.dot--off{background:var(--c-text-muted)}
+.text-sm{font-size:var(--fs-xs);color:var(--c-text-secondary)}
 </style>
