@@ -83,7 +83,8 @@ def list_ocr_tasks(user: dict = Depends(get_current_user), page: int = 1, page_s
         items = q.order_by(OcrTask.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
         return {"total": total, "page": page, "page_size": page_size,
                 "items": [{"id": t.id, "task_name": t.task_name, "total_pages": t.total_pages,
-                            "processed_pages": t.processed_pages, "status": t.status,
+                            "processed_pages": t.processed_pages, "failed_pages": t.failed_pages or 0,
+                            "status": t.status,
                             "priority": t.priority or 0,
                             "created_at": str(t.created_at)} for t in items]}
     finally:

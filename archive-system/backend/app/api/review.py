@@ -223,6 +223,8 @@ def list_review_records(user: dict = Depends(get_current_user), page: int = 1, p
                             "title": archives.get(r.archive_id, Archive()).title if r.archive_id else "",
                             "year": archives.get(r.archive_id, Archive()).year if r.archive_id else None,
                             "department": archives.get(r.archive_id, Archive()).department if r.archive_id else "",
+                            "volume_id": _derive_volume_id(r.archive_id),
+                            "volume_title": _derive_volume_title(archives.get(r.archive_id)) if r.archive_id else "",
                             "risk_score": r.risk_score, "risk_level": r.risk_level,
                             "suggestion": r.suggestion, "reason": r.reason,
                             "confidence": r.confidence, "sensitive_items": r.sensitive_items,
@@ -279,3 +281,19 @@ def export_review_results(task_id: Optional[int] = None, archive_ids: list[str] 
         return {"status": "ok", "file": os.path.basename(path), "count": len(data)}
     finally:
         db.close()
+
+
+def _derive_volume_id(archive_id: str) -> str:
+    """从档案编号推导案卷编号: 1996-XZ-001 → 1996-XZ"""
+    if not archive_id: return ""
+    parts = archive_id.rsplit("-", 1)
+    return parts[0] if len(parts) > 1 else archive_id
+
+
+def _derive_volume_title(archive) -> str:
+    """从档案推导案卷题名"""
+    if not archive: return ""
+    year = archive.year or ""
+    dept = archive.department or ""
+    cat = archive.category or ""
+    return f"{year}年{dept}{cat}卷" if dept else f"{year}年{cat}卷"

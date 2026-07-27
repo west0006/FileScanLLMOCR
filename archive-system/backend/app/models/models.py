@@ -109,6 +109,7 @@ class OcrTask(Base):
     task_name = Column(String(200), nullable=False)
     total_pages = Column(Integer, default=0)
     processed_pages = Column(Integer, default=0)
+    failed_pages = Column(Integer, default=0)
     status = Column(String(20), default="pending")
     priority = Column(Integer, default=0)  # 0=普通, 1=高, 2=紧急
     filter_criteria = Column(JSON)

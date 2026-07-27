@@ -166,6 +166,7 @@ def process_ocr_task(self, task_id: int):
                 logger.error(f"OCR 失败: {archive.archive_id} — {e}")
                 archive.ocr_status = "failed"
                 archive.ocr_text = f"[OCR 失败: {str(e)[:100]}]"
+                task.failed_pages = (task.failed_pages or 0) + 1
                 db.commit()
                 failed_count += 1
 
