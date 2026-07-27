@@ -380,8 +380,10 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     # 最终等级
     if final_score <= 20:
         final_level, suggestion = "低", "建议开放"
-    elif final_score <= 60:
+    elif final_score <= 45:
         final_level, suggestion = "中", "建议部分开放（脱敏后）"
+    elif final_score <= 70:
+        final_level, suggestion = "中", "建议延期开放"
     else:
         final_level, suggestion = "高", "建议不开放"
 

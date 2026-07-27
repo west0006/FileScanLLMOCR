@@ -30,6 +30,7 @@
         <option value="">全部 AI 建议</option>
         <option value="建议开放">建议开放</option>
         <option value="建议部分开放（脱敏后）">建议部分开放（脱敏后）</option>
+        <option value="建议延期开放">建议延期开放</option>
         <option value="建议不开放">建议不开放</option>
       </select>
       <input v-model.number="filters.year_from" type="number" placeholder="起始年度" class="filter-input filter-input--sm" />

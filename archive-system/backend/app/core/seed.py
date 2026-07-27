@@ -101,7 +101,7 @@ def seed():
                                  {"type": "上级来文", "content": "国务院[1973]教字XX号文件"},
                                  {"type": "历史敏感", "content": "批林批孔运动"},
                              ],
-                             suggestion="建议不开放",
+                             suggestion="建议延期开放",
                              reason="引用上级来文且包含特定历史时期内容。", confidence=0.88,
                              model_name="deepseek-32b-lora-v1", processing_time_ms=1450),
                 ReviewRecord(archive_id="1988-CW-003", risk_score=12, risk_level="低",
