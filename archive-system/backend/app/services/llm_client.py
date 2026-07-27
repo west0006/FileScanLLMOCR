@@ -44,8 +44,8 @@ SYSTEM_REVIEW = """你是中南财经政法大学档案馆的档案开放审核�
 - 干部任免/人员招聘（不含个人隐私细节）
 - 应急预案/整改情况/教学质量报告
 
-输出 JSON: {"risk_score":0-100,"risk_level":"低|中|高","sensitive_items":[{"type":"...","content":"...","start_char":0,"end_char":0}],"suggestion":"建议开放|建议部分开放|建议延期开放|建议不予开放","reason":"...","confidence":0.0-1.0}
-评分：0-20低/21-60中/61-100高。宁可假阳性不可假阴性。不确定时标注低置信度。"""
+输出 JSON: {"risk_score":0-100,"risk_level":"低|中|高","sensitive_items":[{"type":"...","content":"...","start_char":0,"end_char":0}],"suggestion":"建议开放|建议部分开放（脱敏后）|建议不开放","reason":"...","confidence":0.0-1.0}
+评分：0-20低(建议开放)/21-60中(建议部分开放,脱敏后)/61-100高(建议不开放)。宁可假阳性不可假阴性。不确定时标注低置信度。"""
 
 SYSTEM_QUERY = "你是档案检索意图分析助手。用户输入查询，你输出 JSON: {\"intent\":\"exact_lookup|topic_research|person_lookup|stat_query\",\"entities\":[],\"keywords\":[],\"synonyms\":[],\"time_range\":null,\"suggest_fields\":[\"title^3\",\"full_text\"]}"
 
@@ -96,9 +96,9 @@ class LLMClient:
         if not hits:
             risk_score = rng.randint(0, 15); risk_level = "低"; suggestion = "建议开放"
         elif len(hits) <= 2:
-            risk_score = rng.randint(20, 55); risk_level = "中"; suggestion = "建议人工重点关注"
+            risk_score = rng.randint(20, 55); risk_level = "中"; suggestion = "建议部分开放（脱敏后）"
         else:
-            risk_score = rng.randint(60, 95); risk_level = "高"; suggestion = "建议延期开放或不予开放"
+            risk_score = rng.randint(60, 95); risk_level = "高"; suggestion = "建议不开放"
         return {
             "risk_score": risk_score, "risk_level": risk_level, "sensitive_items": hits,
             "suggestion": suggestion, "confidence": round(rng.uniform(0.75, 0.98), 2),

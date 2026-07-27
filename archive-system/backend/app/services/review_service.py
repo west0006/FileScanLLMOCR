@@ -381,9 +381,9 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     if final_score <= 20:
         final_level, suggestion = "低", "建议开放"
     elif final_score <= 60:
-        final_level, suggestion = "中", "建议人工重点关注"
+        final_level, suggestion = "中", "建议部分开放（脱敏后）"
     else:
-        final_level, suggestion = "高", "建议延期开放或不予开放"
+        final_level, suggestion = "高", "建议不开放"
 
     # 合并敏感项
     sensitive_items = llm_result.get("sensitive_items", [])
