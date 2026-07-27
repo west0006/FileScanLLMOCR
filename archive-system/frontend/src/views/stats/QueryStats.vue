@@ -106,12 +106,21 @@ onMounted(async () => {
   } catch {
     typeData = [{type:'search',count:342},{type:'view',count:156},{type:'review',count:89},{type:'download',count:45},{type:'print',count:23},{type:'login',count:198}]
     userData = [{username:'管理员',count:245},{username:'李芳',count:187},{username:'陈小红',count:143},{username:'王建国',count:98},{username:'刘伟',count:67},{username:'张明华',count:52},{username:'赵静',count:31}]
+    const total = (u:any)=> (u.search||0)+(u.view||0)+(u.download||0)+(u.print||0) || u.count || 0
+    summary.total_operations = typeData.reduce((s,i)=>s+(i.count||0),0)
+    summary.search_count = typeData.find((i:any)=>i.type==='search')?.count||0
+    summary.review_count = typeData.find((i:any)=>i.type==='review')?.count||0
+    summary.failed_count = typeData.find((i:any)=>i.type==='failure')?.count||0
+  } catch {
+    typeData = [{type:'search',count:342},{type:'view',count:156},{type:'review',count:89},{type:'download',count:45},{type:'print',count:23},{type:'login',count:198}]
+    userData = [{username:'管理员',search:120,view:85,download:28,print:12},{username:'李芳',search:98,view:56,download:32,print:0},{username:'陈小红',search:76,view:44,download:22,print:0},{username:'王建国',search:186,view:342,download:28,print:12},{username:'刘伟',search:23,view:15,download:5,print:0},{username:'张明华',search:12,view:8,download:3,print:0},{username:'赵静',search:156,view:123,download:22,print:8}]
     summary.total_operations = typeData.reduce((s,i)=>s+i.count,0)
   }
+  const total = (u:any)=> (u.search||0)+(u.view||0)+(u.download||0)+(u.print||0) || u.count || 0
   await nextTick()
   loadTimeChart()
   if(typeChartRef.value){const c=echarts.init(typeChartRef.value);c.setOption({tooltip:{trigger:'item'},legend:{bottom:0},series:[{type:'pie',radius:['45%','75%'],center:['50%','45%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:typeData.map((t:any)=>({name:typeLabel(t.type),value:t.count})),color:['#10B981','#6366F1','#8B5CF6','#06B6D4','#F59E0B','#94A3B8']}]})}
-  if(userChartRef.value){const c=echarts.init(userChartRef.value);c.setOption({tooltip:{trigger:'axis'},grid:{left:10,right:20,top:10,bottom:0,containLabel:true},xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'#F1F5F9'}}},yAxis:{type:'category',data:userData.map((u:any)=>u.username).reverse(),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:userData.map((u:any)=>u.count).reverse(),barWidth:14,itemStyle:{borderRadius:[0,6,6,0],color:'#10B981'},emphasis:{itemStyle:{color:'#059669'}}}]})}
+  if(userChartRef.value){const c=echarts.init(userChartRef.value);c.setOption({tooltip:{trigger:'axis'},grid:{left:10,right:20,top:10,bottom:0,containLabel:true},xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'#F1F5F9'}}},yAxis:{type:'category',data:userData.map((u:any)=>u.username||u.name).reverse(),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:userData.map((u:any)=>total(u)).reverse(),barWidth:14,itemStyle:{borderRadius:[0,6,6,0],color:'#10B981'},emphasis:{itemStyle:{color:'#059669'}}}]})}
   fetchUserRanking()
 })
 
