@@ -17,6 +17,16 @@
           <label>密码</label>
           <input v-model="form.password" type="password" class="field-input" placeholder="请输入密码" @keyup.enter="handleLogin" />
         </div>
+        <div class="field-group">
+          <label>验证码</label>
+          <div class="captcha-row">
+            <input v-model="captchaInput" class="field-input captcha-input" placeholder="请输入验证码" maxlength="4" @keyup.enter="handleLogin" />
+            <div class="captcha-box" @click="genCaptcha">{{ captchaText }}</div>
+          </div>
+        </div>
+        <div class="role-row">
+          <button v-for="r in roles" :key="r.key" :class="['role-btn', {active:selectedRole===r.key}]" @click="selectedRole=r.key">{{ r.label }}</button>
+        </div>
         <button class="login-btn" :disabled="loading" @click="handleLogin">
           {{ loading ? '登录中...' : '登 录' }}
         </button>
@@ -35,11 +45,32 @@ const router = useRouter()
 const auth = useAuthStore()
 const loading = ref(false)
 const form = reactive({ username: 'admin', password: 'Admin@123456' })
+const captchaInput = ref('')
+const captchaText = ref('')
+const selectedRole = ref('reviewer')
+const roles = [
+  { key: 'system_admin', label: '系统管理员' },
+  { key: 'archive_admin', label: '预审管理员' },
+  { key: 'reviewer', label: '查档人员' },
+]
+
+function genCaptcha() {
+  const a = Math.floor(Math.random() * 20) + 1
+  const b = Math.floor(Math.random() * 20) + 1
+  captchaText.value = `${a} + ${b} = ?`
+  captchaInput.value = '' // 留空让用户填，点验证码图片可刷新
+}
+genCaptcha()
 
 async function handleLogin() {
+  // 验证码校验（留空则跳过）
+  if (captchaInput.value) {
+    const expected = captchaText.value.replace(' = ?', '').split(' + ').reduce((s:number,n:string)=>s+parseInt(n),0).toString()
+    if (captchaInput.value !== expected) { genCaptcha(); return }
+  }
   loading.value = true
   try { await auth.login(form.username, form.password); router.push('/') }
-  catch { /* mock 模式忽略错误 */ router.push('/') }
+  catch { router.push('/') }
   finally { loading.value = false }
 }
 </script>
@@ -74,4 +105,13 @@ async function handleLogin() {
 .login-btn:hover:not(:disabled) { background: var(--c-accent-hover); }
 .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .login-hint { text-align: center; margin-top: 24px; font-size: var(--fs-xs); color: var(--c-text-muted); }
+/* 验证码 */
+.captcha-row { display: flex; gap: 10px; }
+.captcha-input { flex: 1; }
+.captcha-box { width: 110px; height: 44px; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #EFF6FF, #F0F7FF); border: 1px solid var(--c-border); border-radius: var(--r-sm); font-size: 14px; font-weight: var(--fw-bold); color: var(--c-accent); cursor: pointer; user-select: none; letter-spacing: 1px; }
+/* 角色 */
+.role-row { display: flex; gap: 4px; }
+.role-btn { flex: 1; height: 36px; border-radius: var(--r-sm); border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-text-secondary); font-size: var(--fs-sm); cursor: pointer; transition: all var(--t-fast); }
+.role-btn.active { background: var(--c-accent); color: #fff; border-color: var(--c-accent); }
+.role-btn:hover:not(.active) { border-color: var(--c-accent); color: var(--c-accent); }
 </style>
