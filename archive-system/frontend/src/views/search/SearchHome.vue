@@ -267,23 +267,6 @@ const activeYear = ref<number | null>(null)
 const categoryTree = ref(JSON.parse(JSON.stringify(CATEGORY_TREE)))
 const yearList = ref(MOCK_YEAR_LIST)
 const keyword = ref('')
-  { key: '教学档案', label: '教学档案', count: 23100, expanded: false, children: [
-    { key: '教务处', label: '教务处', count: 11000 },
-    { key: '研究生院', label: '研究生院', count: 4500 },
-  ]},
-  { key: '科研档案', label: '科研档案', count: 12050, expanded: false, children: [] },
-  { key: '人事档案', label: '人事档案', count: 9800, expanded: false, children: [] },
-  { key: '财务档案', label: '财务档案', count: 7200, expanded: false, children: [] },
-  { key: '基建档案', label: '基建档案', count: 3800, expanded: false, children: [] },
-  { key: '声像档案', label: '声像档案', count: 2100, expanded: false, children: [] },
-])
-const yearList = ref([
-  { year: 2025, count: 12300 }, { year: 2024, count: 11800 }, { year: 2023, count: 10500 },
-  { year: 2022, count: 9800 }, { year: 2021, count: 9200 }, { year: 2020, count: 8900 },
-  { year: 2010, count: 7500 }, { year: 2000, count: 6800 }, { year: 1990, count: 5200 },
-  { year: 1980, count: 3400 }, { year: 1970, count: 2100 },
-])
-const keyword = ref('')
 const semanticQuery = ref('')
 const advancedForm = reactive({
   keywords: '', yearFrom: undefined as number | undefined, yearTo: undefined as number | undefined,
