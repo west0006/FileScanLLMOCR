@@ -1,6 +1,6 @@
 """认证 API — 登录 / 登出 / Token 刷新"""
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 
 from app.core.security import create_access_token, get_current_user, hash_password, verify_password
@@ -24,8 +24,10 @@ class LoginResponse(BaseModel):
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(req: LoginRequest):
+def login(req: LoginRequest, request: Request):
     """用户登录 — 含锁定检查、密码过期检查"""
+    # 设置用户名到 request.state（供中间件日志使用，失败时也能记录）
+    request.state.log_username = req.username
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.username == req.username).first()

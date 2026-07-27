@@ -119,6 +119,13 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         elif method in ("POST", "PUT", "DELETE"):
             # 写操作 → 功能操作
             op_tag = path.split("/")[2] if len(path.split("/")) > 2 else "other"
+
+            # 登录端点：从 request.state 获取用户名（由 auth endpoint 设置）
+            login_user = getattr(request.state, "log_username", None)
+            if login_user:
+                username = login_user
+                user_name = login_user
+
             if op_tag in _OP_DETAIL_MAP:
                 detail = _OP_DETAIL_MAP[op_tag]
                 if op_tag == "auth":
@@ -139,6 +146,17 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
             return response
 
         result = "success" if response.status_code < 400 else "failure"
+
+        # 登录失败时标注失败原因
+        if path.endswith("/login") and result == "failure":
+            if response.status_code == 423:
+                description = "用户登录 — 账户已锁定"
+            elif response.status_code == 403:
+                description = "用户登录 — 密码已过期"
+            else:
+                description = "用户登录 — 密码错误"
+        elif path.endswith("/login"):
+            description = "用户登录"
 
         # 补充用户姓名
         if user_name and user_name != username:
