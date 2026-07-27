@@ -42,43 +42,39 @@
       <button class="filter-btn-reset" @click="resetFilters">重置</button>
     </div>
 
-    <!-- 表格 -->
-    <div class="table-card">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th style="width:40px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th>
-            <th>档案编号</th>
-            <th>题名</th>
-            <th style="width:70px">年度</th>
-            <th style="width:100px">归口单位</th>
-            <th style="width:160px">风险评分</th>
-            <th style="width:70px">等级</th>
-            <th style="width:120px">AI 建议</th>
-            <th style="width:70px">置信度</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in records" :key="row.archive_id" @click="showDetail(row)" class="clickable">
-            <td><input type="checkbox" :checked="selectedIds.includes(row.id)" @click.stop @change="toggleOne(row.id)" /></td>
-            <td class="mono">{{ row.archive_id }}</td>
-            <td class="title-cell">{{ row.title }}</td>
-            <td>{{ row.year }}</td>
-            <td>{{ row.department }}</td>
-            <td>
-              <div class="mini-bar">
-                <div class="mini-bar-fill" :class="'mini-bar--' + riskLevelClass(row.risk_level)" :style="{ width: row.risk_score + '%' }"></div>
-                <span class="mini-bar-num">{{ row.risk_score }}</span>
-              </div>
-            </td>
-            <td><span class="risk-tag" :class="'risk-tag--' + riskLevelClass(row.risk_level)">{{ row.risk_level }}</span></td>
-            <td>{{ row.suggestion }}</td>
-            <td>{{ ((row.confidence || 0) * 100).toFixed(0) }}%</td>
-          </tr>
-        </tbody>
-      </table>
-      <div v-if="records.length === 0" class="table-empty">暂无预审记录</div>
-    </div>
+    <!-- 按件展示 — 按部门分组 -->
+    <template v-if="reviewView === 'item'">
+      <div class="table-card" v-for="group in groupedRecords" :key="group.dept">
+        <div class="dept-header">
+          <span class="dept-name">{{ group.dept || '未分类' }}</span>
+          <span class="dept-count">{{ group.items.length }} 件</span>
+        </div>
+        <table class="data-table">
+          <thead><tr>
+            <th style="width:36px"><input type="checkbox" :checked="group.allSelected" @change="toggleGroup(group)" /></th>
+            <th>档案编号</th><th>题名</th><th style="width:100px">所属案卷</th>
+            <th style="width:60px">年度</th><th style="width:140px">风险评分</th>
+            <th style="width:60px">等级</th><th style="width:120px">AI 建议</th>
+            <th style="width:100px">预审时间</th>
+            <th style="width:60px">置信度</th>
+          </tr></thead>
+          <tbody>
+            <tr v-for="row in group.items" :key="row.id" @click="showDetail(row)" class="clickable">
+              <td><input type="checkbox" :checked="selectedIds.includes(row.id)" @click.stop @change="toggleOne(row.id)" /></td>
+              <td class="mono">{{ row.archive_id }}</td>
+              <td class="title-cell">{{ row.title }}</td>
+              <td class="text-sm">{{ row.volume_id || '—' }}</td>
+              <td>{{ row.year }}</td>
+              <td><div class="mini-bar"><div class="mini-bar-fill" :class="'mini-bar--'+riskLevelClass(row.risk_level)" :style="{width:row.risk_score+'%'}"></div><span class="mini-bar-num">{{ row.risk_score }}</span></div></td>
+              <td><span class="risk-tag" :class="'risk-tag--'+riskLevelClass(row.risk_level)">{{ row.risk_level }}</span></td>
+              <td>{{ row.suggestion }}</td>
+              <td class="text-sm">{{ row.created_at?.substring(0,10) }}</td>
+              <td>{{ ((row.confidence||0)*100).toFixed(0) }}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
 
     <!-- 按卷展示 -->
     <div class="table-card" v-if="reviewView === 'volume'">
@@ -157,6 +153,27 @@ const selected = ref<any>(null)
 const selectedIds = ref<number[]>([])
 const reviewView = ref('item')
 const volumeRecords = ref<any[]>([])
+
+// 按部门分组
+const groupedRecords = computed(() => {
+  const groups: Record<string, any[]> = {}
+  for (const r of records.value) {
+    const dept = r.department || '未分类'
+    if (!groups[dept]) groups[dept] = []
+    groups[dept].push(r)
+  }
+  return Object.entries(groups).map(([dept, items]) => ({
+    dept,
+    items,
+    allSelected: items.length > 0 && items.every((i:any) => selectedIds.value.includes(i.id)),
+  }))
+})
+
+function toggleGroup(group: any) {
+  const ids = group.items.map((i:any) => i.id)
+  if (group.allSelected) { selectedIds.value = selectedIds.value.filter((id:number) => !ids.includes(id)) }
+  else { ids.forEach((id:number) => { if (!selectedIds.value.includes(id)) selectedIds.value.push(id) }) }
+}
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -196,6 +213,21 @@ async function fetchRecords() {
     })
     records.value = res.data.items || []
     total.value = res.data.total || 0
+    // 按卷聚合（卷级建议：任一件建议不开放则整卷建议不开放）
+    const volMap: Record<string, any> = {}
+    for (const r of records.value) {
+      const vid = r.volume_id || r.archive_id?.split('-').slice(0,2).join('-') || r.archive_id
+      if (!volMap[vid]) volMap[vid] = { archive_id: vid, title: r.volume_title || r.title, year: r.year, item_count: 0, max_risk: '低', suggestion: '建议开放', items: [] }
+      volMap[vid].item_count++
+      volMap[vid].items.push(r)
+      if (r.risk_level === '高' || (r.risk_score||0) > (volMap[vid]._maxScore||0)) { volMap[vid]._maxScore = r.risk_score||0; volMap[vid].max_risk = r.risk_level }
+      // 卷级建议传播：任一件不开放/延期开放 → 整卷提升建议级别
+      const s = r.suggestion || ''
+      if (s.includes('不开放')) volMap[vid].suggestion = '建议不开放'
+      else if (s.includes('延期') && !volMap[vid].suggestion.includes('不开放')) volMap[vid].suggestion = '建议延期开放'
+      else if (s.includes('脱敏') && volMap[vid].suggestion === '建议开放') volMap[vid].suggestion = '建议部分开放（脱敏后）'
+    }
+    volumeRecords.value = Object.values(volMap)
   } catch { /* ignore */ }
 }
 async function showDetail(row: any) {
@@ -351,6 +383,10 @@ async function handleExport() {
 .export-card{background:var(--c-bg);border-radius:var(--r-md);padding:14px 16px;border:1px solid var(--c-border)}
 .export-card h4{font-size:var(--fs-sm);font-weight:var(--fw-semibold);margin:0 0 4px}
 .export-card p{font-size:var(--fs-xs);color:var(--c-text-muted);margin:0;line-height:1.5}
+/* 部门分组 */
+.dept-header{padding:10px 16px;background:linear-gradient(90deg,var(--c-bg),var(--c-surface));border-bottom:1px solid var(--c-border);display:flex;align-items:center;justify-content:space-between}
+.dept-name{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--c-text)}
+.dept-count{font-size:var(--fs-xs);color:var(--c-text-muted);background:var(--c-bg);padding:1px 8px;border-radius:var(--r-full)}
 .tag-sm {
   display: inline-block; padding: 2px 8px; border-radius: var(--r-full);
   background: #FEF2F2; color: var(--c-danger); font-size: 11px; font-weight: var(--fw-medium); margin: 2px;
