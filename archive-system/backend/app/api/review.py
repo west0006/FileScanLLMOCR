@@ -47,21 +47,32 @@ def preview_review(req: PreviewRequest, request: Request, user: dict = Depends(g
     result = hybrid_review(req.full_text, metadata)
     result["archive_id"] = req.archive_id
 
-    # 落库（记录链路闭环）
+    # 落库 — upsert：同一档案只保留最新一条记录
     db = SessionLocal()
     try:
-        record = ReviewRecord(
-            archive_id=req.archive_id,
-            risk_score=result["risk_score"],
-            risk_level=result["risk_level"],
-            sensitive_items=result["sensitive_items"],
-            suggestion=result["suggestion"],
-            reason=result["reason"],
-            confidence=result.get("llm_confidence", 0),
-            model_name="mock" if result.get("llm_confidence", 0) < 0.8 else "llm",
-            processing_time_ms=round((time.time()-t0)*1000),
-        )
-        db.add(record)
+        existing = db.query(ReviewRecord).filter(ReviewRecord.archive_id == req.archive_id).first()
+        if existing:
+            existing.risk_score = result["risk_score"]
+            existing.risk_level = result["risk_level"]
+            existing.sensitive_items = result["sensitive_items"]
+            existing.suggestion = result["suggestion"]
+            existing.reason = result["reason"]
+            existing.confidence = result.get("llm_confidence", 0)
+            existing.model_name = "mock" if result.get("llm_confidence", 0) < 0.8 else "llm"
+            existing.processing_time_ms = round((time.time()-t0)*1000)
+        else:
+            record = ReviewRecord(
+                archive_id=req.archive_id,
+                risk_score=result["risk_score"],
+                risk_level=result["risk_level"],
+                sensitive_items=result["sensitive_items"],
+                suggestion=result["suggestion"],
+                reason=result["reason"],
+                confidence=result.get("llm_confidence", 0),
+                model_name="mock" if result.get("llm_confidence", 0) < 0.8 else "llm",
+                processing_time_ms=round((time.time()-t0)*1000),
+            )
+            db.add(record)
         db.commit()
     except Exception:
         pass
@@ -193,6 +204,14 @@ def list_review_records(user: dict = Depends(get_current_user), page: int = 1, p
                 q = q.filter(ReviewRecord.archive_id.in_(filtered_ids))
         total = q.count()
         items = q.order_by(ReviewRecord.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
+        # 去重：同一 archive_id 只保留最新一条
+        seen = set()
+        deduped = []
+        for r in items:
+            if r.archive_id not in seen:
+                seen.add(r.archive_id)
+                deduped.append(r)
+        items = deduped[:page_size]
         # join Archive 补齐题名/年度/单位
         archive_ids = [r.archive_id for r in items if r.archive_id]
         archives = {}
