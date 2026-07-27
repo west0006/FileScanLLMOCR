@@ -43,6 +43,7 @@ def list_logs(user: dict = Depends(get_current_user), page: int = 1, page_size: 
                             "operation_type": i.operation_type, "module": i.module,
                             "description": i.description, "target_id": i.target_id,
                             "ip_address": i.ip_address, "result": i.result,
+                            "chain_hash": i.chain_hash,
                             "created_at": str(i.created_at)} for i in items]}
     finally:
         db.close()
@@ -93,11 +94,12 @@ def export_logs(format: str = "excel", filters: dict = {}, user: dict = Depends(
         data = [{
             "操作时间": str(r.created_at)[:19] if r.created_at else "",
             "用户": r.username, "操作类型": r.operation_type, "模块": r.module or "",
-            "操作描述": r.description or "", "IP地址": r.ip_address or "",
-            "结果": r.result,
+            "操作描述": r.description or "", "操作对象": r.target_id or "",
+            "IP地址": r.ip_address or "", "结果": r.result,
+            "链校验": (r.chain_hash or "")[:16],
         } for r in rows]
         path = export_to_excel("操作日志", data,
-            ["操作时间","用户","操作类型","模块","操作描述","IP地址","结果"],
+            ["操作时间","用户","操作类型","模块","操作描述","操作对象","IP地址","结果","链校验"],
             output_dir=settings.UPLOAD_DIR or "/tmp")
         return {"status": "ok", "file": os.path.basename(path), "count": len(data)}
     finally:
@@ -184,6 +186,35 @@ def audit_summary(user: dict = Depends(get_current_user)):
             "failed_operations": failed,
             "anomalies": anomalies,
             "anomaly_count": len(anomalies),
+        }
+    finally:
+        db.close()
+
+
+@router.get("/audit/chain-verify")
+def verify_chain(user: dict = Depends(get_current_user)):
+    """哈希链完整性校验 — 检测日志是否被篡改"""
+    import hashlib
+    db = SessionLocal()
+    try:
+        logs = db.query(OperationLog).order_by(OperationLog.id.asc()).all()
+        if not logs:
+            return {"status": "ok", "total": 0, "tampered": 0}
+
+        prev_hash = "0" * 64
+        tampered = []
+        for log in logs:
+            content = f"{log.username}|{log.operation_type}|{log.module}|{log.description or ''}|{log.target_id or ''}|{log.result}"
+            expected = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
+            if expected != (log.chain_hash or ""):
+                tampered.append({"id": log.id, "expected": expected[:16], "actual": (log.chain_hash or "")[:16]})
+            prev_hash = log.chain_hash or expected
+
+        return {
+            "status": "tampered" if tampered else "ok",
+            "total": len(logs),
+            "tampered": len(tampered),
+            "details": tampered[:10],
         }
     finally:
         db.close()

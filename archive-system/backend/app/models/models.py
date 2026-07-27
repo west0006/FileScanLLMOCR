@@ -131,6 +131,7 @@ class OperationLog(Base):
     target_id = Column(String(200))
     ip_address = Column(String(50))
     user_agent = Column(String(300))
+    chain_hash = Column(String(64))  # 哈希链校验：SHA256(prev_hash + content)
     result = Column(String(20))  # success/failure
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 

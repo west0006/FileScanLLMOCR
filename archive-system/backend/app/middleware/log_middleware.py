@@ -52,9 +52,18 @@ def _write_log_sync(
     description: str, target_id: str, ip: str, result: str,
     user_agent: str = "",
 ):
-    """同步写日志（在独立线程中执行）"""
+    """同步写日志（在独立线程中执行）— 含哈希链校验"""
     db = SessionLocal()
     try:
+        # 取上一条日志的哈希
+        import hashlib
+        prev = db.query(OperationLog).order_by(OperationLog.id.desc()).first()
+        prev_hash = prev.chain_hash if prev and prev.chain_hash else "0" * 64
+
+        # 计算本日志的内容哈希链
+        content = f"{username}|{op_type}|{module}|{description}|{target_id}|{result}"
+        chain_hash = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
+
         log = OperationLog(
             user_id=user_id,
             username=username,
@@ -65,6 +74,7 @@ def _write_log_sync(
             ip_address=ip,
             result=result,
             user_agent=user_agent,
+            chain_hash=chain_hash,
         )
         db.add(log)
         db.commit()
