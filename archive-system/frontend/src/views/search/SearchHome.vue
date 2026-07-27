@@ -4,10 +4,21 @@
     <aside class="search-sidebar" v-if="searched">
       <div class="filter-card">
         <div class="filter-title">档案门类</div>
-        <div class="filter-tree">
-          <div v-for="cat in categoryTree" :key="cat.key" class="ft-node" :class="{active:activeCat===cat.key}" @click="activeCat=cat.key">
-            <span>{{ cat.label }}</span>
-            <span class="ft-count">{{ cat.count }}</span>
+        <div class="filter-tree-hier">
+          <div v-for="cat in categoryTree" :key="cat.key" class="ft-parent">
+            <div class="ft-parent-row" :class="{active:activeCat===cat.key}" @click="activeCat = activeCat===cat.key ? '' : cat.key">
+              <span class="ft-arrow">{{ cat.expanded ? '▼' : '▶' }}</span>
+              <span>{{ cat.label }}</span>
+              <span class="ft-count">{{ cat.count }}</span>
+            </div>
+            <div v-if="cat.children && cat.expanded" class="ft-children">
+              <div v-for="child in cat.children" :key="child.key"
+                   class="ft-child" :class="{active:activeCat===cat.key+'/'+child.key}"
+                   @click.stop="activeCat=cat.key+'/'+child.key">
+                <span>{{ child.label }}</span>
+                <span class="ft-count">{{ child.count }}</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -38,6 +49,16 @@
 
       <!-- 关键词检索 -->
       <div v-if="searchMode === 'keyword'" class="search-input-row">
+        <div class="search-dim-row">
+          <span class="dim-label">检索字段</span>
+          <select v-model="searchDimension" class="dim-select">
+            <option value="all">全部字段</option>
+            <option value="title">题名</option>
+            <option value="archive_id">档号</option>
+            <option value="author">责任者</option>
+            <option value="subject">主题词</option>
+          </select>
+        </div>
         <div class="search-box">
           <svg class="search-box-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           <input
@@ -243,14 +264,25 @@ const activeCat = ref('')
 const activeYear = ref<number | null>(null)
 
 const categoryTree = ref([
-  { key: '行政档案', label: '行政档案', count: 45210 },
-  { key: '教学档案', label: '教学档案', count: 23100 },
-  { key: '党群档案', label: '党群档案', count: 18500 },
-  { key: '科研档案', label: '科研档案', count: 12050 },
-  { key: '人事档案', label: '人事档案', count: 9800 },
-  { key: '财务档案', label: '财务档案', count: 7200 },
-  { key: '基建档案', label: '基建档案', count: 3800 },
-  { key: '声像档案', label: '声像档案', count: 2100 },
+  { key: '行政档案', label: '行政档案', count: 45210, expanded: false, children: [
+    { key: '学校办公室', label: '学校办公室', count: 12800 },
+    { key: '人事处', label: '人事处', count: 9800 },
+    { key: '财务处', label: '财务处', count: 7200 },
+  ]},
+  { key: '党群档案', label: '党群档案', count: 18500, expanded: false, children: [
+    { key: '组织部', label: '组织部', count: 5200 },
+    { key: '纪委', label: '纪委', count: 3100 },
+    { key: '工会', label: '工会', count: 2100 },
+  ]},
+  { key: '教学档案', label: '教学档案', count: 23100, expanded: false, children: [
+    { key: '教务处', label: '教务处', count: 11000 },
+    { key: '研究生院', label: '研究生院', count: 4500 },
+  ]},
+  { key: '科研档案', label: '科研档案', count: 12050, expanded: false, children: [] },
+  { key: '人事档案', label: '人事档案', count: 9800, expanded: false, children: [] },
+  { key: '财务档案', label: '财务档案', count: 7200, expanded: false, children: [] },
+  { key: '基建档案', label: '基建档案', count: 3800, expanded: false, children: [] },
+  { key: '声像档案', label: '声像档案', count: 2100, expanded: false, children: [] },
 ])
 const yearList = ref([
   { year: 2025, count: 12300 }, { year: 2024, count: 11800 }, { year: 2023, count: 10500 },
@@ -280,6 +312,7 @@ const queryTime = ref(0)
 const exactMatch = ref(false)
 const showHistory = ref(false)
 const searchHistory = ref<string[]>([])
+const searchDimension = ref('all')
 
 onMounted(() => {
   const stored = localStorage.getItem('search_history')
@@ -327,7 +360,7 @@ async function doSearch(resetPage = true) {
           ...base,
         })
       } else {
-        res = await searchApi.keyword({ keywords: keyword.value, exact: exactMatch.value, ...base })
+        res = await searchApi.keyword({ keywords: keyword.value, exact: exactMatch.value, dimension: searchDimension.value, ...base })
       }
     }
     results.value = res.data.results
@@ -342,8 +375,15 @@ async function doSearch(resetPage = true) {
   }
 }
 
-// 筛选栏变化自动重新搜索
-watch([activeCat, activeYear], () => { if (searched.value) doSearch() })
+// 筛选栏变化自动重新搜索 + 展开对应节点
+watch([activeCat, activeYear], () => {
+  if (activeCat.value && activeCat.value.includes('/')) {
+    const parentKey = activeCat.value.split('/')[0]
+    const parent = categoryTree.value.find(c => c.key === parentKey)
+    if (parent) parent.expanded = true
+  }
+  if (searched.value) doSearch()
+})
 
 function highlightText(text: string) {
   if (!keyword.value || !text) return text
@@ -408,6 +448,33 @@ async function handleExport() {
   border-radius: var(--r-sm); transition: background var(--t-fast);
 }
 .filter-reset:hover { background: var(--c-accent-light); }
+
+/* 分层树 */
+.filter-tree-hier { display: flex; flex-direction: column; }
+.ft-parent-row {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 10px; border-radius: var(--r-sm); cursor: pointer;
+  font-size: var(--fs-sm); color: var(--c-text-secondary); transition: all var(--t-fast);
+}
+.ft-parent-row:hover { background: var(--c-bg); color: var(--c-text); }
+.ft-parent-row.active { background: var(--c-accent-light); color: var(--c-accent); font-weight: var(--fw-medium); }
+.ft-arrow { font-size: 9px; width: 12px; color: var(--c-text-muted); }
+.ft-children { padding-left: 14px; }
+.ft-child {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 4px 10px; border-radius: var(--r-sm); cursor: pointer;
+  font-size: var(--fs-xs); color: var(--c-text-secondary); transition: all var(--t-fast);
+}
+.ft-child:hover { background: var(--c-bg); }
+.ft-child.active { background: var(--c-accent-light); color: var(--c-accent); font-weight: var(--fw-medium); }
+
+/* 检索维度 */
+.search-dim-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.dim-label { font-size: var(--fs-xs); color: var(--c-text-muted); white-space: nowrap; }
+.dim-select {
+  height: 30px; padding: 0 8px; border: 1px solid var(--c-border); border-radius: var(--r-sm);
+  font-size: var(--fs-xs); background: var(--c-surface); color: var(--c-text); outline: none; cursor: pointer;
+}
 
 /* ========== 搜索区 ========== */
 .search-hero {

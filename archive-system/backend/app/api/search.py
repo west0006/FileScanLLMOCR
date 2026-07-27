@@ -19,6 +19,7 @@ class KeywordSearchRequest(BaseModel):
     scope_nodes: Optional[list[str]] = None
     level: Optional[str] = "all"
     exact: bool = False
+    dimension: Optional[str] = "all"
     page: int = 1
     page_size: int = 20
     sort: Optional[str] = "score"
@@ -54,7 +55,7 @@ class AdvancedSearchRequest(BaseModel):
 def keyword_search(req: KeywordSearchRequest, request: Request, user: dict = Depends(get_current_user)):
     """关键词检索"""
     request.state.log_description = f"关键词检索: {req.keywords}" if req.keywords else "关键词检索"
-    return search_service.search_keyword(req.keywords, req.scope_nodes, req.level or "all", req.page, req.page_size, req.sort, req.exact, user)
+    return search_service.search_keyword(req.keywords, req.scope_nodes, req.level or "all", req.page, req.page_size, req.sort, req.exact, req.dimension or "all", user)
 
 
 @router.post("/semantic")

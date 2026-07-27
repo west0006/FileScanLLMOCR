@@ -47,6 +47,7 @@ def search_keyword(
     page_size: int = 20,
     sort: str = "score",
     exact: bool = False,
+    dimension: str = "all",
     user: dict | None = None,
 ) -> dict:
     """关键词检索"""
@@ -59,7 +60,7 @@ def search_keyword(
     if es is None:
         return _fallback_search(keywords, page, page_size, t0, sort, scope_nodes, level, user)
 
-    query = _build_keyword_query(expanded, scope_nodes, level, exact)
+    query = _build_keyword_query(expanded, scope_nodes, level, exact, dimension)
     return _execute_es_search(es, query, page, page_size, t0, sort, user=user)
 
 
@@ -173,12 +174,23 @@ def _build_keyword_query(
     scope_nodes: list[str] | None = None,
     level: str = "all",
     exact: bool = False,
+    dimension: str = "all",
 ) -> dict:
     """构造关键词 ES 查询"""
+    # 按维度选择搜索字段
+    dim_fields = {
+        "all": [f"{k}^{v}" for k, v in FIELD_BOOST.items()],
+        "title": ["title^10"],
+        "archive_id": ["archive_id^10"],
+        "author": ["author^10"],
+        "subject": ["subject^8"],
+    }
+    fields = dim_fields.get(dimension, dim_fields["all"])
+
     match_clause = {
         "multi_match": {
             "query": keywords,
-            "fields": [f"{k}^{v}" for k, v in FIELD_BOOST.items()],
+            "fields": fields,
             "type": "phrase" if exact else "best_fields",
         }
     }

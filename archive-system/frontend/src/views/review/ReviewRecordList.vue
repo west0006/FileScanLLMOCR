@@ -12,6 +12,12 @@
       </div>
     </div>
 
+    <!-- 视图切换 -->
+    <div class="view-toggle">
+      <button :class="['toggle-btn', { active: reviewView === 'item' }]" @click="reviewView = 'item'">📄 按件展示</button>
+      <button :class="['toggle-btn', { active: reviewView === 'volume' }]" @click="reviewView = 'volume'">📁 按卷展示</button>
+    </div>
+
     <!-- 筛选 -->
     <div class="filter-bar">
       <select v-model="filters.risk_level" class="filter-select">
@@ -30,6 +36,7 @@
       <span class="filter-sep">—</span>
       <input v-model.number="filters.year_to" type="number" placeholder="截止年度" class="filter-input filter-input--sm" />
       <button class="filter-btn" @click="fetchRecords">筛选</button>
+      <button class="filter-btn-reset" @click="resetFilters">重置</button>
     </div>
 
     <!-- 表格 -->
@@ -68,6 +75,28 @@
         </tbody>
       </table>
       <div v-if="records.length === 0" class="table-empty">暂无预审记录</div>
+    </div>
+
+    <!-- 按卷展示 -->
+    <div class="table-card" v-if="reviewView === 'volume'">
+      <table class="data-table">
+        <thead><tr>
+          <th>案卷编号</th><th>案卷题名</th><th style="width:70px">年度</th>
+          <th style="width:80px">件数</th><th style="width:80px">最高风险</th>
+          <th style="width:140px">卷级建议</th>
+        </tr></thead>
+        <tbody>
+          <tr v-for="v in volumeRecords" :key="v.archive_id">
+            <td class="mono">{{ v.archive_id }}</td>
+            <td class="title-cell">{{ v.title }}</td>
+            <td>{{ v.year }}</td>
+            <td>{{ v.item_count || '-' }}</td>
+            <td><span class="risk-tag" :class="'risk-tag--'+riskLevelClass(v.max_risk)">{{ v.max_risk || '-' }}</span></td>
+            <td>{{ v.suggestion || '-' }}</td>
+          </tr>
+          <tr v-if="!volumeRecords.length"><td colspan="6" class="table-empty">暂无案卷数据</td></tr>
+        </tbody>
+      </table>
     </div>
 
     <!-- 详情弹窗 -->
@@ -110,6 +139,8 @@ import { ElMessage } from 'element-plus'
 const records = ref<any[]>([])
 const selected = ref<any>(null)
 const selectedIds = ref<number[]>([])
+const reviewView = ref('item')
+const volumeRecords = ref<any[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
@@ -134,6 +165,10 @@ onMounted(() => fetchRecords())
 
 function riskLevelClass(lvl: string) {
   return { '高': 'high', '中': 'mid', '低': 'low' }[lvl] || 'low'
+}
+function resetFilters() {
+  filters.value = { risk_level: '', suggestion: '', year_from: undefined, year_to: undefined }
+  fetchRecords()
 }
 async function fetchRecords() {
   try {
@@ -184,6 +219,16 @@ async function handleExport() {
   background: var(--c-accent-light); color: var(--c-accent); font-weight: var(--fw-semibold);
 }
 
+/* 视图切换 */
+.view-toggle { display: flex; gap: 4px; margin-bottom: 12px; }
+.toggle-btn {
+  padding: 6px 16px; border-radius: var(--r-sm); border: 1px solid var(--c-border);
+  background: var(--c-surface); color: var(--c-text-secondary); font-size: var(--fs-sm);
+  cursor: pointer; transition: all var(--t-fast);
+}
+.toggle-btn.active { background: var(--c-accent); color: #fff; border-color: var(--c-accent); }
+.toggle-btn:hover:not(.active) { border-color: var(--c-accent); color: var(--c-accent); }
+
 /* 筛选 */
 .filter-bar {
   display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
@@ -209,6 +254,11 @@ async function handleExport() {
   font-weight: var(--fw-medium); cursor: pointer; margin-left: auto;
 }
 .filter-btn:hover { background: var(--c-accent-hover); }
+.filter-btn-reset {
+  height: 36px; padding: 0 16px; border-radius: var(--r-sm); border: 1px solid var(--c-border);
+  background: var(--c-surface); color: var(--c-text-secondary); font-size: var(--fs-sm); cursor: pointer;
+}
+.filter-btn-reset:hover { border-color: var(--c-text-muted); color: var(--c-text); }
 
 /* 表格 */
 .table-card {
