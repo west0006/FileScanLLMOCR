@@ -4,12 +4,19 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, Query
 from typing import Optional
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
 from app.core.database import SessionLocal
 from app.models.models import OperationLog, User
 from sqlalchemy import func
 
 router = APIRouter()
+
+
+def _apply_stats_scope(user: dict, query):
+    """非管理员只能看自己的数据"""
+    if user["role"] in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+        return query
+    return query.filter(OperationLog.username == user["username"])
 
 
 @router.get("/by-user")
@@ -19,7 +26,7 @@ def stats_by_user(
     role: Optional[str] = None,
     period: Optional[str] = "month",
 ):
-    """按用户账号统计 — 检索/浏览/下载/打印分维度，支持角色+时间筛选"""
+    """按用户账号统计"""
     db = SessionLocal()
     try:
         q = db.query(
@@ -27,6 +34,7 @@ def stats_by_user(
             OperationLog.operation_type,
             func.count().label("cnt"),
         )
+        q = _apply_stats_scope(user, q)
 
         # 时间筛选
         if period and period != "all":
@@ -89,7 +97,7 @@ def stats_by_time(
     try:
         cutoff = datetime.utcnow() - timedelta(days=days)
         logs = (
-            db.query(OperationLog)
+            _apply_stats_scope(user, db.query(OperationLog))
             .filter(OperationLog.created_at >= cutoff)
             .order_by(OperationLog.created_at.asc())
             .all()
@@ -126,7 +134,7 @@ def stats_by_type(user: dict = Depends(get_current_user)):
     db = SessionLocal()
     try:
         rows = (
-            db.query(OperationLog.operation_type, func.count())
+            _apply_stats_scope(user, db.query(OperationLog.operation_type, func.count()))
             .group_by(OperationLog.operation_type)
             .all()
         )
