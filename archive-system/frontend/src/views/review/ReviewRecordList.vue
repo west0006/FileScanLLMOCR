@@ -12,6 +12,8 @@
       </div>
     </div>
 
+    <div class="process-banner">📌 以下为AI预审完成的档案记录。可按风险等级、AI建议、年度范围进行筛选。<strong>建议优先查看高风险档案</strong>，通过导出功能批量获取预审结果表格。</div>
+
     <!-- 视图切换 -->
     <div class="view-toggle">
       <button :class="['toggle-btn', { active: reviewView === 'item' }]" @click="reviewView = 'item'">📄 按件展示</button>
@@ -101,6 +103,17 @@
     </div>
 
     <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchRecords()}" @size-change="s=>{pageSize=s;fetchRecords()}" />
+
+    <div class="export-cards">
+      <div class="export-card">
+        <h4>📊 导出AI预审结果表格</h4>
+        <p>Excel格式，含档案编号、题名、风险评分、敏感类型、AI建议、预审时间等字段。</p>
+      </div>
+      <div class="export-card">
+        <h4>📦 导出档案原文压缩包</h4>
+        <p>ZIP格式，含原始扫描件(TIFF/PDF)、对应的OCR识别文本、结构化元数据(XML/JSON)。</p>
+      </div>
+    </div>
 
     <!-- 详情弹窗 -->
     <div v-if="selected" class="modal-overlay" @click.self="selected = null">
@@ -333,6 +346,11 @@ async function handleExport() {
 .detail-grid dd { font-size: var(--fs-sm); color: var(--c-text); margin: 0; }
 .span-2 { grid-column: span 2; }
 .pager{margin-top:16px;display:flex;justify-content:center}
+.process-banner{padding:12px 16px;margin-bottom:16px;background:linear-gradient(90deg,#EFF6FF,#F0F7FF);border-left:4px solid var(--c-accent);border-radius:var(--r-sm);font-size:var(--fs-sm);color:var(--c-text-secondary);line-height:1.6}
+.export-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px}
+.export-card{background:var(--c-bg);border-radius:var(--r-md);padding:14px 16px;border:1px solid var(--c-border)}
+.export-card h4{font-size:var(--fs-sm);font-weight:var(--fw-semibold);margin:0 0 4px}
+.export-card p{font-size:var(--fs-xs);color:var(--c-text-muted);margin:0;line-height:1.5}
 .tag-sm {
   display: inline-block; padding: 2px 8px; border-radius: var(--r-full);
   background: #FEF2F2; color: var(--c-danger); font-size: 11px; font-weight: var(--fw-medium); margin: 2px;

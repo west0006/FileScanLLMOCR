@@ -39,6 +39,19 @@
         <button class="btn-primary" @click="createRole">创建</button>
       </template>
     </AppModal>
+
+    <!-- 密码安全策略 -->
+    <div class="security-card">
+      <h3>🔒 密码安全策略</h3>
+      <div class="sec-grid">
+        <div class="sec-item">最小长度 <strong>12 位</strong></div>
+        <div class="sec-item">复杂度 <strong>大小写+数字+符号</strong></div>
+        <div class="sec-item">有效期 <strong>30 天</strong></div>
+        <div class="sec-item">锁定策略 <strong>5 次失败 / 15 分钟</strong></div>
+        <div class="sec-item">会话超时 <strong>30 分钟</strong></div>
+        <div class="sec-item">传输加密 <strong>HTTPS / TLS 1.3</strong></div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -119,4 +132,8 @@ async function createRole() {
 .page{max-width:var(--page-max);margin:0 auto}.page-head{margin-bottom:20px}.page-head h2{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin:0}.card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);overflow:hidden}.data-table{width:100%;border-collapse:collapse}.data-table th{padding:12px 16px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--c-bg);border-bottom:1px solid var(--c-border)}.data-table td{padding:12px 16px;font-size:var(--fs-sm);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}.btn-sm{height:30px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-xs);cursor:pointer}.btn-sm:hover{border-color:var(--c-accent);color:var(--c-accent)}.btn-primary{height:32px;padding:0 20px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-sm);cursor:pointer}.btn-primary:hover{background:var(--c-accent-hover)}.font-medium{font-weight:var(--fw-medium)}.table-empty{padding:48px;text-align:center;color:var(--c-text-muted)}
 .perm-grid{display:flex;flex-direction:column;gap:10px}.perm-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--c-bg);border-radius:var(--r-sm);cursor:pointer;transition:background var(--t-fast)}.perm-item:hover{background:var(--c-border-light)}.perm-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--c-accent);cursor:pointer}.perm-label{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--c-text);min-width:80px}.perm-desc{font-size:var(--fs-xs);color:var(--c-text-muted)}
 .pager{margin-top:16px;display:flex;justify-content:center}
+.security-card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);padding:20px;margin-top:16px}
+.security-card h3{font-size:var(--fs-base);font-weight:var(--fw-semibold);margin:0 0 12px}
+.sec-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.sec-item{padding:8px 12px;background:var(--c-bg);border-radius:var(--r-sm);font-size:var(--fs-xs);color:var(--c-text-secondary)}
 </style>

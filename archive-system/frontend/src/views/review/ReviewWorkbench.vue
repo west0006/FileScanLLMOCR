@@ -1,11 +1,27 @@
 <template>
   <div class="workbench">
+    <!-- 步骤条 -->
+    <div class="steps-bar">
+      <div class="step done"><div class="step-num">✓</div><span>数据同步</span></div>
+      <div class="step done"><div class="step-num">✓</div><span>OCR识别</span></div>
+      <div class="step active"><div class="step-num">3</div><span>AI预审</span></div>
+      <div class="step"><div class="step-num">4</div><span>预审结果归档</span></div>
+    </div>
+
+    <!-- 流程说明 -->
+    <div class="process-banner">
+      📌 本系统对档案开放审核采用<strong>「AI智能预审 + 预审结果导出」</strong>模式。系统自动完成敏感信息识别、风险评级、开放建议生成，审核人员可直接查看AI预审结果，并支持批量导出预审结果表格与对应档案原文压缩包。
+    </div>
+
     <div class="wb-grid">
       <!-- 左：档案原文阅读器 -->
       <div class="wb-panel wb-panel--doc">
         <div class="panel-head">
           <h3>档案原文</h3>
           <div class="panel-head-right">
+            <button class="btn-clear" @click="curDocPage = Math.max(1, curDocPage - 1)" :disabled="curDocPage <= 1">上一页</button>
+            <span style="font-size:var(--fs-xs);color:var(--c-text-muted)">{{ curDocPage }} / {{ totalDocPages }}</span>
+            <button class="btn-clear" @click="curDocPage = Math.min(totalDocPages, curDocPage + 1)" :disabled="curDocPage >= totalDocPages">下一页</button>
             <span v-if="form.full_text" class="char-count">{{ form.full_text.length }} 字</span>
             <button class="btn-clear" v-if="form.archive_id" @click="handleDownload" title="下载原文">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -35,6 +51,11 @@
           <div class="doc-paper">
             <div class="doc-content" v-html="renderedText"></div>
             <div class="doc-footer">— 档案原文 —</div>
+            <div class="doc-actions">
+              <button class="btn-clear">🔍 查看原图</button>
+              <button class="btn-clear">📝 查看OCR文本</button>
+              <button class="btn-clear" @click="$router.push('/search/detail/'+form.archive_id)">📑 查看关联档案</button>
+            </div>
           </div>
         </div>
         <div class="doc-placeholder" v-else>
@@ -116,6 +137,20 @@
             </div>
             <span class="confidence-text">置信度 {{ ((result.llm_confidence || 0) * 100).toFixed(0) }}%</span>
           </div>
+
+          <div class="rules-section">
+            <h4>📋 预审依据规则</h4>
+            <div class="rules-list">
+              <div>• 《中华人民共和国档案法》第二十七条</div>
+              <div>• 《各级国家档案馆开放档案办法》</div>
+              <div>• 《档案信息系统安全等级保护要求》</div>
+              <div>• 《中南财经政法大学档案管理办法》</div>
+            </div>
+          </div>
+
+          <div class="hint-box">
+            💡 本系统仅完成AI预审，最终开放决定由档案馆人工研判。请通过「预审记录」页批量导出预审结果表格。
+          </div>
         </div>
       </div>
     </div>
@@ -139,6 +174,8 @@ const route = useRoute()
 
 const reviewing = ref(false)
 const result = ref<any>(null)
+const curDocPage = ref(1)
+const totalDocPages = ref(3)
 
 async function handleDownload() {
   if (!form.archive_id) return
@@ -369,4 +406,22 @@ async function doPreview() {
 .chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--c-warning); }
 .chip-dot--ai { background: #8B5CF6; }
 .engine-chip--result { background: var(--c-accent-light); border-color: transparent; color: var(--c-accent); font-weight: var(--fw-semibold); }
+
+/* 步骤条 */
+.steps-bar { display: flex; gap: 0; margin-bottom: 16px; }
+.step { display: flex; align-items: center; gap: 8px; padding: 8px 16px; background: var(--c-bg); border-radius: var(--r-sm); font-size: var(--fs-sm); color: var(--c-text-muted); }
+.step.done { background: var(--c-accent-light); color: var(--c-accent); }
+.step.active { background: var(--c-accent); color: #fff; }
+.step-num { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: var(--fw-bold); background: rgba(0,0,0,0.1); flex-shrink: 0; }
+.step.active .step-num { background: rgba(255,255,255,0.3); }
+/* 流程横幅 */
+.process-banner { padding: 12px 16px; margin-bottom: 16px; background: linear-gradient(90deg, #EFF6FF, #F0F7FF); border-left: 4px solid var(--c-accent); border-radius: var(--r-sm); font-size: var(--fs-sm); color: var(--c-text-secondary); line-height: 1.6; }
+/* 文档操作按钮 */
+.doc-actions { display: flex; gap: 8px; justify-content: center; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--c-border); }
+/* 规则 */
+.rules-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--c-border-light); }
+.rules-section h4 { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text); margin: 0 0 8px; }
+.rules-list { background: var(--c-bg); border-radius: var(--r-sm); padding: 10px 12px; font-size: var(--fs-xs); line-height: 1.8; color: var(--c-text-secondary); }
+/* 提示 */
+.hint-box { margin-top: 12px; padding: 10px 12px; background: #FFFBEB; border: 1px solid #FDE68A; border-radius: var(--r-sm); font-size: var(--fs-xs); color: #92400E; line-height: 1.6; }
 </style>

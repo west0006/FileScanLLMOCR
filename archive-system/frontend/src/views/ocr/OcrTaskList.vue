@@ -17,13 +17,19 @@
       <span v-if="quality.failed_count" style="color:var(--c-danger)"> | ❌ 失败 {{ quality.failed_count }} 件</span>
     </div>
 
+    <!-- 筛选 -->
+    <div class="filter-bar" style="margin-bottom:12px">
+      <select v-model="statusFilter" class="filter-select" @change="fetchTasks()"><option value="">全部状态</option><option value="pending">待处理</option><option value="running">处理中</option><option value="completed">已完成</option><option value="failed">失败</option></select>
+      <button class="btn-sm" @click="statusFilter='';fetchTasks()">重置</button>
+    </div>
+
     <!-- 任务表格 -->
     <div class="card">
       <table class="data-table">
         <thead><tr>
-          <th>#</th><th>任务名称</th><th style="width:200px">进度</th>
-          <th style="width:70px">优先级</th><th style="width:80px">状态</th>
-          <th style="width:160px">创建时间</th><th style="width:140px">操作</th>
+          <th>#</th><th>任务名称</th><th style="width:180px">进度</th>
+          <th style="width:70px">失败</th><th style="width:60px">优先级</th><th style="width:70px">状态</th>
+          <th style="width:140px">时间</th><th style="width:140px">操作</th>
         </tr></thead>
         <tbody>
           <tr v-for="t in tasks" :key="t.id">
@@ -35,6 +41,7 @@
                 <span class="mini-bar-num">{{ t.processed_pages }}/{{ t.total_pages }}</span>
               </div>
             </td>
+            <td><span style="color:var(--c-danger)">{{ t.failed_pages || 0 }}</span></td>
             <td><span class="priority-tag" :class="'pri--'+t.priority">{{ priLabel(t.priority) }}</span></td>
             <td><span class="risk-tag" :class="'risk-tag--'+barClass(t.status)">{{ statusLabel(t.status) }}</span></td>
             <td class="text-sm">{{ t.created_at?.substring(0,10) }}</td>
@@ -106,11 +113,12 @@ const page = ref(1); const pageSize = ref(20); const total = ref(0)
 const cf = reactive({ task_name: '', category: '', year_from: undefined as number|undefined, year_to: undefined as number|undefined, priority: 0 })
 const engineInfo = ref({ mode: 'mock', label: 'Mock 模式' })
 const quality = ref<any>({})
+const statusFilter = ref('')
 
 onMounted(() => { fetchTasks(); fetchEngineInfo(); fetchQuality() })
 
 async function fetchTasks() {
-  try { const res = await ocrApi.listTasks({ page:page.value, page_size:pageSize.value }); tasks.value = res.data.items || []; total.value = res.data.total || 0 } catch { /* */ }
+  try { const res = await ocrApi.listTasks({ page:page.value, page_size:pageSize.value, status: statusFilter.value||undefined }); tasks.value = res.data.items || []; total.value = res.data.total || 0 } catch { /* */ }
 }
 async function fetchEngineInfo() {
   try { const res = await ocrApi.listTasks({ page:1, page_size:1 }) /* use models endpoint */; 
@@ -170,4 +178,6 @@ async function handleAction(t: any, action: string) {
 .form-group{margin-bottom:16px}.form-group label{display:block;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}.field-input{height:40px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-base);background:var(--c-bg);outline:none;font-family:var(--font);width:100%}.field-input:focus{border-color:var(--c-accent)}.form-row{display:flex;gap:12px}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin:0}.detail-grid dt{font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:2px}.detail-grid dd{font-size:var(--fs-sm);color:var(--c-text);margin:0;font-weight:var(--fw-medium)}.span-2{grid-column:span 2}
 .pager{margin-top:16px;display:flex;justify-content:center}
+.filter-bar{display:flex;gap:8px;align-items:center;padding:8px 14px;background:var(--c-surface);border-radius:var(--r-md);border:1px solid var(--c-border)}
+.filter-select{height:32px;padding:0 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-xs);background:var(--c-bg);outline:none;cursor:pointer}
 </style>

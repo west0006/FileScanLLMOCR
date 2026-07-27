@@ -1,6 +1,7 @@
 <template>
   <div class="page">
     <div class="page-head"><h2>数据同步</h2></div>
+    <div class="process-banner">📌 配置源数据目录或数据库连接后，系统将按设定频率自动同步。支持文件增量同步（比对时间戳+哈希）和数据库元数据同步（字段映射+增量字段）。</div>
 
     <!-- Tab 切换 -->
     <div class="sync-tabs">
@@ -320,4 +321,5 @@ async function pollProgress(syncId: number) {
 .risk-tag--low { background: #F0FDF4; color: var(--c-success); }
 .risk-tag--mid { background: #FFFBEB; color: var(--c-warning); }
 .risk-tag--high { background: #FEF2F2; color: var(--c-danger); }
+.process-banner{padding:12px 16px;margin-bottom:16px;background:linear-gradient(90deg,#EFF6FF,#F0F7FF);border-left:4px solid var(--c-accent);border-radius:var(--r-sm);font-size:var(--fs-sm);color:var(--c-text-secondary);line-height:1.6}
 </style>
