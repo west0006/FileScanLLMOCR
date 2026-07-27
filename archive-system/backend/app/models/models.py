@@ -1,8 +1,8 @@
 """数据库模型定义"""
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Float, JSON, ForeignKey, Enum as SAEnum
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, Float, JSON, ForeignKey
+from sqlalchemy.orm import relationship  # 保留：ForeignKey 关联需要
 
 from app.core.database import Base
 
@@ -93,7 +93,7 @@ class ReviewRecord(Base):
     risk_score = Column(Float)
     risk_level = Column(String(10))    # 低/中/高
     sensitive_items = Column(JSON)     # [{type, content, position}]
-    suggestion = Column(String(50))    # 建议开放/建议部分开放/建议延期开放/建议不予开放
+    suggestion = Column(String(50))    # 建议开放/建议部分开放(脱敏后)/建议延期开放/建议不开放
     reason = Column(Text)
     confidence = Column(Float)
     model_name = Column(String(100))
