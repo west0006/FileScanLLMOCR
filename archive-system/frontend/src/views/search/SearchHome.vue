@@ -149,6 +149,16 @@
             @click="searchLevel = lvl.key"
           >{{ lvl.label }}</button>
         </div>
+        <div class="scope-tree-btn" @click="showScopeTree = !showScopeTree">
+          📂 {{ scopeNodes.length ? '已选 ' + scopeNodes.length + ' 个节点' : '按目录筛选' }} ▼
+          <div v-if="showScopeTree" class="scope-popover" @click.stop>
+            <el-tree ref="scopeTreeRef" :data="scopeTreeData" show-checkbox node-key="id" :default-checked-keys="scopeCheckedKeys" @check="onScopeCheck" :props="{label:'label',children:'children'}" default-expand-all />
+            <div class="scope-actions">
+              <button class="btn-sm" @click="clearScope">清除</button>
+              <button class="btn-accent-sm" @click="showScopeTree=false">确定</button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -277,6 +287,27 @@ const yearOptions = Array.from({ length: new Date().getFullYear() - 1969 }, (_, 
 const fondsOptions = FONDS_OPTIONS
 const selectedFondsIds = ref<string[]>([])
 
+// 目录树范围选择
+const showScopeTree = ref(false)
+const scopeNodes = ref<string[]>([])
+const scopeCheckedKeys = ref<string[]>([])
+const scopeTreeData = [
+  { id: 'cat-admin', label: '行政档案', children: [
+    { id: 'admin-2026', label: '2026年', children: [{id:'admin-2026-xzb',label:'校长办公室'},{id:'admin-2026-rsc',label:'人事处'},{id:'admin-2026-cwc',label:'财务处'}] },
+    { id: 'admin-2025', label: '2025年', children: [{id:'admin-2025-xzb',label:'校长办公室'},{id:'admin-2025-rsc',label:'人事处'}] },
+    { id: 'admin-old', label: '2024年及更早', children: [{id:'admin-old-xzb',label:'校长办公室'}] },
+  ]},
+  { id: 'cat-teach', label: '教学档案', children: [
+    { id: 'teach-2026', label: '2026年', children: [{id:'teach-2026-jwc',label:'教务处'},{id:'teach-2026-yjsy',label:'研究生院'},{id:'teach-2026-zsb',label:'招生办公室'}] },
+    { id: 'teach-2025', label: '2025年', children: [{id:'teach-2025-jwc',label:'教务处'},{id:'teach-2025-yjsy',label:'研究生院'}] },
+  ]},
+  { id: 'cat-finance', label: '财务档案', children: [
+    { id: 'finance-2026', label: '2026年', children: [{id:'finance-2026-cwc',label:'财务处'}] },
+  ]},
+]
+function onScopeCheck(_: any, data: any) { scopeNodes.value = data.checkedKeys || [] }
+function clearScope() { scopeNodes.value = []; scopeCheckedKeys.value = [] }
+
 const searched = ref(false)
 const loading = ref(false)
 const results = ref<any[]>([])
@@ -315,7 +346,7 @@ async function doSearch(resetPage = true) {
     if (searchMode.value !== 'advanced') saveToHistory(searchMode.value === 'semantic' ? semanticQuery.value : keyword.value)
 
     if (searchMode.value === 'semantic') {
-      res = await searchApi.semantic({ query: semanticQuery.value, ...base })
+      res = await searchApi.semantic({ query: semanticQuery.value, scope_nodes: scopeNodes.value.length ? scopeNodes.value : undefined, ...base })
     } else if (searchMode.value === 'advanced') {
       const cat = advancedForm.category || activeCat.value || undefined
       const yf = advancedForm.yearFrom ?? activeYear.value ?? undefined
@@ -336,7 +367,7 @@ async function doSearch(resetPage = true) {
           ...base,
         })
       } else {
-        res = await searchApi.keyword({ keywords: keyword.value, exact: exactMatch.value, dimension: searchDimension.value, ...base })
+        res = await searchApi.keyword({ keywords: keyword.value, exact: exactMatch.value, dimension: searchDimension.value, scope_nodes: scopeNodes.value.length ? scopeNodes.value : undefined, ...base })
       }
     }
     results.value = res.data.results
@@ -611,6 +642,10 @@ async function handleExport() {
   color: #fff;
   border-color: var(--c-accent);
 }
+.scope-tree-btn { position: relative; font-size: var(--fs-xs); color: var(--c-text-secondary); cursor: pointer; padding: 4px 10px; border: 1px solid var(--c-border); border-radius: var(--r-sm); white-space: nowrap; }
+.scope-tree-btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+.scope-popover { position: absolute; top: 32px; left: 0; z-index: 50; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); box-shadow: var(--s-dropdown); padding: 12px; min-width: 280px; max-height: 400px; overflow-y: auto; }
+.scope-actions { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--c-border-light); }
 
 /* ========== 结果区 ========== */
 .results-area { animation: fadeIn 0.3s ease; }
