@@ -18,6 +18,7 @@
         </tbody>
       </table>
     </div>
+    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchUsers()}" @size-change="s=>{pageSize=s;fetchUsers()}" />
 
     <!-- 新建弹窗 -->
     <div v-if="showCreate" class="modal-overlay" @click.self="showCreate=false">
@@ -78,6 +79,7 @@ const users = ref<any[]>([])
 const showCreate = ref(false)
 const creating = ref(false)
 const errorMsg = ref('')
+const page = ref(1); const pageSize = ref(20); const total = ref(0)
 
 const form = reactive({ username: '', name: '', role: 'reviewer', password: '' })
 
@@ -117,8 +119,9 @@ onMounted(() => fetchUsers())
 
 async function fetchUsers() {
   try {
-    const res = await userApi.list({ page: 1, page_size: 100 })
+    const res = await userApi.list({ page: page.value, page_size: pageSize.value })
     users.value = res.data.items || []
+    total.value = res.data.total || 0
   } catch { /* ignore */ }
 }
 
@@ -149,4 +152,5 @@ async function toggleUser(u: any) {
 
 <style scoped>
 .page{max-width:var(--page-max);margin:0 auto}.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.page-head h2{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin:0}.btn-primary{height:36px;padding:0 20px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-sm);font-weight:var(--fw-semibold);cursor:pointer}.btn-primary:hover{background:var(--c-accent-hover);opacity:1}.btn-primary:disabled{opacity:.6;cursor:not-allowed}.card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);overflow:hidden}.data-table{width:100%;border-collapse:collapse}.data-table th{padding:12px 16px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--c-bg);border-bottom:1px solid var(--c-border)}.data-table td{padding:12px 16px;font-size:var(--fs-sm);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}.mono{font-family:'SF Mono','Fira Code',monospace;font-size:var(--fs-xs)}.btn-sm{height:30px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-xs);cursor:pointer}.btn-sm:hover{border-color:var(--c-accent);color:var(--c-accent)}.risk-tag{padding:2px 10px;border-radius:var(--r-full);font-size:11px;font-weight:var(--fw-bold)}.risk-tag--low{background:#F0FDF4;color:var(--c-success)}.risk-tag--high{background:#FEF2F2;color:var(--c-danger)}.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}.modal-card{width:480px;background:var(--c-surface);border-radius:var(--r-lg);box-shadow:var(--s-dropdown)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--c-border-light)}.modal-head h3{margin:0;font-size:var(--fs-lg)}.modal-close{width:32px;height:32px;border-radius:var(--r-sm);border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--c-text-muted)}.modal-close:hover{background:var(--c-bg)}.modal-body{padding:24px}.form-group{margin-bottom:16px}.form-group label{display:block;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}.field-input{height:40px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-base);background:var(--c-bg);outline:none;font-family:var(--font);width:100%}.field-input:focus{border-color:var(--c-accent)}.error-msg{padding:8px 12px;background:#FEF2F2;color:var(--c-danger);border-radius:var(--r-sm);font-size:var(--fs-sm)}
+.pager{margin-top:16px;display:flex;justify-content:center}
 </style>

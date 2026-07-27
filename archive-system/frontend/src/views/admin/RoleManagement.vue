@@ -13,6 +13,7 @@
         </tbody>
       </table>
     </div>
+    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next" :total="total" :page-size="pageSize" :current-page="page" @current-change="p=>{page=p;fetchRoles()}" />
 
     <!-- 权限配置弹窗 -->
     <AppModal :visible="showPerm" :title="'权限配置 - ' + editingRole?.name" @close="showPerm=false" width="480px">
@@ -48,6 +49,7 @@ import { ElMessage } from 'element-plus'
 import AppModal from '@/components/AppModal.vue'
 
 const roles = ref<any[]>([])
+const page = ref(1); const pageSize = ref(10); const total = ref(0)
 const showPerm = ref(false)
 const showCreateRole = ref(false)
 const editingRole = ref<any>(null)
@@ -116,4 +118,5 @@ async function createRole() {
 <style scoped>
 .page{max-width:var(--page-max);margin:0 auto}.page-head{margin-bottom:20px}.page-head h2{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin:0}.card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);overflow:hidden}.data-table{width:100%;border-collapse:collapse}.data-table th{padding:12px 16px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--c-bg);border-bottom:1px solid var(--c-border)}.data-table td{padding:12px 16px;font-size:var(--fs-sm);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}.btn-sm{height:30px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-xs);cursor:pointer}.btn-sm:hover{border-color:var(--c-accent);color:var(--c-accent)}.btn-primary{height:32px;padding:0 20px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-sm);cursor:pointer}.btn-primary:hover{background:var(--c-accent-hover)}.font-medium{font-weight:var(--fw-medium)}.table-empty{padding:48px;text-align:center;color:var(--c-text-muted)}
 .perm-grid{display:flex;flex-direction:column;gap:10px}.perm-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--c-bg);border-radius:var(--r-sm);cursor:pointer;transition:background var(--t-fast)}.perm-item:hover{background:var(--c-border-light)}.perm-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--c-accent);cursor:pointer}.perm-label{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--c-text);min-width:80px}.perm-desc{font-size:var(--fs-xs);color:var(--c-text-muted)}
+.pager{margin-top:16px;display:flex;justify-content:center}
 </style>

@@ -19,6 +19,8 @@
         </tbody>
       </table>
     </div>
+    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchTasks()}" @size-change="s=>{pageSize=s;fetchTasks()}" />
+
     <div v-if="showCreate" class="modal-overlay" @click.self="showCreate=false"><div class="modal-card"><div class="modal-head"><h3>创建 AI 预审任务</h3><button class="modal-close" @click="showCreate=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="modal-body"><div class="form-group"><label>任务名称</label><input class="field-input" v-model="createForm.task_name" style="width:100%" /></div><div class="form-group"><label>批次名称</label><input class="field-input" v-model="createForm.batch_name" style="width:100%" /></div><div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px"><button class="btn-sm" @click="showCreate=false">取消</button><button class="btn-primary" @click="handleCreateTask">提交任务</button></div></div></div></div>
   </div>
 </template>
@@ -31,12 +33,14 @@ import { ElMessage } from 'element-plus'
 const tasks = ref<any[]>([])
 const showCreate = ref(false)
 const createForm = ref({ task_name: '', batch_name: '' })
+const page = ref(1); const pageSize = ref(20); const total = ref(0)
 
 onMounted(fetchTasks)
 async function fetchTasks() {
   try {
-    const res = await reviewApi.listTasks({ page: 1, page_size: 50 })
+    const res = await reviewApi.listTasks({ page: page.value, page_size: pageSize.value })
     tasks.value = res.data.items || []
+    total.value = res.data.total || 0
   } catch { /* keep empty */ }
 }
 async function handleCreateTask() {
@@ -86,4 +90,5 @@ async function handleTaskAction(t: any, action: string) {
 .risk-tag{padding:2px 10px;border-radius:var(--r-full);font-size:11px;font-weight:var(--fw-bold)}.risk-tag--low{background:#F0FDF4;color:var(--c-success)}.risk-tag--mid{background:#FFFBEB;color:var(--c-warning)}.risk-tag--high{background:#FEF2F2;color:var(--c-danger)}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}.modal-card{width:480px;background:var(--c-surface);border-radius:var(--r-lg);box-shadow:var(--s-dropdown)}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--c-border-light)}.modal-head h3{margin:0;font-size:var(--fs-lg)}.modal-close{width:32px;height:32px;border-radius:var(--r-sm);border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--c-text-muted)}.modal-close:hover{background:var(--c-bg)}.modal-body{padding:24px}
 .form-group{margin-bottom:16px}.form-group label{display:block;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}.field-input{height:40px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-base);background:var(--c-bg);outline:none;font-family:var(--font);width:100%}.field-input:focus{border-color:var(--c-accent)}
+.pager{margin-top:16px;display:flex;justify-content:center}
 </style>

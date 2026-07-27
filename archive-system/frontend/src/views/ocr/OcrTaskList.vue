@@ -49,6 +49,7 @@
         </tbody>
       </table>
     </div>
+    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchTasks()}" @size-change="s=>{pageSize=s;fetchTasks()}" />
 
     <!-- 创建任务弹窗 -->
     <div v-if="showCreate" class="modal-overlay" @click.self="showCreate=false">
@@ -101,6 +102,7 @@ const tasks = ref<any[]>([])
 const showCreate = ref(false)
 const showDetail = ref(false)
 const detailTask = ref<any>(null)
+const page = ref(1); const pageSize = ref(20); const total = ref(0)
 const cf = reactive({ task_name: '', category: '', year_from: undefined as number|undefined, year_to: undefined as number|undefined, priority: 0 })
 const engineInfo = ref({ mode: 'mock', label: 'Mock 模式' })
 const quality = ref<any>({})
@@ -108,7 +110,7 @@ const quality = ref<any>({})
 onMounted(() => { fetchTasks(); fetchEngineInfo(); fetchQuality() })
 
 async function fetchTasks() {
-  try { const res = await ocrApi.listTasks({ page:1, page_size:50 }); tasks.value = res.data.items || [] } catch { /* */ }
+  try { const res = await ocrApi.listTasks({ page:page.value, page_size:pageSize.value }); tasks.value = res.data.items || []; total.value = res.data.total || 0 } catch { /* */ }
 }
 async function fetchEngineInfo() {
   try { const res = await ocrApi.listTasks({ page:1, page_size:1 }) /* use models endpoint */; 
@@ -167,4 +169,5 @@ async function handleAction(t: any, action: string) {
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}.modal-card{width:480px;background:var(--c-surface);border-radius:var(--r-lg);box-shadow:var(--s-dropdown);max-height:80vh;overflow-y:auto}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--c-border-light)}.modal-head h3{margin:0;font-size:var(--fs-lg)}.modal-close{width:32px;height:32px;border-radius:var(--r-sm);border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--c-text-muted)}.modal-close:hover{background:var(--c-bg)}.modal-body{padding:24px}
 .form-group{margin-bottom:16px}.form-group label{display:block;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}.field-input{height:40px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-base);background:var(--c-bg);outline:none;font-family:var(--font);width:100%}.field-input:focus{border-color:var(--c-accent)}.form-row{display:flex;gap:12px}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin:0}.detail-grid dt{font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:2px}.detail-grid dd{font-size:var(--fs-sm);color:var(--c-text);margin:0;font-weight:var(--fw-medium)}.span-2{grid-column:span 2}
+.pager{margin-top:16px;display:flex;justify-content:center}
 </style>

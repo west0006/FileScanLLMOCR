@@ -99,6 +99,8 @@
       </table>
     </div>
 
+    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchRecords()}" @size-change="s=>{pageSize=s;fetchRecords()}" />
+
     <!-- 详情弹窗 -->
     <div v-if="selected" class="modal-overlay" @click.self="selected = null">
       <div class="modal-card">
@@ -329,6 +331,7 @@ async function handleExport() {
 .detail-grid dt { font-size: var(--fs-xs); color: var(--c-text-muted); font-weight: var(--fw-medium); margin-bottom: 2px; }
 .detail-grid dd { font-size: var(--fs-sm); color: var(--c-text); margin: 0; }
 .span-2 { grid-column: span 2; }
+.pager{margin-top:16px;display:flex;justify-content:center}
 .tag-sm {
   display: inline-block; padding: 2px 8px; border-radius: var(--r-full);
   background: #FEF2F2; color: var(--c-danger); font-size: 11px; font-weight: var(--fw-medium); margin: 2px;
