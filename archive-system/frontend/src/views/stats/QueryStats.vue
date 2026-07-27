@@ -80,69 +80,65 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { statsApi } from '@/api'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
+import { ROLE_LABELS, OP_TYPE_LABELS, MOCK_USERS, MOCK_STATS_TYPE, MOCK_METHOD_DETAIL } from '@/constants'
 
 const typeChartRef = ref<HTMLElement>()
 const userChartRef = ref<HTMLElement>()
 const timeChartRef = ref<HTMLElement>()
 const timeGranularity = ref('day')
-
 const summary = reactive({ total_operations:0, search_count:0, review_count:0, failed_count:0 })
 const userRanking = ref<any[]>([])
 const methodDetail = ref<any[]>([])
 const userFilter = reactive({ role:'', period:'month' })
 
-function roleLabel(r: string) { return {system_admin:'系统管理员',archive_admin:'档案管理员',reviewer:'审核员'}[r]||r }
-function typeLabel(t: string) { const m:Record<string,string>={search:'检索',view:'浏览',review:'审核',download:'下载',print:'打印',admin:'管理',login:'登录'}; return m[t]||t }
+function roleLabel(r: string) { return ROLE_LABELS[r] || r }
+function typeLabel(t: string) { return OP_TYPE_LABELS[t] || t }
+function userTotal(u: any) { return (u.search||0)+(u.view||0)+(u.download||0)+(u.print||0) }
 
 onMounted(async () => {
-  let typeData: any[] = []; let userData: any[] = []
+  let typeData = MOCK_STATS_TYPE
+  let userData = MOCK_USERS.slice(0, 7)
   try {
-    const [typeRes, userRes] = await Promise.all([statsApi.byType({}), statsApi.byUser({top_n:10})])
-    typeData = typeRes.data.items||[]; userData = userRes.data.items||[]
-    summary.total_operations = typeData.reduce((s:number,i:any)=>s+(i.count||0),0)
-    summary.search_count = typeData.find((i:any)=>i.type==='search')?.count||0
-    summary.review_count = typeData.find((i:any)=>i.type==='review')?.count||0
-    summary.failed_count = typeData.find((i:any)=>i.type==='failure')?.count||0
-  } catch {
-    typeData = [{type:'search',count:342},{type:'view',count:156},{type:'review',count:89},{type:'download',count:45},{type:'print',count:23},{type:'login',count:198}]
-    userData = [{username:'管理员',count:245},{username:'李芳',count:187},{username:'陈小红',count:143},{username:'王建国',count:98},{username:'刘伟',count:67},{username:'张明华',count:52},{username:'赵静',count:31}]
-    const total = (u:any)=> (u.search||0)+(u.view||0)+(u.download||0)+(u.print||0) || u.count || 0
-    summary.total_operations = typeData.reduce((s,i)=>s+(i.count||0),0)
-    summary.search_count = typeData.find((i:any)=>i.type==='search')?.count||0
-    summary.review_count = typeData.find((i:any)=>i.type==='review')?.count||0
-    summary.failed_count = typeData.find((i:any)=>i.type==='failure')?.count||0
-  } catch {
-    typeData = [{type:'search',count:342},{type:'view',count:156},{type:'review',count:89},{type:'download',count:45},{type:'print',count:23},{type:'login',count:198}]
-    userData = [{username:'管理员',search:120,view:85,download:28,print:12},{username:'李芳',search:98,view:56,download:32,print:0},{username:'陈小红',search:76,view:44,download:22,print:0},{username:'王建国',search:186,view:342,download:28,print:12},{username:'刘伟',search:23,view:15,download:5,print:0},{username:'张明华',search:12,view:8,download:3,print:0},{username:'赵静',search:156,view:123,download:22,print:8}]
-    summary.total_operations = typeData.reduce((s,i)=>s+i.count,0)
-  }
-  const total = (u:any)=> (u.search||0)+(u.view||0)+(u.download||0)+(u.print||0) || u.count || 0
+    const [tr, ur] = await Promise.all([statsApi.byType({}), statsApi.byUser({top_n:10})])
+    typeData = tr.data.items?.length ? tr.data.items : typeData
+    userData = ur.data.items?.length ? ur.data.items : userData
+  } catch { /* use fallback */ }
+  summary.total_operations = typeData.reduce((s:number,i:any)=>s+(i.count||0),0)
+  summary.search_count = typeData.find((i:any)=>i.type==='search')?.count||0
+  summary.review_count = typeData.find((i:any)=>i.type==='review')?.count||0
+  summary.failed_count = typeData.find((i:any)=>i.type==='failure')?.count||0
   await nextTick()
   loadTimeChart()
   if(typeChartRef.value){const c=echarts.init(typeChartRef.value);c.setOption({tooltip:{trigger:'item'},legend:{bottom:0},series:[{type:'pie',radius:['45%','75%'],center:['50%','45%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:typeData.map((t:any)=>({name:typeLabel(t.type),value:t.count})),color:['#10B981','#6366F1','#8B5CF6','#06B6D4','#F59E0B','#94A3B8']}]})}
-  if(userChartRef.value){const c=echarts.init(userChartRef.value);c.setOption({tooltip:{trigger:'axis'},grid:{left:10,right:20,top:10,bottom:0,containLabel:true},xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'#F1F5F9'}}},yAxis:{type:'category',data:userData.map((u:any)=>u.username||u.name).reverse(),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:userData.map((u:any)=>total(u)).reverse(),barWidth:14,itemStyle:{borderRadius:[0,6,6,0],color:'#10B981'},emphasis:{itemStyle:{color:'#059669'}}}]})}
+  if(userChartRef.value){const c=echarts.init(userChartRef.value);c.setOption({tooltip:{trigger:'axis'},grid:{left:10,right:20,top:10,bottom:0,containLabel:true},xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'#F1F5F9'}}},yAxis:{type:'category',data:userData.map((u:any)=>u.username||u.name).reverse(),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:userData.map((u:any)=>userTotal(u)).reverse(),barWidth:14,itemStyle:{borderRadius:[0,6,6,0],color:'#10B981'},emphasis:{itemStyle:{color:'#059669'}}}]})}
   fetchUserRanking()
 })
 
 async function fetchUserRanking() {
+  let ranking = MOCK_USERS
   try {
     const res = await statsApi.byUser({top_n:20,role:userFilter.role||undefined,period:userFilter.period})
-    userRanking.value = (res.data.items||[]).map((u:any)=>({...u,name:u.name||u.username,role:u.role||'reviewer'}))
-    // 计算利用方式明细
-    const types = ['search','view','download','print']
-    const total = userRanking.value.reduce((s,u)=>{types.forEach(t=>{u[t]=u[t]||0}); return s+(u.search||0)+(u.view||0)+(u.download||0)+(u.print||0)},0)
-    methodDetail.value = types.map(t=>{
-      const month = userRanking.value.reduce((s,u)=>s+(u[t]||0),0)
-      return {type:t, month_count:month, pct:total?+(month/total*100).toFixed(1):0, year_count:month*7, trend:month>20?'up':month>5?'flat':'down'}
-    })
-  } catch {
-    userRanking.value = [
-      {name:'王建国',username:'wangjg',role:'reviewer',search:186,view:342,download:28,print:12},
-      {name:'赵静',username:'zhaojing',role:'reviewer',search:156,view:289,download:22,print:8},
-      {name:'李芳',username:'lifang',role:'archive_admin',search:98,view:156,download:45,print:0},
-      {name:'陈小红',username:'chenxh',role:'archive_admin',search:76,view:134,download:32,print:0},
-      {name:'管理员',username:'admin',role:'system_admin',search:12,view:28,download:3,print:0},
-    ]
+    ranking = res.data.items?.length ? res.data.items.map((u:any)=>({...u,name:u.name||u.username,role:u.role||'reviewer'})) : ranking
+  } catch { /* use fallback */ }
+  userRanking.value = ranking
+  const types = ['search','view','download','print']
+  const total = ranking.reduce((s,u)=>{types.forEach(t=>{u[t]=u[t]||0}); return s+userTotal(u)},0)
+  methodDetail.value = types.map(t=>{
+    const month = ranking.reduce((s,u)=>s+(u[t]||0),0)
+    return {type:t, month_count:month, pct:total?+(month/total*100).toFixed(1):0, year_count:month*7, trend:month>20?'up':month>5?'flat':'down'}
+  }) as any || MOCK_METHOD_DETAIL
+}
+
+async function loadTimeChart() {
+  if(!timeChartRef.value) return
+  let timeData:any[]=[]
+  try{const res=await statsApi.byTime({granularity:timeGranularity.value,days:timeGranularity.value==='year'?365:timeGranularity.value==='quarter'?90:30});timeData=res.data.items||[]}catch{timeData=[]}
+  const c=echarts.init(timeChartRef.value)
+  c.setOption({tooltip:{trigger:'axis'},grid:{left:40,right:20,top:10,bottom:30},xAxis:{type:'category',data:timeData.map((i:any)=>i.period),axisLabel:{rotate:timeGranularity.value==='day'?45:0,fontSize:10}},yAxis:{type:'value',minInterval:1},series:[{type:'line',data:timeData.map((i:any)=>i.count),smooth:true,symbol:'circle',symbolSize:6,lineStyle:{color:'#10B981',width:2},itemStyle:{color:'#10B981'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,185,129,0.25)'},{offset:1,color:'rgba(16,185,129,0.02)'}])}}]})
+}
+
+function exportTable(id: string) { ElMessage.success('报表导出任务已创建') }
+</script>
     methodDetail.value = [
       {type:'search',month_count:1280,pct:23.1,year_count:8560,trend:'up'},
       {type:'view',month_count:2340,pct:42.2,year_count:15680,trend:'up'},

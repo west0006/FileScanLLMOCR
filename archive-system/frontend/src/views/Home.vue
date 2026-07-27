@@ -95,6 +95,7 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted } from 'vue'
 import { statsApi, logApi } from '@/api'
+import { MOCK_ACTIVITIES } from '@/constants'
 
 const stats = reactive({
   totalArchives: 125830,
@@ -105,13 +106,7 @@ const stats = reactive({
   pendingReview: 2341,
 })
 
-const recentActivities = ref([
-  { type: 'search', desc: '用户"管理员"检索了关键词"招生 1996"', time: '2 分钟前' },
-  { type: 'review', desc: 'AI 预审任务 REV-2026-001 完成 560 件', time: '15 分钟前' },
-  { type: 'ocr', desc: 'OCR 任务"历史档案补录"处理完成 2400 页', time: '1 小时前' },
-  { type: 'system', desc: '文件增量同步完成，新增 125 个文件', time: '2 小时前' },
-  { type: 'login', desc: '用户"审核员李芳"登录系统', time: '3 小时前' },
-])
+const recentActivities = ref(MOCK_ACTIVITIES)
 
 onMounted(async () => {
   try {

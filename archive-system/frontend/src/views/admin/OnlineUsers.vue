@@ -30,11 +30,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { userApi } from '@/api'
+import { ROLE_LABELS } from '@/constants'
 
 const users = ref<any[]>([])
 
 function roleLabel(r: string): string {
-  return { system_admin: '系统管理员', archive_admin: '档案管理员', reviewer: '审核员' }[r] || r
+  return ROLE_LABELS[r] || r
 }
 
 onMounted(async () => {

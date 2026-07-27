@@ -132,6 +132,8 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { reviewApi, searchApi } from '@/api'
+import { ElMessage } from 'element-plus'
+import { MOCK_REVIEW_FALLBACK } from '@/constants'
 
 const route = useRoute()
 
@@ -230,16 +232,7 @@ async function doPreview() {
     })
     result.value = res.data
   } catch {
-    result.value = {
-      risk_score: 48, risk_level: '中', suggestion: '建议部分开放',
-      reason: '该档案引用了上级单位来文（不予开放部分），且包含部分个人隐私信息。建议对相关段落做遮盖处理后开放其余内容。',
-      sensitive_items: [
-        { type: '上级来文引用', content: '根据国务院[1973]XX号文件精神...', start_char: 50, end_char: 80 },
-        { type: '个人隐私', content: '学生张三，家庭出身地主，父亲张某某...', start_char: 200, end_char: 235 },
-        { type: '内部事项', content: '经校长办公会研究决定...', start_char: 350, end_char: 370 },
-      ],
-      llm_confidence: 0.87, rule_hits_count: 5, llm_raw_score: 45,
-    }
+    result.value = MOCK_REVIEW_FALLBACK
   } finally {
     reviewing.value = false
   }

@@ -234,6 +234,7 @@ import { ref, reactive, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { searchApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { CATEGORY_TREE, FONDS_OPTIONS, MOCK_YEAR_LIST } from '@/constants'
 
 const router = useRouter()
 
@@ -263,17 +264,9 @@ const searchLevel = ref('all')
 const activeCat = ref('')
 const activeYear = ref<number | null>(null)
 
-const categoryTree = ref([
-  { key: '行政档案', label: '行政档案', count: 45210, expanded: false, children: [
-    { key: '学校办公室', label: '学校办公室', count: 12800 },
-    { key: '人事处', label: '人事处', count: 9800 },
-    { key: '财务处', label: '财务处', count: 7200 },
-  ]},
-  { key: '党群档案', label: '党群档案', count: 18500, expanded: false, children: [
-    { key: '组织部', label: '组织部', count: 5200 },
-    { key: '纪委', label: '纪委', count: 3100 },
-    { key: '工会', label: '工会', count: 2100 },
-  ]},
+const categoryTree = ref(JSON.parse(JSON.stringify(CATEGORY_TREE)))
+const yearList = ref(MOCK_YEAR_LIST)
+const keyword = ref('')
   { key: '教学档案', label: '教学档案', count: 23100, expanded: false, children: [
     { key: '教务处', label: '教务处', count: 11000 },
     { key: '研究生院', label: '研究生院', count: 4500 },
@@ -298,7 +291,7 @@ const advancedForm = reactive({
 })
 const yearOptions = Array.from({ length: new Date().getFullYear() - 1969 }, (_, i) => 1970 + i).reverse()
 
-const fondsOptions = ['XZ', 'DQ', 'JX', 'CW', 'RS', 'KY', 'JJ', 'SX']
+const fondsOptions = FONDS_OPTIONS
 const selectedFondsIds = ref<string[]>([])
 
 const searched = ref(false)
