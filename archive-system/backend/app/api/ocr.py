@@ -20,7 +20,6 @@ class CreateOcrTaskRequest(BaseModel):
     engine: Optional[str] = "paddleocr"  # paddleocr | mock
     enable_preprocess: Optional[bool] = True
     priority: Optional[int] = 0  # 0=普通, 1=高, 2=紧急
-    enable_preprocess: Optional[bool] = True
 
 
 @router.post("/tasks")
