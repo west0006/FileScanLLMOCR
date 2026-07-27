@@ -139,25 +139,6 @@ async function loadTimeChart() {
 
 function exportTable(id: string) { ElMessage.success('报表导出任务已创建') }
 </script>
-    methodDetail.value = [
-      {type:'search',month_count:1280,pct:23.1,year_count:8560,trend:'up'},
-      {type:'view',month_count:2340,pct:42.2,year_count:15680,trend:'up'},
-      {type:'download',month_count:320,pct:5.8,year_count:2340,trend:'down'},
-      {type:'print',month_count:85,pct:1.5,year_count:680,trend:'flat'},
-    ]
-  }
-}
-
-async function loadTimeChart() {
-  if(!timeChartRef.value) return
-  let timeData:any[]=[]
-  try{const res=await statsApi.byTime({granularity:timeGranularity.value,days:timeGranularity.value==='year'?365:timeGranularity.value==='quarter'?90:30});timeData=res.data.items||[]}catch{timeData=[]}
-  const c=echarts.init(timeChartRef.value)
-  c.setOption({tooltip:{trigger:'axis'},grid:{left:40,right:20,top:10,bottom:30},xAxis:{type:'category',data:timeData.map((i:any)=>i.period),axisLabel:{rotate:timeGranularity.value==='day'?45:0,fontSize:10}},yAxis:{type:'value',minInterval:1},series:[{type:'line',data:timeData.map((i:any)=>i.count),smooth:true,symbol:'circle',symbolSize:6,lineStyle:{color:'#10B981',width:2},itemStyle:{color:'#10B981'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,185,129,0.25)'},{offset:1,color:'rgba(16,185,129,0.02)'}])}}]})
-}
-
-function exportTable(id: string) { ElMessage.success('报表导出任务已创建') }
-</script>
 
 <style scoped>
 .stats-page{max-width:var(--page-max);margin:0 auto}
