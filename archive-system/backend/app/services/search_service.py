@@ -113,7 +113,7 @@ def search_advanced(
 
     es = get_es()
     if es is None:
-        return _fallback_search(keywords or "", page, page_size, t0, sort, level=level, user=user)
+        return _fallback_search(keywords or "", page, page_size, t0, sort, level=level, user=user, year_from=year_from, year_to=year_to, category=category, department=department, fonds_id=fonds_id, fonds_ids=fonds_ids, author=author, file_code=file_code)
 
     must_clauses = []
     filters = []
@@ -388,11 +388,12 @@ def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, so
 
 # ==================== SQLite 降级 ====================
 
-def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None, level: str = "all", user: dict | None = None) -> dict:
+def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None, level: str = "all", user: dict | None = None, year_from: int | None = None, year_to: int | None = None, category: str | None = None, department: str | None = None, fonds_id: str | None = None, fonds_ids: list[str] | None = None, author: str | None = None, file_code: str | None = None) -> dict:
     """ES 不可用时的 SQLite 降级搜索"""
     db = SessionLocal()
     try:
         from app.models.models import Archive
+        from sqlalchemy import or_
         query = db.query(Archive)
         if user:
             from app.core.security import apply_data_scope
@@ -405,6 +406,16 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: 
                 )
         if scope_nodes:
             query = query.filter(Archive.category.in_(scope_nodes))
+        # 高级筛选
+        if year_from: query = query.filter(Archive.year >= year_from)
+        if year_to: query = query.filter(Archive.year <= year_to)
+        if category: query = query.filter(Archive.category == category)
+        if department: query = query.filter(Archive.department == department)
+        if author: query = query.filter(Archive.author.contains(author))
+        if file_code: query = query.filter(Archive.file_code.contains(file_code))
+        if fonds_id: query = query.filter(Archive.fonds_id == fonds_id)
+        if fonds_ids: query = query.filter(Archive.fonds_id.in_(fonds_ids))
+        # 层级
         if level == "project":
             query = query.filter(Archive.level == "project")
         elif level == "box":
