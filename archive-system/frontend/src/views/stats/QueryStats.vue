@@ -1,5 +1,7 @@
 <template>
   <div class="stats-page">
+    <div v-if="hasError" class="error-banner">⚠️ {{ errorMsg }}</div>
+
     <!-- 概览卡片 -->
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-icon stat-icon--green">📁</div><div class="stat-label">总操作记录</div><div class="stat-value">{{ summary.total_operations }}</div></div>
@@ -80,7 +82,7 @@ import { ref, reactive, onMounted, nextTick } from 'vue'
 import { statsApi } from '@/api'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
-import { ROLE_LABELS, OP_TYPE_LABELS, MOCK_USERS, MOCK_STATS_TYPE, MOCK_METHOD_DETAIL } from '@/constants'
+import { ROLE_LABELS, OP_TYPE_LABELS } from '@/constants'
 
 const typeChartRef = ref<HTMLElement>()
 const userChartRef = ref<HTMLElement>()
@@ -90,43 +92,51 @@ const summary = reactive({ total_operations:0, search_count:0, review_count:0, f
 const userRanking = ref<any[]>([])
 const methodDetail = ref<any[]>([])
 const userFilter = reactive({ role:'', period:'month' })
+const hasError = ref(false)
+const errorMsg = ref('')
 
 function roleLabel(r: string) { return ROLE_LABELS[r] || r }
 function typeLabel(t: string) { return OP_TYPE_LABELS[t] || t }
 function userTotal(u: any) { return (u.search||0)+(u.view||0)+(u.download||0)+(u.print||0) }
 
 onMounted(async () => {
-  let typeData = MOCK_STATS_TYPE
-  let userData = MOCK_USERS.slice(0, 7)
   try {
     const [tr, ur] = await Promise.all([statsApi.byType({}), statsApi.byUser({top_n:10})])
-    typeData = tr.data.items?.length ? tr.data.items : typeData
-    userData = ur.data.items?.length ? ur.data.items : userData
-  } catch { /* use fallback */ }
-  summary.total_operations = typeData.reduce((s:number,i:any)=>s+(i.count||0),0)
-  summary.search_count = typeData.find((i:any)=>i.type==='search')?.count||0
-  summary.review_count = typeData.find((i:any)=>i.type==='review')?.count||0
-  summary.failed_count = typeData.find((i:any)=>i.type==='failure')?.count||0
-  await nextTick()
-  loadTimeChart()
-  if(typeChartRef.value){const c=echarts.init(typeChartRef.value);c.setOption({tooltip:{trigger:'item'},legend:{bottom:0},series:[{type:'pie',radius:['45%','75%'],center:['50%','45%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:typeData.map((t:any)=>({name:typeLabel(t.type),value:t.count})),color:['#10B981','#6366F1','#8B5CF6','#06B6D4','#F59E0B','#94A3B8']}]})}
-  if(userChartRef.value){const c=echarts.init(userChartRef.value);c.setOption({tooltip:{trigger:'axis'},grid:{left:10,right:20,top:10,bottom:0,containLabel:true},xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'#F1F5F9'}}},yAxis:{type:'category',data:userData.map((u:any)=>u.username||u.name).reverse(),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:userData.map((u:any)=>userTotal(u)).reverse(),barWidth:14,itemStyle:{borderRadius:[0,6,6,0],color:'#10B981'},emphasis:{itemStyle:{color:'#059669'}}}]})}
-  fetchUserRanking()
+    const typeData = tr.data.items || []
+    const userData = ur.data.items || []
+    summary.total_operations = typeData.reduce((s:number,i:any)=>s+(i.count||0),0)
+    summary.search_count = typeData.find((i:any)=>i.type==='search')?.count||0
+    summary.review_count = typeData.find((i:any)=>i.type==='review')?.count||0
+    summary.failed_count = typeData.find((i:any)=>i.type==='failure')?.count||0
+    await nextTick()
+    loadTimeChart()
+    if(typeChartRef.value){const c=echarts.init(typeChartRef.value);c.setOption({tooltip:{trigger:'item'},legend:{bottom:0},series:[{type:'pie',radius:['45%','75%'],center:['50%','45%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:typeData.map((t:any)=>({name:typeLabel(t.type),value:t.count})),color:['#10B981','#6366F1','#8B5CF6','#06B6D4','#F59E0B','#94A3B8']}]})}
+    if(userChartRef.value){const c=echarts.init(userChartRef.value);c.setOption({tooltip:{trigger:'axis'},grid:{left:10,right:20,top:10,bottom:0,containLabel:true},xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'#F1F5F9'}}},yAxis:{type:'category',data:userData.map((u:any)=>u.username||u.name).reverse(),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:userData.map((u:any)=>userTotal(u)).reverse(),barWidth:14,itemStyle:{borderRadius:[0,6,6,0],color:'#10B981'},emphasis:{itemStyle:{color:'#059669'}}}]})}
+    fetchUserRanking()
+  } catch {
+    hasError.value = true
+    errorMsg.value = '统计接口请求失败，请检查后端服务是否正常。页面显示均为0，不代表真实数据。'
+  }
 })
 
 async function fetchUserRanking() {
-  let ranking = MOCK_USERS
   try {
     const res = await statsApi.byUser({top_n:20,role:userFilter.role||undefined,period:userFilter.period})
-    ranking = res.data.items?.length ? res.data.items.map((u:any)=>({...u,name:u.name||u.username,role:u.role||'reviewer'})) : ranking
-  } catch { /* use fallback */ }
-  userRanking.value = ranking
-  const types = ['search','view','download','print']
-  const total = ranking.reduce((s,u)=>{types.forEach(t=>{u[t]=u[t]||0}); return s+userTotal(u)},0)
-  methodDetail.value = types.map(t=>{
-    const month = ranking.reduce((s,u)=>s+(u[t]||0),0)
-    return {type:t, month_count:month, pct:total?+(month/total*100).toFixed(1):0, year_count:month*7, trend:month>20?'up':month>5?'flat':'down'}
-  }) as any || MOCK_METHOD_DETAIL
+    const ranking = (res.data.items||[]).map((u:any)=>({...u,name:u.name||u.username,role:u.role||'reviewer'}))
+    userRanking.value = ranking
+    const types = ['search','view','download','print']
+    const total = ranking.reduce((s,u)=>{types.forEach(t=>{u[t]=u[t]||0}); return s+userTotal(u)},0)
+    methodDetail.value = types.map(t=>{
+      const month = ranking.reduce((s,u)=>s+(u[t]||0),0)
+      return {type:t, month_count:month, pct:total?+(month/total*100).toFixed(1):0, year_count:month*7, trend:month>20?'up':month>5?'flat':'down'}
+    })
+    hasError.value = false
+  } catch {
+    userRanking.value = []
+    methodDetail.value = []
+    hasError.value = true
+    errorMsg.value = '统计接口请求失败，请检查后端服务是否正常。'
+  }
 }
 
 async function loadTimeChart() {
@@ -142,6 +152,7 @@ function exportTable(id: string) { ElMessage.success('报表导出任务已创�
 
 <style scoped>
 .stats-page{max-width:var(--page-max);margin:0 auto}
+.error-banner{padding:12px 18px;margin-bottom:16px;background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--r-md);color:var(--c-danger);font-size:var(--fs-sm);font-weight:var(--fw-medium)}
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
 .stat-card{background:var(--c-surface);border-radius:var(--r-lg);padding:20px;border:1px solid var(--c-border);position:relative;overflow:hidden}
 .stat-icon{position:absolute;right:16px;top:14px;font-size:24px;opacity:.6}
