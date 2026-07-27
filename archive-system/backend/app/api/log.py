@@ -80,10 +80,14 @@ def login_logs(user: dict = Depends(get_current_user), page: int = 1, page_size:
 
 @router.post("/export")
 def export_logs(format: str = "excel", filters: dict = {}, user: dict = Depends(get_current_user)):
-    """日志导出"""
+    """日志导出 — 支持筛选条件"""
     db = SessionLocal()
     try:
-        rows = db.query(OperationLog).order_by(OperationLog.created_at.desc()).limit(2000).all()
+        q = db.query(OperationLog)
+        if filters.get("user_account"): q = q.filter(OperationLog.username == filters["user_account"])
+        if filters.get("operation_type"): q = q.filter(OperationLog.operation_type == filters["operation_type"])
+        if filters.get("module"): q = q.filter(OperationLog.module == filters["module"])
+        rows = q.order_by(OperationLog.created_at.desc()).limit(2000).all()
         from app.services.export_service import export_to_excel
         from app.core.config import settings
         data = [{

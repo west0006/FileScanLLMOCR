@@ -90,7 +90,21 @@ async function fetchLogs() {
 
 function typeLabel(t: string) { return OP_TYPE_LABELS[t] || t }
 function resetLogFilters() { filters.value = { username: '', type: '' }; fetchLogs() }
-function handleExport() { ElMessage.info('导出任务已提交') }
+function handleExport() {
+  try {
+    const filters: any = {}
+    if (filters.value.username) filters.user_account = filters.value.username
+    if (filters.value.type) filters.operation_type = filters.value.type
+    if (logTab.value !== 'all') filters.operation_type = logTab.value
+    logApi.export(filters).then((res: any) => {
+      const a = document.createElement('a')
+      a.href = `/api/log/export?format=excel`
+      a.download = res.data?.file || '操作日志.xlsx'
+      a.click()
+      ElMessage.success(`导出成功: ${res.data?.count || '?'} 条`)
+    }).catch(() => ElMessage.error('导出失败'))
+  } catch { ElMessage.error('导出失败') }
+}
 </script>
 
 <style scoped>
