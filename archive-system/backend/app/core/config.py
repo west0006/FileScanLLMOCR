@@ -61,8 +61,10 @@ class Settings(BaseSettings):
     PASSWORD_MIN_LENGTH: int = 12
     PASSWORD_EXPIRE_DAYS: int = 30
 
-    # AI Mock 模式
-    LLM_MODE: str = "mock"  # mock | real
+    # AI 模式
+    LLM_MODE: str = "mock"  # mock | ollama | real
+    OLLAMA_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5:3b"
     OCR_MODE: str = "mock"  # mock | real
 
     # 文件存储
