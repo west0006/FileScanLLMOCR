@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.tasks.celery_app import celery_app
 from app.core.database import SessionLocal
-from app.models.models import SyncLog, Archive
+from app.models.models import SyncLog, Archive, OperationLog
 
 logger = get_task_logger(__name__)
 
@@ -133,6 +133,8 @@ def sync_files_task(self, sync_log_id: int, mode: str = "incremental"):
         sync_log.log_detail = json.dumps({"errors": errors[:20]}) if errors else ""
         db.commit()
 
+        _log_sync_op(db, "file", mode, new_count, updated_count, failed_count)
+
         logger.info(f"File sync done: {new_count} new, {updated_count} updated, {failed_count} failed")
         return {"mode": mode, "status": "completed", "new": new_count, "updated": updated_count, "failed": failed_count}
 
@@ -250,6 +252,8 @@ def sync_database_task(self, sync_log_id: int, mode: str = "incremental"):
         sync_log.finished_at = datetime.utcnow()
         db.commit()
 
+        _log_sync_op(db, "database", mode, new_count, 0, failed_count)
+
         logger.info(f"DB sync done: {new_count} records synced")
         return {"mode": mode, "status": "completed", "synced": new_count, "failed": failed_count}
 
@@ -308,3 +312,13 @@ def _upsert_archive(db, data: dict):
         db.add(new_archive)
 
     db.commit()
+
+
+def _log_sync_op(db, sync_type: str, mode: str, new_count: int, updated_count: int, failed_count: int):
+    try:
+        type_label = '文件同步' if sync_type == 'file' else '数据库同步'
+        desc = f'{type_label}（{"增量" if mode == "incremental" else "全量"}）完成：新增{new_count}，更新{updated_count}'
+        if failed_count: desc += f'，失败{failed_count}'
+        log = OperationLog(user_id=0, username='系统', operation_type='sync', module='sync', description=desc, result='success' if failed_count==0 else 'failure')
+        db.add(log); db.commit()
+    except Exception: pass
