@@ -107,7 +107,7 @@ onMounted(async () => {
     summary.total_operations = typeData.reduce((s:number,i:any)=>s+(i.count||0),0)
     summary.search_count = typeData.find((i:any)=>i.type==='search')?.count||0
     summary.review_count = typeData.find((i:any)=>i.type==='review')?.count||0
-    summary.failed_count = typeData.find((i:any)=>i.type==='failure')?.count||0
+    summary.failed_count = (tr.data.failed || tr.data.items?.find((i:any)=>i.type==='failure')?.count) || 0
     await nextTick()
     loadTimeChart()
     if(typeChartRef.value){const c=echarts.init(typeChartRef.value);c.setOption({tooltip:{trigger:'item'},legend:{bottom:0},series:[{type:'pie',radius:['45%','75%'],center:['50%','45%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:typeData.map((t:any)=>({name:typeLabel(t.type),value:t.count})),color:['#10B981','#6366F1','#8B5CF6','#06B6D4','#F59E0B','#94A3B8']}]})}

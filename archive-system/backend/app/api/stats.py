@@ -130,14 +130,14 @@ def stats_by_time(
 
 @router.get("/by-type")
 def stats_by_type(user: dict = Depends(get_current_user)):
-    """按利用方式统计"""
+    """按利用方式统计 + 失败数"""
     db = SessionLocal()
     try:
-        rows = (
-            _apply_stats_scope(user, db.query(OperationLog.operation_type, func.count()))
-            .group_by(OperationLog.operation_type)
-            .all()
-        )
-        return {"items": [{"type": r[0], "count": r[1]} for r in rows]}
+        base = _apply_stats_scope(user, db.query(OperationLog))
+        rows = base.with_entities(OperationLog.operation_type, func.count()).group_by(OperationLog.operation_type).all()
+        failed = base.filter(OperationLog.result == "failure").count()
+        items = [{"type": r[0], "count": r[1]} for r in rows]
+        items.append({"type": "failure", "count": failed})
+        return {"items": items, "failed": failed}
     finally:
         db.close()
