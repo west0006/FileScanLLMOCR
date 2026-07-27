@@ -14,7 +14,7 @@ from app.middleware.log_middleware import OperationLogMiddleware
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
-    # 启动时 — SQLite 模式自动建表 + 种子数据
+    # 启动时 — SQLite 模式自动建表 + 种子数据 + 日志清理
     if settings.DB_MODE == "sqlite":
         init_db()
         try:
@@ -22,9 +22,32 @@ async def lifespan(app: FastAPI):
             seed()
         except Exception:
             pass
+        try:
+            _cleanup_old_logs()
+        except Exception:
+            pass
     yield
     # 关闭时
     engine.dispose()
+
+
+def _cleanup_old_logs():
+    """清理超过 180 天的操作日志"""
+    from datetime import datetime, timedelta
+    from app.core.database import SessionLocal
+    from app.models.models import OperationLog
+    cutoff = datetime.utcnow() - timedelta(days=180)
+    db = SessionLocal()
+    try:
+        deleted = db.query(OperationLog).filter(OperationLog.created_at < cutoff).delete()
+        db.commit()
+        if deleted:
+            import logging
+            logging.getLogger("main").info(f"日志清理: 删除 {deleted} 条超过 180 天的旧日志")
+    except Exception:
+        db.rollback()
+    finally:
+        db.close()
 
 
 app = FastAPI(
