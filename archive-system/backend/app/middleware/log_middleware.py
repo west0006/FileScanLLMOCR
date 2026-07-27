@@ -74,6 +74,17 @@ def _write_log_sync(
         db.close()
 
 
+def _extract_target_id(path: str, request) -> str:
+    """从 URL 路径提取操作对象 ID"""
+    custom = getattr(request.state, "log_target_id", None)
+    if custom: return str(custom)
+    import re
+    for pat in [r"/archives/([^/]+)", r"/tasks/(\d+)", r"/user/(\d+)", r"/records/(\d+)", r"/sync/progress/(\d+)"]:
+        m = re.search(pat, path)
+        if m: return m.group(1)
+    return ""
+
+
 class OperationLogMiddleware(BaseHTTPMiddleware):
     """操作日志中间件"""
 
@@ -166,6 +177,9 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         if duration_ms > 500:
             description += f" (耗时{duration_ms}ms)"
 
+        # 提取操作对象 ID（target_id）
+        target_id = _extract_target_id(path, request)
+
         # 慢请求+失败观测
         if duration_ms > 1000:
             _mw_log.obs("SLOW_REQUEST", path=path, method=method, ms=duration_ms)
@@ -177,7 +191,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         user_agent = request.headers.get("User-Agent", "")[:300]
         threading.Thread(
             target=_write_log_sync,
-            args=(user_id, username, op_type, module, description, "", ip, result, user_agent),
+            args=(user_id, username, op_type, module, description, target_id, ip, result, user_agent),
             daemon=True,
         ).start()
 

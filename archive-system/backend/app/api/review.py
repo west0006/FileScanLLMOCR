@@ -36,6 +36,7 @@ class PreviewRequest(BaseModel):
 def preview_review(req: PreviewRequest, request: Request, user: dict = Depends(get_current_user)):
     """单件实时预审 — 工作台用，结果自动落库"""
     request.state.log_description = f"AI预审: {req.archive_id} — {req.title or '(无题名)'}"
+    request.state.log_target_id = req.archive_id
     metadata = {
         "archive_id": req.archive_id,
         "title": req.title,
