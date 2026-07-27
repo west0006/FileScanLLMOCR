@@ -45,25 +45,25 @@ function roleLabel(r: string): string {
 }
 
 onMounted(async () => {
-  await fetchOnlineUsers()
-  setInterval(fetchOnlineUsers, 30000) // 30秒自动刷新
-})
-async function fetchOnlineUsers() {
-  try {
-    const res = await userApi.listOnline?.() || await userApi.list({})
-    users.value = (res.data.items || []).map((u: any) => ({
-      name: u.name || u.username,
-      account: u.username,
-      role: roleLabel(u.role),
-      dept: u.department || '',
-      roleColor: u.role === 'system_admin' ? 'green' : u.role === 'archive_admin' ? 'purple' : 'amber',
-      idle: !u.is_active,
-    }))
-  } catch {
-    users.value = [
-      { name: '管理员', account: 'admin', role: '系统管理员', dept: '档案馆', roleColor: 'green', idle: false },
-    ]
+  async function load() {
+    try {
+      const res = await userApi.listOnline?.() || await userApi.list({})
+      users.value = (res.data.items || []).map((u: any) => ({
+        name: u.name || u.username,
+        account: u.username,
+        role: roleLabel(u.role),
+        dept: u.department || '',
+        roleColor: u.role === 'system_admin' ? 'green' : u.role === 'archive_admin' ? 'purple' : 'amber',
+        idle: !u.is_active,
+      }))
+    } catch {
+      users.value = [
+        { name: '管理员', account: 'admin', role: '系统管理员', dept: '档案馆', roleColor: 'green', idle: false },
+      ]
+    }
   }
+  await load()
+  setInterval(load, 30000)
 })
 </script>
 
