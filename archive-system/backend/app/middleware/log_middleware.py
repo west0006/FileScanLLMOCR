@@ -2,8 +2,8 @@
 操作日志中间件 — 自动记录 API 操作
 
 记录规则：
-- 所有 POST/PUT/DELETE 操作自动记录
-- GET 请求仅记录 search/export/download 类
+- POST/PUT/DELETE: 记录为功能操作（operation_type = 具体操作类型）
+- GET: 记录为功能访问（operation_type = view，模块为具体页面名）
 - 日志异步写入，不阻塞请求
 """
 
@@ -19,16 +19,31 @@ from app.core.logging import get_logger
 
 _mw_log = get_logger("middleware")
 
-# 需要记录的 GET 操作前缀（含页面访问）
-_LOG_GET_PREFIXES = ("/api/search/", "/api/log/", "/api/stats/", "/api/ocr/", "/api/review/", "/api/sync/", "/api/user/")
+# 需要记录的 GET 路径 → (操作类型, 中文描述)
+_GET_PAGE_MAP = {
+    "/api/search/": ("view", "查看检索页面"),
+    "/api/search/history": ("view", "查看检索历史"),
+    "/api/log/": ("view", "查看操作日志"),
+    "/api/stats/": ("view", "查看查询统计"),
+    "/api/ocr/": ("view", "查看OCR任务"),
+    "/api/review/": ("view", "查看预审记录"),
+    "/api/review/tasks": ("view", "查看预审任务"),
+    "/api/sync/": ("view", "查看数据同步"),
+    "/api/user/": ("view", "查看用户管理"),
+    "/api/user/online": ("view", "查看在线用户"),
+    "/api/user/roles": ("view", "查看角色权限"),
+}
 
-# 操作类型映射
-_OP_MAP = {
-    "login": "login", "logout": "logout",
-    "search": "search", "export": "export",
-    "ocr": "ocr", "review": "review",
-    "user": "admin", "sync": "admin", "log": "admin", "stats": "admin",
-    "auth": "login",
+# POST/PUT/DELETE 模块 → (操作类型, 操作名称)
+_OP_DETAIL_MAP = {
+    "auth": {"login": ("login", "用户登录"), "logout": ("logout", "用户登出")},
+    "search": {"default": ("search", "检索操作")},
+    "ocr": {"default": ("ocr", "OCR操作")},
+    "review": {"default": ("review", "预审操作")},
+    "sync": {"default": ("sync", "数据同步操作")},
+    "user": {"default": ("admin", "用户管理操作")},
+    "log": {"default": ("admin", "日志管理操作")},
+    "stats": {"default": ("admin", "统计查询操作")},
 }
 
 
@@ -54,7 +69,7 @@ def _write_log_sync(
         db.add(log)
         db.commit()
     except Exception:
-        pass  # 日志写入失败不影响业务
+        pass
     finally:
         db.close()
 
@@ -67,18 +82,8 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         response = await call_next(request)
         duration_ms = round((time.time() - t0) * 1000)
 
-        # 确定是否需要记录
         method = request.method
         path = request.url.path
-
-        if method == "GET":
-            if not any(path.startswith(p) for p in _LOG_GET_PREFIXES):
-                return response
-            op_tag = "search" if "/search/" in path else "log"
-        elif method in ("POST", "PUT", "DELETE"):
-            op_tag = path.split("/")[2] if len(path.split("/")) > 2 else "other"
-        else:
-            return response
 
         # 提取用户信息
         user_id = 0
@@ -96,39 +101,65 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         except Exception:
             pass
 
-        op_type = _OP_MAP.get(op_tag, op_tag)
+        op_type = "other"
+        module = "other"
+        description = ""
 
-        # 修正 auth 路径下的 logout 被映射为 login
-        if path.endswith("/logout"):
-            op_type = "logout"
+        if method == "GET":
+            # GET 请求 → 功能访问
+            for prefix, (ot, desc) in _GET_PAGE_MAP.items():
+                if path.startswith(prefix):
+                    op_type = ot
+                    module = prefix.strip("/").replace("api/", "").replace("/", "")
+                    description = desc
+                    break
+            else:
+                return response  # 不记录
+
+        elif method in ("POST", "PUT", "DELETE"):
+            # 写操作 → 功能操作
+            op_tag = path.split("/")[2] if len(path.split("/")) > 2 else "other"
+            if op_tag in _OP_DETAIL_MAP:
+                detail = _OP_DETAIL_MAP[op_tag]
+                if op_tag == "auth":
+                    op_type, description = detail.get("logout" if path.endswith("/logout") else "login", detail.get("login", ("login", "用户登录")))
+                else:
+                    op_type, description = detail["default"]
+                module = op_tag
+            else:
+                op_type = op_tag
+                module = op_tag
+                description = f"{method} {path}"
+
+            # 路由自定义描述优先
+            custom_desc = getattr(request.state, "log_description", None)
+            if custom_desc:
+                description = custom_desc
+        else:
+            return response
+
         result = "success" if response.status_code < 400 else "failure"
 
-        # 优先使用路由设置的自定义描述（通过 request.state）
-        custom_desc = getattr(request.state, "log_description", None)
-        if custom_desc:
-            description = custom_desc
-        elif method == "POST" and "/api/search/" in path:
-            description = f"检索操作 (耗时 {duration_ms}ms)"
-        else:
-            description = f"{method} {path}"
+        # 补充用户姓名
+        if user_name and user_name != username:
+            description = f"[{user_name}] {description}"
 
-        # 慢请求观测
+        # 耗时标注
+        if duration_ms > 500:
+            description += f" (耗时{duration_ms}ms)"
+
+        # 慢请求+失败观测
         if duration_ms > 1000:
             _mw_log.obs("SLOW_REQUEST", path=path, method=method, ms=duration_ms)
-
-        # 失败观测
         if response.status_code >= 400:
             _mw_log.obs("REQUEST_FAILED", path=path, method=method, status=response.status_code, ms=duration_ms)
 
         # 异步写日志
         ip = request.client.host if request.client else ""
-        user_agent = request.headers.get("User-Agent", "")[:300]  # 截断防止过长
-        # 未提供自定义描述时，补充用户姓名
-        if not custom_desc and user_name:
-            description = f"[{user_name}] {description}"
+        user_agent = request.headers.get("User-Agent", "")[:300]
         threading.Thread(
             target=_write_log_sync,
-            args=(user_id, username, op_type, op_tag, description, "", ip, result, user_agent),
+            args=(user_id, username, op_type, module, description, "", ip, result, user_agent),
             daemon=True,
         ).start()
 

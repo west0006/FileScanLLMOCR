@@ -44,6 +44,7 @@
 import { ref, onMounted } from 'vue'
 import { logApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { OP_TYPE_LABELS } from '@/constants'
 
 const items = ref<any[]>([])
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
@@ -87,7 +88,7 @@ async function fetchLogs() {
   } catch { /* ignore */ }
 }
 
-function typeLabel(t: string) { return { search:'检索',view:'浏览',download:'下载',admin:'管理',login:'登录',logout:'退出',ocr:'OCR',review:'审核',sync:'同步' }[t]||t }
+function typeLabel(t: string) { return OP_TYPE_LABELS[t] || t }
 function resetLogFilters() { filters.value = { username: '', type: '' }; fetchLogs() }
 function handleExport() { ElMessage.info('导出任务已提交') }
 </script>
