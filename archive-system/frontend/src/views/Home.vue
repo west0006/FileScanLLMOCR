@@ -42,38 +42,67 @@
         <div class="qc-icon qc-icon--green">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </div>
-        <div class="qc-info">
-          <h3>智能检索</h3>
-          <p>关键词 · 语义 · 高级检索</p>
-        </div>
+        <div class="qc-info"><h3>智能检索</h3><p>关键词 · 语义 · 高级检索</p></div>
       </router-link>
       <router-link to="/review" class="quick-card">
         <div class="qc-icon qc-icon--purple">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
         </div>
-        <div class="qc-info">
-          <h3>AI 预审工作台</h3>
-          <p>敏感信息检测 · 风险评分</p>
-        </div>
-      </router-link>
-      <router-link to="/review/tasks" class="quick-card">
-        <div class="qc-icon qc-icon--amber">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
-        </div>
-        <div class="qc-info">
-          <h3>预审任务</h3>
-          <p>批量审核 · 进度跟踪</p>
-        </div>
+        <div class="qc-info"><h3>AI 预审工作台</h3><p>敏感信息检测 · 风险评分</p></div>
       </router-link>
       <router-link to="/ocr" class="quick-card">
         <div class="qc-icon qc-icon--blue">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
         </div>
-        <div class="qc-info">
-          <h3>OCR 识别</h3>
-          <p>批量文字识别 · 质量报告</p>
-        </div>
+        <div class="qc-info"><h3>OCR 识别</h3><p>批量文字识别 · 质量报告</p></div>
       </router-link>
+      <router-link to="/admin/sync" class="quick-card">
+        <div class="qc-icon qc-icon--amber">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </div>
+        <div class="qc-info"><h3>数据同步</h3><p>文件同步 · 数据库同步</p></div>
+      </router-link>
+    </div>
+
+    <!-- 图表行 -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <h3>档案数字化进度</h3>
+        <div ref="digitizeChartRef" class="chart-sm"></div>
+      </div>
+      <div class="chart-card">
+        <h3>检索趋势（近7日）</h3>
+        <div ref="trendChartRef" class="chart-sm"></div>
+      </div>
+    </div>
+
+    <!-- OCR + 预审 -->
+    <div class="home-cols">
+      <div class="col-card">
+        <h3>OCR任务处理概况</h3>
+        <table class="mini-table">
+          <thead><tr><th>任务名称</th><th>进度</th><th>状态</th></tr></thead>
+          <tbody>
+            <tr v-for="t in ocrOverview" :key="t.name">
+              <td class="ellipsis">{{ t.name }}</td>
+              <td><div class="mini-bar"><div class="mini-bar-fill" :style="{width:t.pct+'%',background:t.status==='done'?'var(--c-success)':'var(--c-info)'}"></div><span class="mini-bar-num">{{ t.pct }}%</span></div></td>
+              <td><span class="risk-tag" :class="'risk-tag--'+(t.status==='done'?'low':'mid')">{{ t.status==='done'?'已完成':'处理中' }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="col-card">
+        <h3>AI预审任务进度</h3>
+        <div class="timeline-list">
+          <div v-for="(item, i) in reviewTimeline" :key="i" class="tl-item">
+            <div class="tl-dot" :class="'tl--'+item.status"></div>
+            <div class="tl-content">
+              <div class="tl-title">{{ item.title }}</div>
+              <div class="tl-meta">{{ item.desc }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 最近活动 -->
@@ -93,9 +122,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted } from 'vue'
+import { reactive, ref, onMounted, nextTick } from 'vue'
 import { statsApi, logApi } from '@/api'
 import { MOCK_ACTIVITIES } from '@/constants'
+import * as echarts from 'echarts'
+
+const digitizeChartRef = ref<HTMLElement>()
+const trendChartRef = ref<HTMLElement>()
 
 const stats = reactive({
   totalArchives: 125830,
@@ -107,6 +140,20 @@ const stats = reactive({
 })
 
 const recentActivities = ref(MOCK_ACTIVITIES)
+
+const ocrOverview = ref([
+  { name: '2025年度行政档案OCR处理', pct: 80, status: 'processing' },
+  { name: '经济学院教学档案批量识别', pct: 100, status: 'done' },
+  { name: '历史档案（1990-2000）手写体识别', pct: 89, status: 'processing' },
+  { name: '财务处凭证档案OCR', pct: 100, status: 'done' },
+  { name: '校史馆老照片文字提取', pct: 100, status: 'done' },
+])
+
+const reviewTimeline = ref([
+  { title: 'REV-2026-001 第一批开放预审', desc: '560 件完成，通过率 92.3%', status: 'done' },
+  { title: 'REV-2026-002 1999-2000年到期档案', desc: '1,200 件待预审', status: 'pending' },
+  { title: 'REV-2025-008 第五批开放预审', desc: '320 件全部完成', status: 'done' },
+])
 
 onMounted(async () => {
   try {
@@ -131,6 +178,30 @@ onMounted(async () => {
       }))
     }
   } catch { /* ignore */ }
+
+  await nextTick()
+  // 数字化进度饼图
+  if (digitizeChartRef.value) {
+    const c = echarts.init(digitizeChartRef.value)
+    c.setOption({
+      tooltip: { trigger: 'item' },
+      series: [{ type: 'pie', radius: ['50%', '75%'], center: ['50%', '50%'], itemStyle: { borderRadius: 2, borderColor: '#fff', borderWidth: 2 }, label: { show: false },
+        data: [{ value: stats.digitized, name: '已数字化' }, { value: stats.totalArchives - stats.digitized, name: '待数字化' }],
+        color: ['#10B981', '#E2E8F0'] }]
+    })
+  }
+  // 检索趋势柱状图
+  if (trendChartRef.value) {
+    const c = echarts.init(trendChartRef.value)
+    const days = ['6天前','5天前','4天前','3天前','前天','昨天','今天']
+    c.setOption({
+      tooltip: { trigger: 'axis' },
+      grid: { left: 10, right: 10, top: 10, bottom: 20 },
+      xAxis: { type: 'category', data: days, axisLabel: { fontSize: 9, rotate: 30 }, axisTick: { show: false }, axisLine: { show: false } },
+      yAxis: { type: 'value', axisLabel: { fontSize: 9 }, splitLine: { lineStyle: { color: '#F1F5F9' } } },
+      series: [{ type: 'bar', data: [42, 56, 38, 65, 48, 72, 58], barWidth: 12, itemStyle: { borderRadius: [4, 4, 0, 0], color: '#10B981' } }]
+    })
+  }
 })
 
 function formatNum(n: number): string {
@@ -190,4 +261,28 @@ function formatNum(n: number): string {
 
 @media (max-width:900px){.home-grid{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:500px){.home-grid{grid-template-columns:1fr}}
+
+/* 图表 */
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.chart-card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);padding:16px}
+.chart-card h3{font-size:var(--fs-sm);font-weight:var(--fw-semibold);margin:0 0 12px}
+.chart-sm{height:180px}
+
+/* OCR+预审 双栏 */
+.home-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.col-card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);padding:16px}
+.col-card h3{font-size:var(--fs-sm);font-weight:var(--fw-semibold);margin:0 0 12px;padding-bottom:8px;border-bottom:1px solid var(--c-border-light)}
+.mini-table{width:100%;border-collapse:collapse}
+.mini-table th{padding:6px 10px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted)}
+.mini-table td{padding:6px 10px;font-size:var(--fs-xs);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}
+.ellipsis{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* 时间线 */
+.timeline-list{display:flex;flex-direction:column;gap:8px}
+.tl-item{display:flex;gap:10px;align-items:flex-start}
+.tl-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0}
+.tl--done{background:var(--c-success)}.tl--pending{background:var(--c-warning)}.tl--active{background:var(--c-info)}
+.tl-title{font-size:var(--fs-xs);font-weight:var(--fw-medium);color:var(--c-text)}
+.tl-meta{font-size:11px;color:var(--c-text-muted);margin-top:2px}
+
+.risk-tag{padding:2px 8px;border-radius:var(--r-full);font-size:10px;font-weight:var(--fw-bold)}.risk-tag--low{background:#F0FDF4;color:var(--c-success)}.risk-tag--mid{background:#FFFBEB;color:var(--c-warning)}
 </style>
