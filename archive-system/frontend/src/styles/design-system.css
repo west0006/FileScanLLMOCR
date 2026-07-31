@@ -250,3 +250,10 @@ mark.search-highlight{
 .empty-state svg{margin-bottom:16px;opacity:.25}
 .empty-state p{margin:4px 0;font-size:var(--fs-base)}
 .empty-state span{font-size:var(--fs-sm)}
+
+/* ============================================
+   Table cell — prevent wrap
+   ============================================ */
+.data-table td { white-space: nowrap; }
+.data-table td:has(.btn-sm) { white-space: nowrap; }
+.risk-tag { white-space: nowrap; display: inline-block; }

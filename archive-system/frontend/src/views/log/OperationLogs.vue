@@ -21,7 +21,7 @@
     </div>
     <div class="card">
       <table class="data-table">
-        <thead><tr><th style="width:170px">操作时间</th><th style="width:100px">用户</th><th style="width:70px">类型</th><th style="width:70px">模块</th><th>操作描述</th><th style="width:130px">IP</th><th style="width:60px">结果</th></tr></thead>
+        <thead><tr><th style="width:150px">操作时间</th><th style="width:80px">用户</th><th style="width:60px">类型</th><th style="width:60px">模块</th><th>操作描述</th><th style="width:110px">IP</th><th style="width:70px">结果</th></tr></thead>
         <tbody>
           <tr v-for="row in items" :key="row.id">
             <td class="text-sm">{{ row.created_at?.substring(0,19) }}</td>

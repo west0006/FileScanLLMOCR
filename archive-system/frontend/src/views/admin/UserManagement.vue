@@ -12,7 +12,7 @@
     </div>
     <div class="card">
       <table class="data-table">
-        <thead><tr><th>姓名</th><th>用户名</th><th>所属部门</th><th>角色</th><th>最后登录</th><th style="width:80px">状态</th><th style="width:180px">操作</th></tr></thead>
+        <thead><tr><th>姓名</th><th>用户名</th><th>所属部门</th><th>角色</th><th>最后登录</th><th style="width:80px">状态</th><th style="width:210px">操作</th></tr></thead>
         <tbody>
           <tr v-for="u in users" :key="u.id">
             <td><span class="online-dot" :class="u.is_active?'dot--on':'dot--off'"></span>{{ u.name }}</td>

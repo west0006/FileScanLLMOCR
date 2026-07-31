@@ -29,7 +29,7 @@
         <thead><tr>
           <th>#</th><th>任务名称</th><th style="width:180px">进度</th>
           <th style="width:70px">失败</th><th style="width:60px">优先级</th><th style="width:70px">状态</th>
-          <th style="width:140px">时间</th><th style="width:140px">操作</th>
+          <th style="width:140px">时间</th><th style="width:170px">操作</th>
         </tr></thead>
         <tbody>
           <tr v-for="t in tasks" :key="t.id">
