@@ -85,8 +85,9 @@ def preview_review(req: PreviewRequest, request: Request, user: dict = Depends(g
 # ===================== 预审任务管理 =====================
 
 @router.post("/tasks")
-def create_review_task(req: CreateReviewTaskRequest, user: dict = Depends(get_current_user)):
+def create_review_task(req: CreateReviewTaskRequest, request: Request, user: dict = Depends(get_current_user)):
     """创建预审任务 → Celery 异步队列"""
+    request.state.log_target_id = f"task-{req.task_name}"
     db = SessionLocal()
     try:
         task = ReviewTask(
@@ -257,14 +258,20 @@ def get_review_record(record_id: int, user: dict = Depends(get_current_user)):
 
 # ===================== 导出 =====================
 
+class ReviewExportRequest(BaseModel):
+    task_id: Optional[int] = None
+    archive_ids: list[str] = []
+
+
 @router.post("/export")
-def export_review_results(task_id: Optional[int] = None, archive_ids: list[str] = [], user: dict = Depends(get_current_user)):
-    """导出预审结果"""
+def export_review_results(req: ReviewExportRequest, user: dict = Depends(get_current_user)):
+    """导出预审结果 — 直接返回 Excel 文件下载"""
+    from fastapi.responses import FileResponse
     db = SessionLocal()
     try:
         q = db.query(ReviewRecord)
-        if task_id: q = q.filter(ReviewRecord.task_id == task_id)
-        if archive_ids: q = q.filter(ReviewRecord.archive_id.in_(archive_ids))
+        if req.task_id: q = q.filter(ReviewRecord.task_id == req.task_id)
+        if req.archive_ids: q = q.filter(ReviewRecord.archive_id.in_(req.archive_ids))
         rows = q.limit(500).all()
         from app.services.export_service import export_to_excel
         from app.core.config import settings
@@ -279,7 +286,11 @@ def export_review_results(task_id: Optional[int] = None, archive_ids: list[str] 
         path = export_to_excel("AI预审结果", data,
             ["档案编号","风险评分","风险等级","AI建议","建议理由","置信度","敏感类型","预审耗时(ms)","模型","预审时间"],
             output_dir=settings.UPLOAD_DIR or "/tmp")
-        return {"status": "ok", "file": os.path.basename(path), "count": len(data)}
+        return FileResponse(
+            path,
+            filename=os.path.basename(path),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
     finally:
         db.close()
 

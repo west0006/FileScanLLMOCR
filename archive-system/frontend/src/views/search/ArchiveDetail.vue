@@ -15,6 +15,28 @@
       </div>
     </div>
 
+    <!-- 操作工具栏 -->
+    <div class="detail-toolbar" v-if="archive.archive_id">
+      <button
+        class="toolbar-btn"
+        :disabled="!canOperate"
+        :title="canOperate ? '下载档案原文' : '无下载权限'"
+        @click="handleDownload"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        下载档案
+      </button>
+      <button
+        class="toolbar-btn"
+        :disabled="!canOperate"
+        :title="canOperate ? '打印档案证明' : '无打印权限'"
+        @click="handlePrint"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 12H4a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        打印证明
+      </button>
+    </div>
+
     <div class="detail-body">
       <!-- 左侧：元数据 -->
       <div class="detail-side">
@@ -31,14 +53,21 @@
           </dl>
         </div>
 
+        <!-- 内容摘要 -->
+        <div class="info-card" v-if="archive.ocr_text">
+          <h3 class="info-card-title">📝 内容摘要</h3>
+          <p class="summary-text">{{ archive.ocr_text }}</p>
+        </div>
+
         <!-- 关联档案 -->
         <div class="info-card" v-if="related.length">
           <h3 class="info-card-title"><IconSvg name="link" size="14" /> 关联档案</h3>
           <div class="related-list">
-            <router-link
+            <a
               v-for="r in related" :key="r.archive_id"
-              :to="'/search/detail/' + r.archive_id"
+              :href="'/search/detail/' + r.archive_id"
               class="related-item"
+              @click.prevent="goRelated(r.archive_id)"
             >
               <div class="related-title">{{ r.title }}</div>
               <div class="related-meta">
@@ -47,7 +76,7 @@
                 <span>{{ r.department }}</span>
                 <span class="related-reason">{{ r.reason }}</span>
               </div>
-            </router-link>
+            </a>
           </div>
         </div>
 
@@ -138,11 +167,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { searchApi } from '@/api'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+const canOperate = computed(() => auth.can('all') || auth.can('download'))
 const archiveId = route.params.id as string
 const viewMode = ref('image')
 const archive = ref<any>({})
@@ -164,35 +198,124 @@ function onImageError() {
   // 图片加载失败，静默降级
 }
 
-onMounted(async () => {
+let loadSeq = 0  // 请求序列号，防止快速切换时旧响应覆盖新数据
+
+function goRelated(id: string) {
+  if (id === route.params.id) return
+  router.push('/search/detail/' + id)
+}
+
+async function handleDownload() {
+  if (!canOperate.value) {
+    ElMessage.warning('无下载权限')
+    return
+  }
+  try {
+    const id = route.params.id as string
+    const res = await searchApi.download(id)
+    const blob = new Blob([res.data])
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${id}.tiff`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('下载已开始')
+  } catch {
+    ElMessage.error('下载失败，原文文件可能尚未同步')
+  }
+}
+
+function esc(s: string) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;') }
+
+function handlePrint() {
+  if (!canOperate.value) {
+    ElMessage.warning('无打印权限')
+    return
+  }
+  const w = window.open('', '_blank', 'width=800,height=600')
+  if (!w) return
+  const title = esc(archive.value.title) || '档案证明'
+  const aid = esc(archive.value.archive_id)
+  const year = esc(archive.value.year)
+  const cat = esc(archive.value.category)
+  const dept = esc(archive.value.department)
+  const sec = esc(archive.value.security_level) || '内部'
+  const text = esc(ocrContent.value) || '(暂无 OCR 文本)'
+  w.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${title}</title>
+<style>body{font-family:"Microsoft YaHei",sans-serif;padding:40px 50px;line-height:2;color:#1a1a1a}
+h1{font-size:20px;border-bottom:2px solid #10B981;padding-bottom:12px;margin-bottom:24px}
+.meta{margin-bottom:28px;font-size:14px;color:#555}
+.meta p{margin:4px 0}
+.text{white-space:pre-wrap;font-size:15px;line-height:2.2}
+.footer{margin-top:32px;padding-top:16px;border-top:1px solid #ddd;font-size:12px;color:#999}
+@media print{body{padding:20px 30px}}
+</style></head>
+<body>
+<h1>${title}</h1>
+<div class="meta">
+<p>档案编号：${aid}</p>
+<p>归档年度：${year}　｜　门类：${cat}</p>
+<p>归口单位：${dept}　｜　密级：${sec}</p>
+</div>
+<div class="text">${text}</div>
+<div class="footer">本证明由中南财经政法大学档案智能查询与开放审核系统生成　｜　${new Date().toLocaleDateString('zh-CN')}</div>
+</body></html>`)
+  w.document.close()
+  setTimeout(() => { w.print(); w.close() }, 600)
+}
+
+async function loadDetail(id: string) {
+  // 清空所有展示状态，避免导航期间残留旧档案数据
+  archive.value = {}
+  ocrContent.value = ''
+  imageInfo.value = null
+  imagePages.value = []
+  curPage.value = 0
+  related.value = []
+  entitySummary.value = null
+  kgInfo.value = null
+
+  const seq = ++loadSeq  // 捕获当前请求序号
+
   try {
     const [d, o, img] = await Promise.all([
-      searchApi.detail(archiveId),
-      searchApi.ocrText(archiveId),
-      searchApi.image(archiveId).catch(() => ({ data: null })),
+      searchApi.detail(id),
+      searchApi.ocrText(id),
+      searchApi.image(id).catch(() => ({ data: null })),
     ])
+    if (seq !== loadSeq) return  // 已有更新的请求，丢弃本次结果
     archive.value = d.data
-    ocrContent.value = o.data.ocr_text || '(暂无 OCR 文本)'
+    ocrContent.value = o.data.ocr_text || d.data.ocr_text || '(暂无 OCR 文本)'
     if (img.data) {
       imageInfo.value = img.data
       imagePages.value = img.data.files || []
     }
 
     // 关联档案
-    const rel = await searchApi.related(archiveId).catch(() => ({ data: { related: [] } }))
+    const rel = await searchApi.related(id).catch(() => ({ data: { related: [] } }))
+    if (seq !== loadSeq) return
     related.value = rel.data.related || []
 
     // 知识图谱
-    const kg = await searchApi.knowledgeGraph(archiveId).catch(() => ({ data: null }))
+    const kg = await searchApi.knowledgeGraph(id).catch(() => ({ data: null }))
+    if (seq !== loadSeq) return
     if (kg.data) {
       entitySummary.value = kg.data.center_summary || null
       kgInfo.value = kg.data
     }
   } catch {
-    archive.value = { archive_id: archiveId, title: '示例档案', year: 1996, category: '行政档案', department: '学校办公室', retention_period: '永久', security_level: '内部', file_count: 3 }
+    if (seq !== loadSeq) return
+    archive.value = { archive_id: id, title: '示例档案', year: 1996, category: '行政档案', department: '学校办公室', retention_period: '永久', security_level: '内部', file_count: 3 }
     ocrContent.value = 'OCR 文本加载中...'
   }
-})
+}
+
+onMounted(() => { loadDetail(archiveId) })
+watch(() => route.params.id, (newId) => { if (newId) loadDetail(newId as string) })
 </script>
 
 <style scoped>
@@ -206,6 +329,29 @@ onMounted(async () => {
   transition: all var(--t-fast);
 }
 .back-btn:hover { background: var(--c-bg); color: var(--c-accent); }
+
+/* 操作工具栏 */
+.detail-toolbar {
+  display: flex; gap: 12px; margin-bottom: 20px;
+  padding: 12px 16px; background: var(--c-surface);
+  border: 1px solid var(--c-border); border-radius: var(--r-md);
+}
+.toolbar-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 16px; border-radius: var(--r-sm);
+  border: 1px solid var(--c-border); background: var(--c-surface);
+  color: var(--c-text-secondary); font-size: var(--fs-sm);
+  font-weight: var(--fw-medium); cursor: pointer;
+  transition: all var(--t-fast);
+}
+.toolbar-btn:hover:not(:disabled) {
+  border-color: var(--c-accent); color: var(--c-accent);
+  background: var(--c-accent-light);
+}
+.toolbar-btn:disabled {
+  opacity: 0.45; cursor: not-allowed; color: var(--c-text-muted);
+}
+
 .detail-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .detail-title { font-size: var(--fs-2xl); font-weight: var(--fw-bold); color: var(--c-text); margin: 0; }
 .badge--plain { padding: 3px 10px; border-radius: var(--r-full); font-size: 11px; font-weight: var(--fw-semibold); background: var(--c-bg); color: var(--c-text-secondary); }
@@ -217,6 +363,7 @@ onMounted(async () => {
 .info-card {
   background: var(--c-surface); border-radius: var(--r-lg);
   border: 1px solid var(--c-border); padding: 20px;
+  margin-bottom: 16px;
 }
 .info-card-title {
   font-size: var(--fs-base); font-weight: var(--fw-semibold);
@@ -276,12 +423,16 @@ onMounted(async () => {
 .related-list { display: flex; flex-direction: column; gap: 2px; }
 .related-item {
   display: block; padding: 8px 10px; border-radius: var(--r-sm);
-  text-decoration: none; transition: background var(--t-fast);
+  text-decoration: none; color: inherit;
+  cursor: pointer; transition: background var(--t-fast);
 }
-.related-item:hover { background: var(--c-bg); }
+.related-item:hover { background: var(--c-bg); color: var(--c-accent); }
 .related-title { font-size: var(--fs-sm); color: var(--c-text); font-weight: var(--fw-medium); line-height: 1.4; }
 .related-meta { font-size: var(--fs-xs); color: var(--c-text-muted); margin-top: 2px; display: flex; gap: 6px; }
 .related-reason { color: var(--c-accent); margin-left: auto; }
+
+/* 内容摘要 */
+.summary-text { font-size: var(--fs-sm); color: var(--c-text-secondary); line-height: 1.8; margin: 0; white-space: pre-wrap; word-break: break-word; }
 
 /* 知识图谱 */
 .entity-section { margin-bottom: 10px; }

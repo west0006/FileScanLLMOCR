@@ -242,7 +242,16 @@ async function handleExport() {
   try {
     const ids = selectedIds.value.length ? selectedIds.value : []
     const res = await reviewApi.export({ archive_ids: ids })
-    ElMessage.success(`导出成功: ${res.data.file} (${res.data.count} 条)`)
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `AI预审结果_${new Date().toISOString().slice(0, 10)}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
     selectedIds.value = []
   } catch { ElMessage.error('导出失败') }
 }

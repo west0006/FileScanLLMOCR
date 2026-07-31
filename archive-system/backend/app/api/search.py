@@ -118,6 +118,7 @@ def archive_detail(archive_id: str, user: dict = Depends(get_current_user)):
                     "fonds_id": a.fonds_id, "retention_period": a.retention_period,
                     "security_level": a.security_level, "level": a.level or "file",
                     "open_status": a.open_status or "未审核", "file_count": a.file_count,
+                    "ocr_text": (a.ocr_text or "")[:500],
                     "ocr_status": a.ocr_status,
                     "ocr_engine": a.ocr_engine or "", "ocr_model_version": a.ocr_model_version or "",
                     "ocr_duration_ms": a.ocr_duration_ms or 0}
@@ -142,13 +143,15 @@ def archive_ocr_text(archive_id: str, user: dict = Depends(get_current_user)):
 
 @router.get("/archives/{archive_id}/download")
 def archive_download(archive_id: str, page: int = 1, user: dict = Depends(get_current_user)):
-    """单件原文下载 — 返回原始文件（Content-Disposition: attachment）"""
+    """单件原文下载 — 返回原始文件（Content-Disposition: attachment），含数据权限校验"""
     import glob as _glob
-    from fastapi.responses import FileResponse
+    from fastapi.responses import FileResponse, JSONResponse
 
     db = SessionLocal()
     try:
-        a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+        q = db.query(Archive)
+        q = apply_data_scope(user, q, Archive)
+        a = q.filter(Archive.archive_id == archive_id).first()
         if not a:
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=404, content={"error": "archive_not_found"})
@@ -368,17 +371,23 @@ def archive_image(archive_id: str, page: int = 1, user: dict = Depends(get_curre
         db.close()
 
 
+class ExportRequest(BaseModel):
+    format: str = "excel"
+    archive_ids: list[str] = []
+
+
 @router.post("/export")
-def export_results(format: str = "excel", archive_ids: list[str] = [], user: dict = Depends(get_current_user)):
-    """检索结果导出"""
+def export_results(req: ExportRequest, user: dict = Depends(get_current_user)):
+    """检索结果导出 — 直接返回 Excel 文件下载"""
+    from fastapi.responses import FileResponse
     db = SessionLocal()
     try:
         q = db.query(Archive)
         q = apply_data_scope(user, q, Archive)
-        if archive_ids: q = q.filter(Archive.archive_id.in_(archive_ids))
+        if req.archive_ids:
+            q = q.filter(Archive.archive_id.in_(req.archive_ids))
         rows = q.limit(500).all()
         from app.services.export_service import export_to_excel
-        from app.core.config import settings
         data = [{
             "档案编号": r.archive_id, "题名": r.title, "归档年度": r.year,
             "门类": r.category or "", "归口单位": r.department or "",
@@ -387,7 +396,11 @@ def export_results(format: str = "excel", archive_ids: list[str] = [], user: dic
         path = export_to_excel("档案检索结果", data,
             ["档案编号","题名","归档年度","门类","归口单位","保管期限","密级"],
             output_dir=settings.UPLOAD_DIR or "/tmp")
-        return {"status": "ok", "file": os.path.basename(path), "count": len(data)}
+        return FileResponse(
+            path,
+            filename=os.path.basename(path),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
     finally:
         db.close()
 

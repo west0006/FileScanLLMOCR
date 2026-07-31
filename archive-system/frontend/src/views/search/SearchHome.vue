@@ -31,7 +31,17 @@
           </div>
         </div>
       </div>
-      <button class="filter-reset" v-if="activeCat||activeYear" @click="activeCat='';activeYear=null;doSearch()">清除筛选</button>
+      <div class="filter-card">
+        <div class="filter-title">开放状态</div>
+        <div class="filter-tree">
+          <div v-for="s in openStatusOptions" :key="s.value"
+               class="ft-node" :class="{active:activeOpenStatus===s.value}"
+               @click="activeOpenStatus = activeOpenStatus===s.value ? '' : s.value">
+            <span>{{ s.label }}</span>
+          </div>
+        </div>
+      </div>
+      <button class="filter-reset" v-if="activeCat||activeYear||activeOpenStatus" @click="activeCat='';activeYear=null;activeOpenStatus='';doSearch()">清除筛选</button>
     </aside>
 
     <!-- 右侧主区域 -->
@@ -134,6 +144,22 @@
               <el-option v-for="f in fondsOptions" :key="f" :label="f" :value="f" />
             </el-select>
           </div>
+          <div class="adv-field">
+            <label>保管期限</label>
+            <select v-model="advancedForm.retention_period" class="adv-select">
+              <option value="">全部</option>
+              <option value="永久">永久</option>
+              <option value="长期">长期</option>
+              <option value="短期">短期</option>
+            </select>
+          </div>
+          <div class="adv-field">
+            <label>开放状态</label>
+            <select v-model="advancedForm.openStatus" class="adv-select">
+              <option value="">全部</option>
+              <option v-for="s in openStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+            </select>
+          </div>
           <button class="search-btn" style="align-self:flex-end" @click="doSearch">高级检索</button>
         </div>
       </div>
@@ -152,7 +178,7 @@
         <div class="scope-tree-btn" @click="showScopeTree = !showScopeTree">
           <IconSvg name="folder" size="15" /> {{ scopeNodes.length ? '已选 ' + scopeNodes.length + ' 个节点' : '按目录筛选' }} ▼
           <div v-if="showScopeTree" class="scope-popover" @click.stop>
-            <el-tree ref="scopeTreeRef" :data="scopeTreeData" show-checkbox node-key="id" :default-checked-keys="scopeCheckedKeys" @check="onScopeCheck" :props="{label:'label',children:'children'}" default-expand-all />
+            <el-tree ref="scopeTreeRef" :data="scopeTreeData" show-checkbox node-key="id" :default-checked-keys="scopeCheckedKeys" @check="onScopeCheck" :props="{label:'label'}" />
             <div class="scope-actions">
               <button class="btn-sm" @click="clearScope">清除</button>
               <button class="btn-accent-sm" @click="showScopeTree=false">确定</button>
@@ -273,6 +299,7 @@ const searchMode = ref('keyword')
 const searchLevel = ref('all')
 const activeCat = ref('')
 const activeYear = ref<number | null>(null)
+const activeOpenStatus = ref('')
 
 const categoryTree = ref(JSON.parse(JSON.stringify(CATEGORY_TREE)))
 const yearList = ref(MOCK_YEAR_LIST)
@@ -280,8 +307,14 @@ const keyword = ref('')
 const semanticQuery = ref('')
 const advancedForm = reactive({
   keywords: '', yearFrom: undefined as number | undefined, yearTo: undefined as number | undefined,
-  category: '', department: '',
+  category: '', department: '', openStatus: '', retention_period: '',
 })
+const openStatusOptions = [
+  { label: '已开放', value: '已开放' },
+  { label: '未审核', value: '未审核' },
+  { label: '部分开放', value: '部分开放' },
+  { label: '不开放', value: '不开放' },
+]
 const yearOptions = Array.from({ length: new Date().getFullYear() - 1969 }, (_, i) => 1970 + i).reverse()
 
 const fondsOptions = FONDS_OPTIONS
@@ -292,18 +325,14 @@ const showScopeTree = ref(false)
 const scopeNodes = ref<string[]>([])
 const scopeCheckedKeys = ref<string[]>([])
 const scopeTreeData = [
-  { id: 'cat-admin', label: '行政档案', children: [
-    { id: 'admin-2026', label: '2026年', children: [{id:'admin-2026-xzb',label:'校长办公室'},{id:'admin-2026-rsc',label:'人事处'},{id:'admin-2026-cwc',label:'财务处'}] },
-    { id: 'admin-2025', label: '2025年', children: [{id:'admin-2025-xzb',label:'校长办公室'},{id:'admin-2025-rsc',label:'人事处'}] },
-    { id: 'admin-old', label: '2024年及更早', children: [{id:'admin-old-xzb',label:'校长办公室'}] },
-  ]},
-  { id: 'cat-teach', label: '教学档案', children: [
-    { id: 'teach-2026', label: '2026年', children: [{id:'teach-2026-jwc',label:'教务处'},{id:'teach-2026-yjsy',label:'研究生院'},{id:'teach-2026-zsb',label:'招生办公室'}] },
-    { id: 'teach-2025', label: '2025年', children: [{id:'teach-2025-jwc',label:'教务处'},{id:'teach-2025-yjsy',label:'研究生院'}] },
-  ]},
-  { id: 'cat-finance', label: '财务档案', children: [
-    { id: 'finance-2026', label: '2026年', children: [{id:'finance-2026-cwc',label:'财务处'}] },
-  ]},
+  { id: '行政档案', label: '行政档案' },
+  { id: '党群档案', label: '党群档案' },
+  { id: '教学档案', label: '教学档案' },
+  { id: '科研档案', label: '科研档案' },
+  { id: '人事档案', label: '人事档案' },
+  { id: '财务档案', label: '财务档案' },
+  { id: '基建档案', label: '基建档案' },
+  { id: '声像档案', label: '声像档案' },
 ]
 function onScopeCheck(_: any, data: any) { scopeNodes.value = data.checkedKeys || [] }
 function clearScope() { scopeNodes.value = []; scopeCheckedKeys.value = [] }
@@ -354,16 +383,18 @@ async function doSearch(resetPage = true) {
       res = await searchApi.advanced({
         ...advancedForm, category: cat, year_from: yf, year_to: yt || yf,
         fonds_ids: selectedFondsIds.value.length ? selectedFondsIds.value : undefined,
+        open_status: advancedForm.openStatus || activeOpenStatus.value || undefined,
         ...base,
       })
     } else {
       // 关键词 + 筛选: 有筛选条件时走 advanced，否则走 keyword
-      if (activeCat.value || activeYear.value) {
+      if (activeCat.value || activeYear.value || activeOpenStatus.value) {
         res = await searchApi.advanced({
           keywords: keyword.value,
           category: activeCat.value || undefined,
           year_from: activeYear.value ?? undefined,
           year_to: activeYear.value ?? undefined,
+          open_status: activeOpenStatus.value || undefined,
           ...base,
         })
       } else {
@@ -383,7 +414,7 @@ async function doSearch(resetPage = true) {
 }
 
 // 筛选栏变化自动重新搜索 + 展开对应节点
-watch([activeCat, activeYear], () => {
+watch([activeCat, activeYear, activeOpenStatus], () => {
   if (activeCat.value && activeCat.value.includes('/')) {
     const parentKey = activeCat.value.split('/')[0]
     const parent = categoryTree.value.find(c => c.key === parentKey)
@@ -414,7 +445,16 @@ async function handleExport() {
   try {
     const ids = results.value.map((r: any) => r.archive_id).filter(Boolean)
     const res = await searchApi.export({ format: 'excel', archive_ids: ids })
-    ElMessage.success(`导出成功: ${res.data.file} (${res.data.count} 条)`)
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `档案检索结果_${new Date().toISOString().slice(0, 10)}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success(`导出成功 (${ids.length} 条)`)
   } catch { ElMessage.error('导出失败') }
 }
 </script>

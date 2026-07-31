@@ -1,6 +1,6 @@
 """OCR 识别 API — 任务管理 + 结果查看 + 质量报告 + 版面分析"""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel
 from typing import Optional
 
@@ -23,8 +23,9 @@ class CreateOcrTaskRequest(BaseModel):
 
 
 @router.post("/tasks")
-def create_ocr_task(req: CreateOcrTaskRequest, user: dict = Depends(get_current_user)):
+def create_ocr_task(req: CreateOcrTaskRequest, request: Request, user: dict = Depends(get_current_user)):
     """创建 OCR 任务"""
+    request.state.log_target_id = f"task-ocr-{req.task_name}"
     db = SessionLocal()
     try:
         task = OcrTask(
@@ -98,9 +99,12 @@ def get_ocr_task(task_id: int, user: dict = Depends(get_current_user)):
     try:
         t = db.query(OcrTask).filter(OcrTask.id == task_id).first()
         if not t: return {"error": "not_found"}
-        return {"task_id": t.id, "task_name": t.task_name,
+        return {"id": t.id, "task_id": t.id, "task_name": t.task_name,
                 "status": t.status, "total_pages": t.total_pages,
                 "processed_pages": t.processed_pages,
+                "failed_pages": t.failed_pages or 0,
+                "priority": t.priority or 0,
+                "filter_criteria": t.filter_criteria,
                 "created_at": str(t.created_at)}
     finally:
         db.close()

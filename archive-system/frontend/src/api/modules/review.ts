@@ -8,5 +8,5 @@ export const reviewApi = {
   updateTask: (id: number, action: string) => api.put(`/review/tasks/${id}`, null, { params: { action } }),
   listRecords: (params: any) => api.get('/review/records', { params }),
   getRecord: (id: number) => api.get(`/review/records/${id}`),
-  export: (data: any) => api.post('/review/export', data),
+  export: (data: any) => api.post('/review/export', data, { responseType: 'blob' }),
 }

@@ -11,6 +11,6 @@ export const searchApi = {
   download: (id: string, page?: number) => api.get(`/search/archives/${id}/download`, { params: { page }, responseType: 'blob' }),
   related: (id: string) => api.get(`/search/archives/${id}/related`),
   knowledgeGraph: (id: string) => api.get(`/search/archives/${id}/knowledge-graph`),
-  export: (data: any) => api.post('/search/export', data),
+  export: (data: any) => api.post('/search/export', data, { responseType: 'blob' }),
   facets: () => api.get('/search/facets'),
 }
