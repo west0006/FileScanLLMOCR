@@ -12,9 +12,9 @@
 
     <!-- 质量概览 -->
     <div class="quality-bar" v-if="quality.total">
-      <span>📊 已处理 {{ quality.total }} 件 | 平均准确率 {{ (quality.overall_accuracy*100).toFixed(1) }}%</span>
-      <span v-if="quality.low_confidence_count" style="color:var(--c-warning)"> | ⚠️ 低置信度 {{ quality.low_confidence_count }} 件</span>
-      <span v-if="quality.failed_count" style="color:var(--c-danger)"> | ❌ 失败 {{ quality.failed_count }} 件</span>
+      <span><IconSvg name="chart" size="15" /> 已处理 {{ quality.total }} 件 | 平均准确率 {{ (quality.overall_accuracy*100).toFixed(1) }}%</span>
+      <span v-if="quality.low_confidence_count" style="color:var(--c-warning)"> | <IconSvg name="warn" size="14" /> 低置信度 {{ quality.low_confidence_count }} 件</span>
+      <span v-if="quality.failed_count" style="color:var(--c-danger)"> | <IconSvg name="warn" size="12" /> 失败 {{ quality.failed_count }} 件</span>
     </div>
 
     <!-- 筛选 -->

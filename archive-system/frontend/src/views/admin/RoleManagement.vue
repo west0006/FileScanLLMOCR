@@ -42,7 +42,7 @@
 
     <!-- 密码安全策略 -->
     <div class="security-card">
-      <h3>🔒 密码安全策略</h3>
+      <h3><IconSvg name="lock" size="15" /> 密码安全策略</h3>
       <div class="sec-grid">
         <div class="sec-item">最小长度 <strong>12 位</strong></div>
         <div class="sec-item">复杂度 <strong>大小写+数字+符号</strong></div>

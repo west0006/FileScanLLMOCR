@@ -1,13 +1,13 @@
 <template>
   <div class="stats-page">
-    <div v-if="hasError" class="error-banner">⚠️ {{ errorMsg }}</div>
+    <div v-if="hasError" class="error-banner"><IconSvg name="warn" size="14" /> {{ errorMsg }}</div>
 
     <!-- 概览卡片 -->
     <div class="stats-grid">
-      <div class="stat-card"><div class="stat-icon stat-icon--green">📁</div><div class="stat-label">总操作记录</div><div class="stat-value">{{ summary.total_operations }}</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--blue">🔍</div><div class="stat-label">检索次数</div><div class="stat-value">{{ summary.search_count }}</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--purple">📋</div><div class="stat-label">审核操作</div><div class="stat-value">{{ summary.review_count }}</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--amber">⚠️</div><div class="stat-label">失败操作</div><div class="stat-value">{{ summary.failed_count }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--green"><IconSvg name="folder" size="14" /></div><div class="stat-label">总操作记录</div><div class="stat-value">{{ summary.total_operations }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--blue"><IconSvg name="search" size="14" /></div><div class="stat-label">检索次数</div><div class="stat-value">{{ summary.search_count }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--purple"><IconSvg name="clip" size="15" /></div><div class="stat-label">审核操作</div><div class="stat-value">{{ summary.review_count }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--amber"><IconSvg name="warn" size="14" /></div><div class="stat-label">失败操作</div><div class="stat-value">{{ summary.failed_count }}</div></div>
     </div>
 
     <!-- 图表行 -->
@@ -30,7 +30,7 @@
     <div class="card">
       <div class="card-head">
         <h3>按用户账号统计 (ST-001)</h3>
-        <button class="btn-sm" @click="exportTable('user-ranking')">📥 导出报表</button>
+        <button class="btn-sm" @click="exportTable('user-ranking')"><IconSvg name="download" size="14" /> 导出报表</button>
       </div>
       <div class="filter-bar">
         <select v-model="userFilter.role" class="filter-input-sm"><option value="">全部角色</option><option>system_admin</option><option>archive_admin</option><option>reviewer</option></select>
@@ -68,7 +68,7 @@
             <td>{{ m.month_count }}</td>
             <td><div class="pct-row"><div class="pct-bar"><div class="pct-fill" :style="{width:m.pct+'%'}"></div></div><span class="pct-num">{{ m.pct }}%</span></div></td>
             <td>{{ m.year_count }}</td>
-            <td>{{ m.trend === 'up' ? '📈 上升' : m.trend === 'down' ? '📉 下降' : '➡️ 平稳' }}</td>
+            <td>{{ m.trend === 'up' ? '↑ 上升' : m.trend === 'down' ? '↓ 下降' : '→ 平稳' }}</td>
           </tr>
           <tr v-if="!methodDetail.length"><td colspan="5" class="table-empty">暂无数据</td></tr>
         </tbody>

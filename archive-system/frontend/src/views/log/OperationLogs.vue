@@ -7,11 +7,11 @@
       </button>
     </div>
     <div class="stats-card">
-      <span>📊 今日操作 <strong>{{ logStats.total }}</strong> 条</span>
+      <span><IconSvg name="chart" size="15" /> 今日操作 <strong>{{ logStats.total }}</strong> 条</span>
       <span>|</span>
-      <span>❌ 失败 <strong style="color:var(--c-danger)">{{ logStats.failed }}</strong> 条</span>
+      <span><IconSvg name="warn" size="14" /> 失败 <strong style="color:var(--c-danger)">{{ logStats.failed }}</strong> 条</span>
       <span>|</span>
-      <span>📦 日志保留 <strong>{{ logStats.retention }}</strong> 天</span>
+      <span><IconSvg name="pkg" size="15" /> 日志保留 <strong>{{ logStats.retention }}</strong> 天</span>
     </div>
     <div class="filter-bar">
       <input v-model="filters.username" placeholder="用户" class="filter-input" @keyup.enter="fetchLogs"/>

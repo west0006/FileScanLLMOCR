@@ -1,10 +1,10 @@
 <template>
   <div class="online-page">
     <div class="stats-grid-sm">
-      <div class="stat-card"><div class="stat-icon stat-icon--green">🟢</div><div class="stat-label">当前在线</div><div class="stat-value">{{ users.length }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--green">●</div><div class="stat-label">当前在线</div><div class="stat-value">{{ users.length }}</div></div>
       <div class="stat-card"><div class="stat-icon stat-icon--amber">👤</div><div class="stat-label">管理员在线</div><div class="stat-value">{{ users.filter(u => u.role?.includes('admin')).length }}</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--purple">📋</div><div class="stat-label">审核员在线</div><div class="stat-value">{{ users.filter(u => u.role==='reviewer'||u.role==='审核员').length }}</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--blue">🔄</div><div class="stat-label">自动刷新</div><div class="stat-value" style="font-size:14px">30秒</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--purple"><IconSvg name="clip" size="15" /></div><div class="stat-label">审核员在线</div><div class="stat-value">{{ users.filter(u => u.role==='reviewer'||u.role==='审核员').length }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--blue"><IconSvg name="refresh" size="15" /></div><div class="stat-label">自动刷新</div><div class="stat-value" style="font-size:14px">30秒</div></div>
     </div>
     <div class="page-head">
       <h2>在线用户</h2>

@@ -12,12 +12,12 @@
       </div>
     </div>
 
-    <div class="process-banner">📌 以下为AI预审完成的档案记录。可按风险等级、AI建议、年度范围进行筛选。<strong>建议优先查看高风险档案</strong>，通过导出功能批量获取预审结果表格。</div>
+    <div class="process-banner"><IconSvg name="pin" size="14" /> 以下为AI预审完成的档案记录。可按风险等级、AI建议、年度范围进行筛选。<strong>建议优先查看高风险档案</strong>，通过导出功能批量获取预审结果表格。</div>
 
     <!-- 视图切换 -->
     <div class="view-toggle">
-      <button :class="['toggle-btn', { active: reviewView === 'item' }]" @click="reviewView = 'item'">📄 按件展示</button>
-      <button :class="['toggle-btn', { active: reviewView === 'volume' }]" @click="reviewView = 'volume'">📁 按卷展示</button>
+      <button :class="['toggle-btn', { active: reviewView === 'item' }]" @click="reviewView = 'item'"><IconSvg name="doc" size="14" /> 按件展示</button>
+      <button :class="['toggle-btn', { active: reviewView === 'volume' }]" @click="reviewView = 'volume'"><IconSvg name="folder" size="14" /> 按卷展示</button>
     </div>
 
     <!-- 筛选 -->
@@ -102,11 +102,11 @@
 
     <div class="export-cards">
       <div class="export-card">
-        <h4>📊 导出AI预审结果表格</h4>
+        <h4><IconSvg name="chart" size="15" /> 导出AI预审结果表格</h4>
         <p>Excel格式，含档案编号、题名、风险评分、敏感类型、AI建议、预审时间等字段。</p>
       </div>
       <div class="export-card">
-        <h4>📦 导出档案原文压缩包</h4>
+        <h4><IconSvg name="pkg" size="15" /> 导出档案原文压缩包</h4>
         <p>ZIP格式，含原始扫描件(TIFF/PDF)、对应的OCR识别文本、结构化元数据(XML/JSON)。</p>
       </div>
     </div>

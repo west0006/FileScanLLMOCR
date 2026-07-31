@@ -10,7 +10,7 @@
 
     <!-- 流程说明 -->
     <div class="process-banner">
-      📌 本系统对档案开放审核采用<strong>「AI智能预审 + 预审结果导出」</strong>模式。系统自动完成敏感信息识别、风险评级、开放建议生成，审核人员可直接查看AI预审结果，并支持批量导出预审结果表格与对应档案原文压缩包。
+      <IconSvg name="pin" size="14" /> 本系统对档案开放审核采用<strong>「AI智能预审 + 预审结果导出」</strong>模式。系统自动完成敏感信息识别、风险评级、开放建议生成，审核人员可直接查看AI预审结果，并支持批量导出预审结果表格与对应档案原文压缩包。
     </div>
 
     <div class="wb-grid">
@@ -52,9 +52,9 @@
             <div class="doc-content" v-html="renderedText"></div>
             <div class="doc-footer">— 档案原文 —</div>
             <div class="doc-actions">
-              <button class="btn-clear">🔍 查看原图</button>
-              <button class="btn-clear">📝 查看OCR文本</button>
-              <button class="btn-clear" @click="$router.push('/search/detail/'+form.archive_id)">📑 查看关联档案</button>
+              <button class="btn-clear"><IconSvg name="search" size="14" /> 查看原图</button>
+              <button class="btn-clear"><IconSvg name="edit" size="14" /> 查看OCR文本</button>
+              <button class="btn-clear" @click="$router.push('/search/detail/'+form.archive_id)"><IconSvg name="bookmark" size="14" /> 查看关联档案</button>
             </div>
           </div>
         </div>
@@ -139,7 +139,7 @@
           </div>
 
           <div class="rules-section">
-            <h4>📋 预审依据规则</h4>
+            <h4><IconSvg name="clip" size="15" /> 预审依据规则</h4>
             <div class="rules-list">
               <div>• 《中华人民共和国档案法》第二十七条</div>
               <div>• 《各级国家档案馆开放档案办法》</div>
@@ -149,7 +149,7 @@
           </div>
 
           <div class="hint-box">
-            💡 本系统仅完成AI预审，最终开放决定由档案馆人工研判。请通过「预审记录」页批量导出预审结果表格。
+            <IconSvg name="bulb" size="14" /> 本系统仅完成AI预审，最终开放决定由档案馆人工研判。请通过「预审记录」页批量导出预审结果表格。
           </div>
         </div>
       </div>

@@ -150,7 +150,7 @@
           >{{ lvl.label }}</button>
         </div>
         <div class="scope-tree-btn" @click="showScopeTree = !showScopeTree">
-          📂 {{ scopeNodes.length ? '已选 ' + scopeNodes.length + ' 个节点' : '按目录筛选' }} ▼
+          <IconSvg name="folder" size="15" /> {{ scopeNodes.length ? '已选 ' + scopeNodes.length + ' 个节点' : '按目录筛选' }} ▼
           <div v-if="showScopeTree" class="scope-popover" @click.stop>
             <el-tree ref="scopeTreeRef" :data="scopeTreeData" show-checkbox node-key="id" :default-checked-keys="scopeCheckedKeys" @check="onScopeCheck" :props="{label:'label',children:'children'}" default-expand-all />
             <div class="scope-actions">

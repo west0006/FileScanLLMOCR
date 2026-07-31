@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <div class="page-head"><h2>预审任务</h2><button class="btn-primary" @click="showCreate=true">创建任务</button></div>
-    <div class="process-banner">📌 系统对每批审核任务自动完成 AI 智能预审，生成风险评分、敏感信息标注、开放建议。<strong>审核人员无需在系统中进行人工复核</strong>，可通过导出按钮获取预审数据。</div>
+    <div class="process-banner"><IconSvg name="pin" size="14" /> 系统对每批审核任务自动完成 AI 智能预审，生成风险评分、敏感信息标注、开放建议。<strong>审核人员无需在系统中进行人工复核</strong>，可通过导出按钮获取预审数据。</div>
     <div class="card">
       <table class="data-table">
         <thead><tr><th>任务名称</th><th>批次</th><th style="width:200px">进度</th><th>风险分布</th><th>状态</th><th style="width:180px">操作</th></tr></thead>
@@ -23,12 +23,12 @@
     <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchTasks()}" @size-change="s=>{pageSize=s;fetchTasks()}" />
 
     <div class="export-row">
-      <button class="btn-primary" @click="handleExport">📊 导出AI预审结果表格</button>
-      <button class="btn-sm" @click="handleExportArchive">📦 导出对应档案原文压缩包</button>
+      <button class="btn-primary" @click="handleExport"><IconSvg name="chart" size="15" /> 导出AI预审结果表格</button>
+      <button class="btn-sm" @click="handleExportArchive"><IconSvg name="pkg" size="15" /> 导出对应档案原文压缩包</button>
     </div>
 
     <div class="metrics-card" v-if="tasks.length">
-      <h3>📊 AI预审效率与质量</h3>
+      <h3><IconSvg name="chart" size="15" /> AI预审效率与质量</h3>
       <table class="data-table">
         <thead><tr><th>指标</th><th>数值</th></tr></thead>
         <tbody>

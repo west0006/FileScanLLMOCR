@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <div class="page-head"><h2>数据同步</h2></div>
-    <div class="process-banner">📌 配置源数据目录或数据库连接后，系统将按设定频率自动同步。支持文件增量同步（比对时间戳+哈希）和数据库元数据同步（字段映射+增量字段）。</div>
+    <div class="process-banner"><IconSvg name="pin" size="14" /> 配置源数据目录或数据库连接后，系统将按设定频率自动同步。支持文件增量同步（比对时间戳+哈希）和数据库元数据同步（字段映射+增量字段）。</div>
 
     <!-- Tab 切换 -->
     <div class="sync-tabs">

@@ -33,7 +33,7 @@
 
         <!-- 关联档案 -->
         <div class="info-card" v-if="related.length">
-          <h3 class="info-card-title">📎 关联档案</h3>
+          <h3 class="info-card-title"><IconSvg name="link" size="14" /> 关联档案</h3>
           <div class="related-list">
             <router-link
               v-for="r in related" :key="r.archive_id"
@@ -53,7 +53,7 @@
 
         <!-- 知识图谱实体 -->
         <div class="info-card" v-if="entitySummary && Object.keys(entitySummary).length">
-          <h3 class="info-card-title">🧠 知识图谱</h3>
+          <h3 class="info-card-title"><IconSvg name="brain" size="15" /> 知识图谱</h3>
           <div class="entity-section" v-for="(names, type) in entitySummary" :key="type">
             <div class="entity-type">{{ typeLabel(type) }}</div>
             <div class="entity-tags">
@@ -156,7 +156,7 @@ const entitySummary = ref<Record<string, string[]> | null>(null)
 const kgInfo = ref<any>(null)
 
 function typeLabel(t: string): string {
-  const m: Record<string,string> = {PERSON:'👤 人物',ORG:'🏛️ 机构',DATE:'📅 日期',DOC_ID:'📄 文件编号',EVENT:'📌 事件',LOCATION:'📍 地点'}
+  const m: Record<string,string> = {PERSON:'人物',ORG:'机构',DATE:'日期',DOC_ID:'文件编号',EVENT:'事件',LOCATION:'地点'}
   return m[t] || t
 }
 
