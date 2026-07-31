@@ -54,15 +54,15 @@ def login(req: LoginRequest, request: Request):
 
         # ====== 生产模式：完整安全检查 ======
 
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta
 
         # 用户不存在
         if user is None:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
 
         # 账户锁定检查
-        if user.locked_until and user.locked_until > datetime.now():
-            remaining = int((user.locked_until - datetime.now()).total_seconds() / 60)
+        if user.locked_until and user.locked_until > datetime.utcnow():
+            remaining = int((user.locked_until - datetime.utcnow()).total_seconds() / 60)
             raise HTTPException(
                 status_code=status.HTTP_423_LOCKED,
                 detail=f"账户已锁定，请 {remaining} 分钟后重试",
@@ -76,14 +76,14 @@ def login(req: LoginRequest, request: Request):
         if not verify_password(req.password, user.password_hash):
             user.login_attempts = (user.login_attempts or 0) + 1
             if user.login_attempts >= settings.LOGIN_MAX_ATTEMPTS:
-                user.locked_until = datetime.now() + timedelta(minutes=settings.LOGIN_LOCK_MINUTES)
+                user.locked_until = datetime.utcnow() + timedelta(minutes=settings.LOGIN_LOCK_MINUTES)
                 user.login_attempts = 0
             db.commit()
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
 
         # 密码过期检查
         if user.password_updated_at:
-            days_since = (datetime.now() - user.password_updated_at).days
+            days_since = (datetime.utcnow() - user.password_updated_at).days
             if days_since > settings.PASSWORD_EXPIRE_DAYS:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
