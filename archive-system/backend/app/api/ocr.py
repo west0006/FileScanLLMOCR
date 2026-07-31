@@ -196,7 +196,7 @@ def ocr_models_info(user: dict = Depends(get_current_user)):
     return info
 
 
-# ===================== 调试/测试端点（无需认证） =====================
+# ===================== 调试/测试端点（需认证） =====================
 
 class DebugOcrRequest(BaseModel):
     text: Optional[str] = None
@@ -204,10 +204,10 @@ class DebugOcrRequest(BaseModel):
 
 
 @router.post("/debug/test")
-def debug_ocr_test(req: DebugOcrRequest):
+def debug_ocr_test(req: DebugOcrRequest, user: dict = Depends(get_current_user)):
     """
     测试专用端点 — 同步识别，返回详细信息。
-    无需 Token，方便测试人员直接调用。
+    需有效 Token，用于开发调试和问题排查。
     """
     import time
     from app.core.config import settings

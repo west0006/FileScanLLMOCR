@@ -3,6 +3,9 @@
 from celery import Celery
 from app.core.config import settings
 import redis
+import logging
+
+_log = logging.getLogger("celery_app")
 
 # 检测 Redis 是否可用，不可用则跳过 Celery 初始化
 _celery_available = False
@@ -12,7 +15,7 @@ try:
     _celery_available = True
     r.close()
 except Exception:
-    pass
+    _log.info("Redis 不可用 — Celery 降级为 memory:// 同步执行模式")
 
 if _celery_available:
     celery_app = Celery(

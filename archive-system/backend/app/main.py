@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.core.database import engine, Base, init_db
 from app.api import search, ocr, review, sync, auth, user, log, stats
 from app.middleware.log_middleware import OperationLogMiddleware
+from app.middleware.session_timeout import SessionTimeoutMiddleware
 
 
 @asynccontextmanager
@@ -26,6 +27,10 @@ async def lifespan(app: FastAPI):
             _cleanup_old_logs()
         except Exception:
             pass
+
+    # 安全检查：生产环境禁止使用默认 JWT_SECRET
+    _check_security_config()
+
     yield
     # 关闭时
     engine.dispose()
@@ -50,6 +55,27 @@ def _cleanup_old_logs():
         db.close()
 
 
+def _check_security_config():
+    """启动时安全检查：防止生产环境使用默认密钥"""
+    import logging
+    log = logging.getLogger("main")
+    issues = []
+
+    if settings.JWT_SECRET == "dev-secret-change-in-production":
+        issues.append("JWT_SECRET 仍为默认值 'dev-secret-change-in-production' — 生产环境必须修改！")
+
+    if settings.DB_PASSWORD == "archive123":
+        issues.append("DB_PASSWORD 仍为默认值 'archive123' — 生产环境必须修改！")
+
+    if issues:
+        log.warning("=" * 60)
+        log.warning("  ⚠️  安全检查：发现以下配置使用默认值：")
+        for i in issues:
+            log.warning(f"     • {i}")
+        log.warning("  请在 .env 文件中修改后再启动生产环境。")
+        log.warning("=" * 60)
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
@@ -66,6 +92,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(SessionTimeoutMiddleware)
 app.add_middleware(OperationLogMiddleware)
 
 # ===================== 全局异常处理 =====================

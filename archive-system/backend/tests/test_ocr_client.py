@@ -213,11 +213,8 @@ class TestOcrEndpoints:
         assert "overall_accuracy" in data
 
     def test_debug_test(self):
-        """POST /api/ocr/debug/test 端点"""
-        from fastapi.testclient import TestClient
-        from app.main import app
-
-        client = TestClient(app)
-        resp = client.post("/api/ocr/debug/test", json={"text": "测试文本"})
+        """POST /api/ocr/debug/test 端点 (需认证)"""
+        token, client = self.get_token()
+        resp = client.post("/api/ocr/debug/test", json={"text": "测试文本"}, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert "result" in resp.json()

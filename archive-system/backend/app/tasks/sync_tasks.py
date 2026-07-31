@@ -321,4 +321,5 @@ def _log_sync_op(db, sync_type: str, mode: str, new_count: int, updated_count: i
         if failed_count: desc += f'，失败{failed_count}'
         log = OperationLog(user_id=0, username='系统', operation_type='sync', module='sync', description=desc, result='success' if failed_count==0 else 'failure')
         db.add(log); db.commit()
-    except Exception: pass
+    except Exception:
+        logger.warning(f"同步操作日志写入失败: {sync_type}-{mode}")
