@@ -84,7 +84,7 @@ async function fetchLogs() {
     }
     // 更新统计卡
     logStats.value.total = allR.data.total || 0
-    try { const summary = await logApi.auditSummary(); logStats.value.failed = summary.data.failed_operations || 0 } catch { logStats.value.failed = 0 }
+    try { const summary = await logApi.auditSummary(); logStats.value.failed = summary.data.today_failed || 0 } catch { logStats.value.failed = 0 }
   } catch { /* ignore */ }
 }
 

@@ -32,6 +32,7 @@ _GET_PAGE_MAP = {
     "/api/user/": ("view", "查看用户管理"),
     "/api/user/online": ("view", "查看在线用户"),
     "/api/user/roles": ("view", "查看角色权限"),
+    # 排除：日志查询自身不记录（避免统计自增）
 }
 
 # POST/PUT/DELETE 模块 → (操作类型, 操作名称)

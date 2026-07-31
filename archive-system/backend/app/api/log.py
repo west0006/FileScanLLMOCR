@@ -120,6 +120,13 @@ def audit_summary(user: dict = Depends(get_current_user)):
         anomalies = []
         now = datetime.utcnow()
 
+        # 今日数据
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        today_total = db.query(OperationLog).filter(OperationLog.created_at >= today_start).count()
+        today_failed = db.query(OperationLog).filter(
+            OperationLog.result == "failure", OperationLog.created_at >= today_start
+        ).count()
+
         # 1. 最近1小时内大量失败登录（≥5次）
         one_hour_ago = now - timedelta(hours=1)
         failed_logins = (
@@ -184,6 +191,8 @@ def audit_summary(user: dict = Depends(get_current_user)):
         return {
             "total_operations": total,
             "failed_operations": failed,
+            "today_total": today_total,
+            "today_failed": today_failed,
             "anomalies": anomalies,
             "anomaly_count": len(anomalies),
         }
