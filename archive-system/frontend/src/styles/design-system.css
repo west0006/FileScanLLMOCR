@@ -242,6 +242,26 @@ mark.search-highlight{
 @media (max-width:500px){.stats-grid{grid-template-columns:1fr}}
 
 /* ============================================
+   Responsive — 全局自适应
+   ============================================ */
+@media (max-width: 768px) {
+  .page { padding: 0 12px; }
+  .card, .table-card { overflow-x: auto; }
+  .filter-bar { flex-wrap: wrap; }
+  .modal-card { width: 94vw !important; max-width: 94vw; }
+  .wb-grid { grid-template-columns: 1fr !important; }
+  .recent-section, .home-cols, .charts-row { grid-template-columns: 1fr !important; }
+  .data-table { min-width: 600px; }
+}
+@media (max-width: 480px) {
+  .page-head { flex-direction: column; gap: 8px; align-items: flex-start; }
+  .home-grid { grid-template-columns: 1fr !important; }
+  .online-grid { grid-template-columns: 1fr !important; }
+  .export-cards { grid-template-columns: 1fr !important; }
+  .sec-grid { grid-template-columns: 1fr !important; }
+}
+
+/* ============================================
    Empty State
    ============================================ */
 .empty-state{

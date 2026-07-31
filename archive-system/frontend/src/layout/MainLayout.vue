@@ -276,6 +276,13 @@ function handleLogout() {
   flex: 1; overflow-y: auto; padding: 24px;
 }
 
+/* 移动端：侧边栏自动折叠 */
+@media (max-width: 768px) {
+  .app-shell { --sidebar-actual: var(--sidebar-collapsed); }
+  .content { padding: 16px; }
+  .topbar { padding: 0 16px; }
+}
+
 /* ==================== 过渡类 ==================== */
 
 /* 页面切换 — 快、跟手 */
