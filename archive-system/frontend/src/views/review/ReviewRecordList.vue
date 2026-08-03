@@ -5,9 +5,9 @@
       <h2>预审记录</h2>
       <div style="display:flex;align-items:center;gap:12px">
         <span v-if="selectedIds.length" class="selected-badge">已选 {{ selectedIds.length }} 条</span>
-        <button class="btn-export" @click="handleExport" :disabled="selectedIds.length === 0">
+        <button class="btn-export" @click="handleExport">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          导出 Excel
+          {{ selectedIds.length ? `导出 Excel (${selectedIds.length}条)` : '导出全部' }}
         </button>
       </div>
     </div>
@@ -67,7 +67,7 @@
               <td>{{ row.year }}</td>
               <td><div class="mini-bar"><div class="mini-bar-fill" :class="'mini-bar--'+riskLevelClass(row.risk_level)" :style="{width:row.risk_score+'%'}"></div><span class="mini-bar-num">{{ row.risk_score }}</span></div></td>
               <td><span class="risk-tag" :class="'risk-tag--'+riskLevelClass(row.risk_level)">{{ row.risk_level }}</span></td>
-              <td>{{ row.suggestion }}</td>
+              <td :class="'suggestion-' + suggestionClass(row.suggestion)">{{ row.suggestion }}</td>
               <td class="text-sm">{{ row.created_at?.substring(0,10) }}</td>
               <td>{{ ((row.confidence||0)*100).toFixed(0) }}%</td>
             </tr>
@@ -85,7 +85,7 @@
           <th style="width:140px">卷级建议</th>
         </tr></thead>
         <tbody>
-          <tr v-for="v in volumeRecords" :key="v.archive_id">
+          <tr v-for="v in volumeRecords" :key="v.archive_id" class="clickable" @dblclick="showVolumeDetail(v)">
             <td class="mono">{{ v.archive_id }}</td>
             <td class="title-cell">{{ v.title }}</td>
             <td>{{ v.year }}</td>
@@ -196,6 +196,13 @@ const filters = ref({
 
 onMounted(() => fetchRecords())
 
+function suggestionClass(s: string) {
+  if (!s) return ''
+  if (s.includes('不开放')) return 'high'
+  if (s.includes('延期')) return 'mid'
+  if (s.includes('脱敏') || s.includes('部分')) return 'mid'
+  return 'low'
+}
 function riskLevelClass(lvl: string) {
   return { '高': 'high', '中': 'mid', '低': 'low' }[lvl] || 'low'
 }
@@ -230,6 +237,10 @@ async function fetchRecords() {
     volumeRecords.value = Object.values(volMap)
   } catch { /* ignore */ }
 }
+function showVolumeDetail(v: any) {
+  ElMessage.info(`案卷 ${v.archive_id}: ${v.title}, ${v.item_count} 件, 最高风险 ${v.max_risk}`)
+}
+
 async function showDetail(row: any) {
   try {
     const res = await reviewApi.getRecord(row.id)
@@ -240,8 +251,11 @@ async function showDetail(row: any) {
 }
 async function handleExport() {
   try {
-    const ids = selectedIds.value.length ? selectedIds.value : []
-    const res = await reviewApi.export({ archive_ids: ids })
+    // 从选中的 record id 映射到真实的 archive_id
+    const selectedArchiveIds = selectedIds.value.length
+      ? records.value.filter(r => selectedIds.value.includes(r.id)).map(r => r.archive_id)
+      : records.value.map(r => r.archive_id)
+    const res = await reviewApi.export({ archive_ids: selectedArchiveIds })
     const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -400,4 +414,7 @@ async function handleExport() {
   display: inline-block; padding: 2px 8px; border-radius: var(--r-full);
   background: #FEF2F2; color: var(--c-danger); font-size: 11px; font-weight: var(--fw-medium); margin: 2px;
 }
+.suggestion-high { color: var(--c-danger); font-weight: var(--fw-semibold); }
+.suggestion-mid { color: var(--c-warning); font-weight: var(--fw-medium); }
+.suggestion-low { color: var(--c-success); }
 </style>

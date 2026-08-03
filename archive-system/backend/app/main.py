@@ -37,11 +37,11 @@ async def lifespan(app: FastAPI):
 
 
 def _cleanup_old_logs():
-    """清理超过 180 天的操作日志"""
+    """清理超过 1095 天（3 年）的操作日志"""
     from datetime import datetime, timedelta
     from app.core.database import SessionLocal
     from app.models.models import OperationLog
-    cutoff = datetime.utcnow() - timedelta(days=180)
+    cutoff = datetime.utcnow() - timedelta(days=1095)
     db = SessionLocal()
     try:
         deleted = db.query(OperationLog).filter(OperationLog.created_at < cutoff).delete()

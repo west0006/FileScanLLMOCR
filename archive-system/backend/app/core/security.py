@@ -60,6 +60,17 @@ async def get_current_user(
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token 无效或已过期")
 
+    # 检查用户是否被停用
+    from app.core.database import SessionLocal
+    from app.models.models import User as UserModel
+    db = SessionLocal()
+    try:
+        u = db.query(UserModel).filter(UserModel.id == int(payload["sub"])).first()
+        if u and not u.is_active:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账户已停用")
+    finally:
+        db.close()
+
     return {
         "user_id": int(payload["sub"]),
         "username": payload["username"],

@@ -4,7 +4,7 @@ import os
 from fastapi import APIRouter, Depends, Query
 from typing import Optional
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
 from app.core.database import SessionLocal
 from app.models.models import OperationLog
 from datetime import datetime
@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.get("/")
-def list_logs(user: dict = Depends(get_current_user), page: int = 1, page_size: int = 20,
+def list_logs(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN)), page: int = 1, page_size: int = 20,
               user_account: Optional[str] = None, operation_type: Optional[str] = None,
               module: Optional[str] = None, result: Optional[str] = None,
               date_from: Optional[str] = None, date_to: Optional[str] = None, keyword: Optional[str] = None):
@@ -50,7 +50,7 @@ def list_logs(user: dict = Depends(get_current_user), page: int = 1, page_size: 
 
 
 @router.get("/login")
-def login_logs(user: dict = Depends(get_current_user), page: int = 1, page_size: int = 20,
+def login_logs(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN)), page: int = 1, page_size: int = 20,
                username: Optional[str] = None, result: Optional[str] = None,
                date_from: Optional[str] = None, date_to: Optional[str] = None):
     """登录日志 — 支持按用户/结果/时间筛选"""
@@ -80,7 +80,7 @@ def login_logs(user: dict = Depends(get_current_user), page: int = 1, page_size:
 
 
 @router.post("/export")
-def export_logs(format: str = "excel", filters: dict = {}, user: dict = Depends(get_current_user)):
+def export_logs(format: str = "excel", filters: dict = {}, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """日志导出 — 返回 Excel 文件下载"""
     from fastapi.responses import FileResponse
     db = SessionLocal()

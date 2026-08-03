@@ -1,5 +1,6 @@
 """认证 API — 登录 / 登出 / Token 刷新"""
 
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 
@@ -45,6 +46,8 @@ def login(req: LoginRequest, request: Request):
                 db.add(user)
                 db.commit()
                 db.refresh(user)
+            user.last_login_at = datetime.utcnow()
+            db.commit()
             token = create_access_token(user_id=user.id, username=user.username, role=user.role, name=user.name)
             return LoginResponse(
                 access_token=token,
@@ -53,8 +56,6 @@ def login(req: LoginRequest, request: Request):
             )
 
         # ====== 生产模式：完整安全检查 ======
-
-        from datetime import datetime, timedelta
 
         # 用户不存在
         if user is None:
@@ -90,9 +91,10 @@ def login(req: LoginRequest, request: Request):
                     detail=f"密码已过期（超过 {settings.PASSWORD_EXPIRE_DAYS} 天），请修改密码",
                 )
 
-        # 登录成功：重置计数器
+        # 登录成功：重置计数器 + 记录登录时间
         user.login_attempts = 0
         user.locked_until = None
+        user.last_login_at = datetime.utcnow()
         db.commit()
 
         token = create_access_token(user_id=user.id, username=user.username, role=user.role, name=user.name)

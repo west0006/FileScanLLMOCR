@@ -11,4 +11,5 @@ export const userApi = {
   listRoles: () => api.get('/user/roles'),
   createRole: (name: string, description: string) => api.post('/user/roles', null, { params: { name, description } }),
   updatePermissions: (roleId: number, perms: any) => api.put(`/user/roles/${roleId}/permissions`, perms),
+  deleteRole: (roleId: number) => api.delete(`/user/roles/${roleId}`),
 }

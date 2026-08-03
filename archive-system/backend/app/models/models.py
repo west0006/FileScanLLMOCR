@@ -21,6 +21,7 @@ class User(Base):
     login_attempts = Column(Integer, default=0)
     locked_until = Column(DateTime, nullable=True)
     password_updated_at = Column(DateTime, default=datetime.utcnow)
+    last_login_at = Column(DateTime, nullable=True)
     tree_auth = Column(JSON, default=list)  # ["行政档案", "教学档案", ...] 授权的目录节点
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

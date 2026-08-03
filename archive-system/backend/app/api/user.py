@@ -65,7 +65,9 @@ def list_users(user: dict = Depends(get_current_user), page: int = 1, page_size:
         return {"total": total, "page": page, "page_size": page_size,
                 "items": [{"id": u.id, "username": u.username, "name": u.name,
                             "department": u.department, "role": u.role,
-                            "is_active": u.is_active, "created_at": str(u.created_at)} for u in items]}
+                            "is_active": u.is_active,
+                            "last_login_at": str(u.last_login_at) if u.last_login_at else None,
+                            "created_at": str(u.created_at)} for u in items]}
     finally:
         db.close()
 
@@ -91,10 +93,20 @@ def update_user(user_id: int, req: UpdateUserRequest, user: dict = Depends(get_c
 
 
 @router.put("/{user_id}/password")
-def reset_password(user_id: int, new_password: str, user: dict = Depends(get_current_user)):
+def reset_password(user_id: int, new_password: str, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """重置密码"""
     if len(new_password) < 12:
         return {"error": "密码不少于12个字符"}
+    # 复杂度校验：大小写+数字+特殊字符
+    import re
+    if not re.search(r'[A-Z]', new_password):
+        return {"error": "密码需包含大写字母"}
+    if not re.search(r'[a-z]', new_password):
+        return {"error": "密码需包含小写字母"}
+    if not re.search(r'[0-9]', new_password):
+        return {"error": "密码需包含数字"}
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;\/]', new_password):
+        return {"error": "密码需包含特殊字符"}
     db = SessionLocal()
     try:
         u = db.query(User).filter(User.id == user_id).first()
@@ -195,6 +207,25 @@ def update_role_permissions(role_id: int, permissions: dict, user: dict = Depend
             db.commit()
             return {"role_id": role_id, "permissions": permissions, "status": "updated"}
         return {"error": "role_not_found"}
+    finally:
+        db.close()
+
+
+@router.delete("/roles/{role_id}")
+def delete_role(role_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
+    """删除角色"""
+    db = SessionLocal()
+    try:
+        role = db.query(Role).filter(Role.id == role_id).first()
+        if not role:
+            return {"error": "role_not_found"}
+        # 检查是否有用户使用此角色
+        user_count = db.query(User).filter(User.role == role.name).count()
+        if user_count > 0:
+            return {"error": f"该角色下有 {user_count} 个用户，请先移除用户后再删除"}
+        db.delete(role)
+        db.commit()
+        return {"role_id": role_id, "status": "deleted"}
     finally:
         db.close()
 

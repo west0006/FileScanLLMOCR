@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { statsApi } from '@/api'
 import * as echarts from 'echarts'
 import { ElMessage } from 'element-plus'
@@ -110,8 +110,8 @@ onMounted(async () => {
     summary.failed_count = (tr.data.failed || tr.data.items?.find((i:any)=>i.type==='failure')?.count) || 0
     await nextTick()
     loadTimeChart()
-    if(typeChartRef.value){const c=echarts.init(typeChartRef.value);c.setOption({tooltip:{trigger:'item'},legend:{bottom:0},series:[{type:'pie',radius:['45%','75%'],center:['50%','45%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:typeData.map((t:any)=>({name:typeLabel(t.type),value:t.count})),color:['#10B981','#6366F1','#8B5CF6','#06B6D4','#F59E0B','#94A3B8']}]})}
-    if(userChartRef.value){const c=echarts.init(userChartRef.value);c.setOption({tooltip:{trigger:'axis'},grid:{left:10,right:20,top:10,bottom:0,containLabel:true},xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'#F1F5F9'}}},yAxis:{type:'category',data:userData.map((u:any)=>u.username||u.name).reverse(),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:userData.map((u:any)=>userTotal(u)).reverse(),barWidth:14,itemStyle:{borderRadius:[0,6,6,0],color:'#10B981'},emphasis:{itemStyle:{color:'#059669'}}}]})}
+    if(typeChartRef.value){_initChart(typeChartRef, {tooltip:{trigger:'item'},legend:{bottom:0},series:[{type:'pie',radius:['45%','75%'],center:['50%','45%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:typeData.map((t:any)=>({name:typeLabel(t.type),value:t.count})),color:['#10B981','#6366F1','#8B5CF6','#06B6D4','#F59E0B','#94A3B8']}]})}
+    if(userChartRef.value){_initChart(userChartRef, {tooltip:{trigger:'axis'},grid:{left:10,right:20,top:10,bottom:0,containLabel:true},xAxis:{type:'value',axisLine:{show:false},axisTick:{show:false},splitLine:{lineStyle:{color:'#F1F5F9'}}},yAxis:{type:'category',data:userData.map((u:any)=>u.username||u.name).reverse(),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:userData.map((u:any)=>userTotal(u)).reverse(),barWidth:14,itemStyle:{borderRadius:[0,6,6,0],color:'#10B981'},emphasis:{itemStyle:{color:'#059669'}}}]})}
     fetchUserRanking()
   } catch {
     hasError.value = true
@@ -143,11 +143,46 @@ async function loadTimeChart() {
   if(!timeChartRef.value) return
   let timeData:any[]=[]
   try{const res=await statsApi.byTime({granularity:timeGranularity.value,days:timeGranularity.value==='year'?365:timeGranularity.value==='quarter'?90:30});timeData=res.data.items||[]}catch{timeData=[]}
-  const c=echarts.init(timeChartRef.value)
-  c.setOption({tooltip:{trigger:'axis'},grid:{left:40,right:20,top:10,bottom:30},xAxis:{type:'category',data:timeData.map((i:any)=>i.period),axisLabel:{rotate:timeGranularity.value==='day'?45:0,fontSize:10}},yAxis:{type:'value',minInterval:1},series:[{type:'line',data:timeData.map((i:any)=>i.count),smooth:true,symbol:'circle',symbolSize:6,lineStyle:{color:'#10B981',width:2},itemStyle:{color:'#10B981'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,185,129,0.25)'},{offset:1,color:'rgba(16,185,129,0.02)'}])}}]})
+  _initChart(timeChartRef, {tooltip:{trigger:'axis'},grid:{left:40,right:20,top:10,bottom:30},xAxis:{type:'category',data:timeData.map((i:any)=>i.period),axisLabel:{rotate:timeGranularity.value==='day'?45:0,fontSize:10}},yAxis:{type:'value',minInterval:1},series:[{type:'line',data:timeData.map((i:any)=>i.count),smooth:true,symbol:'circle',symbolSize:6,lineStyle:{color:'#10B981',width:2},itemStyle:{color:'#10B981'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,185,129,0.25)'},{offset:1,color:'rgba(16,185,129,0.02)'}])}}]})
 }
 
-function exportTable(id: string) { ElMessage.success('报表导出任务已创建') }
+const _charts: any[] = []
+function _initChart(ref: any, option: any) {
+  if (!ref || !ref.value) return
+  const c = echarts.init(ref.value)
+  c.setOption(option)
+  _charts.push(c)
+  return c
+}
+function _resizeCharts() { _charts.forEach(c => { try { c.resize() } catch {} }) }
+onUnmounted(() => { _charts.forEach(c => { try { c.dispose() } catch {} }) })
+onMounted(() => { window.addEventListener('resize', _resizeCharts) })
+onUnmounted(() => { window.removeEventListener('resize', _resizeCharts) })
+
+function exportTable(id: string) {
+  try {
+    // 导出当前排名表数据为 CSV
+    const rows = userRanking.value
+    if (!rows.length) { ElMessage.warning('暂无数据可导出'); return }
+    const headers = ['排名','用户','角色','检索','浏览','下载','打印','合计']
+    const csv = [
+      headers.join(','),
+      ...rows.map((r, i) => [
+        i + 1,
+        `"${r.name || r.username}"`,
+        `"${roleLabel(r.role)}"`,
+        r.search || 0, r.view || 0, r.download || 0, r.print || 0,
+        (r.search||0)+(r.view||0)+(r.download||0)+(r.print||0),
+      ].join(','))
+    ].join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `统计报表_${new Date().toISOString().slice(0,10)}.csv`; a.click()
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch { ElMessage.error('导出失败') }
+}
 </script>
 
 <style scoped>

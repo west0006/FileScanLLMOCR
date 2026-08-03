@@ -58,7 +58,7 @@ def search_keyword(
 
     es = get_es()
     if es is None:
-        return _fallback_search(keywords, page, page_size, t0, sort, scope_nodes, level, user)
+        return _fallback_search(keywords, page, page_size, t0, sort, scope_nodes, level, user, dimension=dimension, exact=exact)
 
     query = _build_keyword_query(expanded, scope_nodes, level, exact, dimension)
     return _execute_es_search(es, query, page, page_size, t0, sort, user=user)
@@ -388,7 +388,7 @@ def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, so
 
 # ==================== SQLite 降级 ====================
 
-def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None, level: str = "all", user: dict | None = None, year_from: int | None = None, year_to: int | None = None, category: str | None = None, department: str | None = None, fonds_id: str | None = None, fonds_ids: list[str] | None = None, author: str | None = None, file_code: str | None = None, open_status: str | None = None, retention_period: str | None = None) -> dict:
+def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None, level: str = "all", user: dict | None = None, year_from: int | None = None, year_to: int | None = None, category: str | None = None, department: str | None = None, fonds_id: str | None = None, fonds_ids: list[str] | None = None, author: str | None = None, file_code: str | None = None, open_status: str | None = None, retention_period: str | None = None, dimension: str = "all", exact: bool = False) -> dict:
     """ES 不可用时的 SQLite 降级搜索"""
     db = SessionLocal()
     try:
@@ -399,11 +399,26 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: 
             from app.core.security import apply_data_scope
             query = apply_data_scope(user, query, Archive)
         if keywords:
+            # 按检索维度选择搜索字段
+            dim_field_map = {
+                "all":       ["title", "ocr_text", "archive_id", "author", "file_code", "subject"],
+                "title":     ["title"],
+                "archive_id":["archive_id"],
+                "author":    ["author"],
+                "subject":   ["subject"],
+            }
+            fields = dim_field_map.get(dimension, dim_field_map["all"])
             for kw in keywords.split():
-                query = query.filter(
-                    (Archive.title.contains(kw)) |
-                    (Archive.ocr_text.contains(kw))
-                )
+                conditions = []
+                for f in fields:
+                    col = getattr(Archive, f)
+                    if exact and f == "archive_id":
+                        conditions.append(col == kw)
+                    else:
+                        conditions.append(col.contains(kw))
+                if conditions:
+                    from sqlalchemy import or_
+                    query = query.filter(or_(*conditions))
         if scope_nodes:
             query = query.filter(Archive.category.in_(scope_nodes))
         # 高级筛选

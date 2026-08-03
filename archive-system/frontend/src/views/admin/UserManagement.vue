@@ -17,7 +17,7 @@
           <tr v-for="u in users" :key="u.id">
             <td><span class="online-dot" :class="u.is_active?'dot--on':'dot--off'"></span>{{ u.name }}</td>
             <td class="mono">{{ u.username }}</td><td>{{ u.department || '—' }}</td><td>{{ roleLabel(u.role) }}</td>
-            <td class="text-sm">{{ u.last_login_at || u.created_at?.substring(0,10) || '—' }}</td>
+            <td class="text-sm">{{ u.last_login_at?.substring(0,19) || u.created_at?.substring(0,19) || '—' }}</td>
             <td><span class="risk-tag" :class="u.is_active?'risk-tag--low':'risk-tag--high'">{{ u.is_active?'正常':'停用' }}</span></td>
             <td>
               <button class="btn-sm" @click="openEdit(u)">编辑</button>
@@ -38,6 +38,7 @@
         <div class="modal-body">
           <div class="form-group"><label>用户名</label><input v-model="form.username" class="field-input" placeholder="3-50字符" /></div>
           <div class="form-group"><label>姓名</label><input v-model="form.name" class="field-input" /></div>
+          <div class="form-group"><label>所属部门</label><input v-model="form.department" class="field-input" placeholder="如: 档案馆" /></div>
           <div class="form-group"><label>角色</label><select v-model="form.role" class="field-input"><option value="reviewer">审核员</option><option value="archive_admin">档案管理员</option><option value="system_admin">系统管理员</option></select></div>
           <div class="form-group"><label>初始密码</label><input v-model="form.password" class="field-input" type="password" placeholder="不少于12个字符" /></div>
           <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
@@ -84,7 +85,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { userApi } from '@/api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 const users = ref<any[]>([])
 const showCreate = ref(false)
@@ -93,7 +94,7 @@ const errorMsg = ref('')
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
 const roleFilter = ref(''); const statusFilter = ref(''); const searchKeyword = ref('')
 
-const form = reactive({ username: '', name: '', role: 'reviewer', password: '' })
+const form = reactive({ username: '', name: '', department: '', role: 'reviewer', password: '' })
 
 // Edit
 const showEdit = ref(false)
@@ -142,14 +143,14 @@ async function fetchUsers() {
   } catch { /* ignore */ }
 }
 
-function openCreate() { form.username = ''; form.name = ''; form.role = 'reviewer'; form.password = ''; errorMsg.value = ''; showCreate.value = true }
+function openCreate() { form.username = ''; form.name = ''; form.department = ''; form.role = 'reviewer'; form.password = ''; errorMsg.value = ''; showCreate.value = true }
 
 async function doCreate() {
   if (!form.username || !form.name || !form.password) { errorMsg.value = '请填写所有字段'; return }
   if (form.password.length < 12) { errorMsg.value = '密码不少于12个字符'; return }
   creating.value = true; errorMsg.value = ''
   try {
-    await userApi.create({ username: form.username, name: form.name, role: form.role, password: form.password, department: '' })
+    await userApi.create({ username: form.username, name: form.name, role: form.role, password: form.password, department: form.department })
     ElMessage.success(`用户 ${form.username} 已创建`)
     showCreate.value = false
     fetchUsers()
@@ -160,10 +161,17 @@ async function doCreate() {
 
 async function toggleUser(u: any) {
   try {
+    await ElMessageBox.confirm(
+      `确认${u.is_active ? '停用' : '启用'}用户「${u.name || u.username}」？`,
+      '操作确认',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
     await userApi.toggleStatus(u.id, !u.is_active)
     u.is_active = !u.is_active
     ElMessage.success(u.is_active ? '已启用' : '已停用')
-  } catch { ElMessage.error('操作失败') }
+  } catch (e: any) {
+    if (e !== 'cancel' && e?.action !== 'cancel') ElMessage.error('操作失败')
+  }
 }
 </script>
 

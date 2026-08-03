@@ -75,6 +75,8 @@ def preview_review(req: PreviewRequest, request: Request, user: dict = Depends(g
             )
             db.add(record)
         db.commit()
+        # 同步更新 Archive 的开放状态
+        _sync_open_status(db, req.archive_id, result.get("suggestion", ""))
     except Exception:
         pass
     finally:
@@ -126,7 +128,8 @@ def list_review_tasks(user: dict = Depends(get_current_user), page: int = 1, pag
         return {"total": total, "page": page, "page_size": page_size,
                 "items": [{"id": t.id, "task_name": t.task_name, "batch_name": t.batch_name,
                             "total_count": t.total_count, "completed_count": t.completed_count,
-                            "status": t.status, "created_at": str(t.created_at)} for t in items]}
+                            "status": t.status, "created_at": str(t.created_at),
+                            "risk_dist": _task_risk_dist(db, t.id)} for t in items]}
     finally:
         db.close()
 
@@ -293,6 +296,34 @@ def export_review_results(req: ReviewExportRequest, user: dict = Depends(get_cur
         )
     finally:
         db.close()
+
+
+def _sync_open_status(db, archive_id: str, suggestion: str):
+    """同步更新 Archive.open_status 根据 AI 建议"""
+    a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+    if not a:
+        return
+    # 优先级：不开放 > 延期 > 部分 > 开放（避免"延期开放"被误判为"已开放"）
+    if "不开放" in suggestion:
+        a.open_status = "不开放"
+    elif "延期" in suggestion:
+        a.open_status = "延期开放"
+    elif "部分" in suggestion or "脱敏" in suggestion:
+        a.open_status = "部分开放"
+    elif "开放" in suggestion:
+        a.open_status = "已开放"
+    # 不回写未审核状态（保留原值）
+
+
+def _task_risk_dist(db, task_id: int) -> dict:
+    """获取任务的各级风险分布计数"""
+    records = db.query(ReviewRecord).filter(ReviewRecord.task_id == task_id).all()
+    dist = {"high": 0, "medium": 0, "low": 0}
+    level_map = {"高": "high", "中": "medium", "低": "low"}
+    for r in records:
+        key = level_map.get(r.risk_level, "low")
+        dist[key] += 1
+    return dist
 
 
 def _derive_volume_id(archive_id: str) -> str:

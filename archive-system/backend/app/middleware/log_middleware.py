@@ -80,7 +80,7 @@ def _write_log_sync(
         db.add(log)
         db.commit()
     except Exception:
-        _mw_log.warning(f"操作日志写入失败: {username} {op_type} {module}")
+        _mw_log.warn(f"操作日志写入失败: {username} {op_type} {module}")
     finally:
         db.close()
 

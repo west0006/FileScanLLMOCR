@@ -77,7 +77,7 @@ class SessionTimeoutMiddleware(BaseHTTPMiddleware):
                 last_activity = _session_store[key]
                 if now - last_activity > idle_sec:
                     del _session_store[key]
-                    _log.warning(f"会话闲置超时: {request.url.path}")
+                    _log.warn(f"会话闲置超时: {request.url.path}")
                     from fastapi.responses import JSONResponse
                     return JSONResponse(
                         status_code=401,

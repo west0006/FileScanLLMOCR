@@ -130,14 +130,20 @@ def stats_by_time(
 
 @router.get("/by-type")
 def stats_by_type(user: dict = Depends(get_current_user)):
-    """按利用方式统计 + 失败数"""
+    """按利用方式统计 + 失败数（失败不计入各类型以避免重复累计）"""
     db = SessionLocal()
     try:
         base = _apply_stats_scope(user, db.query(OperationLog))
-        rows = base.with_entities(OperationLog.operation_type, func.count()).group_by(OperationLog.operation_type).all()
+        # 各类型统计排除失败记录
+        success_rows = base.filter(OperationLog.result != "failure").with_entities(
+            OperationLog.operation_type, func.count()).group_by(OperationLog.operation_type).all()
+        items = [{"type": r[0], "count": r[1]} for r in success_rows]
+        # 失败数独立统计
         failed = base.filter(OperationLog.result == "failure").count()
-        items = [{"type": r[0], "count": r[1]} for r in rows]
-        items.append({"type": "failure", "count": failed})
-        return {"items": items, "failed": failed}
+        if failed > 0:
+            items.append({"type": "failure", "count": failed})
+        # 总计 = 成功 + 失败
+        total = sum(i["count"] for i in items)
+        return {"items": items, "failed": failed, "total": total}
     finally:
         db.close()

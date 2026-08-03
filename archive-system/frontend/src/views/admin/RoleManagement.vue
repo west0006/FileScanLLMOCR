@@ -7,7 +7,10 @@
         <tbody>
           <tr v-for="r in roles" :key="r.id">
             <td class="font-medium">{{ r.name }}</td><td>{{ r.description }}</td><td>{{ r.user_count }}</td>
-            <td><button class="btn-sm" @click="editRole(r)">权限配置</button></td>
+            <td>
+              <button class="btn-sm" @click="editRole(r)">权限配置</button>
+              <button class="btn-sm btn-sm--danger" style="margin-left:4px" @click="deleteRole(r)" :disabled="r.user_count > 0" :title="r.user_count > 0 ? '该角色下有用户，无法删除' : '删除角色'">删除</button>
+            </td>
           </tr>
           <tr v-if="roles.length === 0"><td colspan="4" class="table-empty">暂无角色数据</td></tr>
         </tbody>
@@ -18,6 +21,10 @@
     <!-- 权限配置弹窗 -->
     <AppModal :visible="showPerm" :title="'权限配置 - ' + editingRole?.name" @close="showPerm=false" width="480px">
       <div class="perm-grid">
+        <label class="perm-item perm-item--all">
+          <input type="checkbox" :checked="permAllSelected" @change="togglePermAll" />
+          <span class="perm-label">全选 / 清空</span>
+        </label>
         <label v-for="p in permModules" :key="p.key" class="perm-item">
           <input type="checkbox" v-model="permForm[p.key]" />
           <span class="perm-label">{{ p.label }}</span>
@@ -56,9 +63,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { userApi } from '@/api'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import AppModal from '@/components/AppModal.vue'
 
 const roles = ref<any[]>([])
@@ -98,6 +105,12 @@ async function fetchRoles() {
   }
 }
 
+const permAllSelected = computed(() => permModules.every(p => permForm[p.key]))
+function togglePermAll() {
+  const val = !permAllSelected.value
+  permModules.forEach(p => { permForm[p.key] = val })
+}
+
 function editRole(r: any) {
   editingRole.value = r
   const perms = r.permissions || {}
@@ -113,7 +126,19 @@ async function savePerm() {
     await userApi.updatePermissions(editingRole.value.id, perms)
     ElMessage.success('权限已保存')
     showPerm.value = false
+    fetchRoles()
   } catch { ElMessage.error('保存失败') }
+}
+
+async function deleteRole(r: any) {
+  try {
+    await ElMessageBox.confirm(`确认删除角色「${r.name}」？`, '删除确认', { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' })
+    await userApi.deleteRole(r.id)
+    ElMessage.success('角色已删除')
+    fetchRoles()
+  } catch (e: any) {
+    if (e !== 'cancel' && e?.action !== 'cancel') ElMessage.error('删除失败')
+  }
 }
 
 async function createRole() {

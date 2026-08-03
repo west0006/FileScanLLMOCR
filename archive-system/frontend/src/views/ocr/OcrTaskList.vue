@@ -38,7 +38,7 @@
             <td>
               <div class="mini-bar">
                 <div class="mini-bar-fill" :class="'mini-bar--'+barClass(t.status)" :style="{width:(t.processed_pages/t.total_pages*100||0)+'%'}"></div>
-                <span class="mini-bar-num">{{ t.processed_pages }}/{{ t.total_pages }}</span>
+                <span class="mini-bar-num">{{ t.processed_pages }}/{{ t.total_pages }} ({{ t.total_pages ? Math.round(t.processed_pages/t.total_pages*100) : 0 }}%)</span>
               </div>
             </td>
             <td><span style="color:var(--c-danger)">{{ t.failed_pages || 0 }}</span></td>
@@ -72,6 +72,7 @@
             <div class="form-group" style="flex:1"><label>档案门类</label><select class="field-input" v-model="cf.category"><option value="">全部</option><option>行政档案</option><option>党群档案</option><option>教学档案</option><option>科研档案</option><option>人事档案</option><option>财务档案</option></select></div>
             <div class="form-group" style="flex:1"><label>优先级</label><select class="field-input" v-model.number="cf.priority"><option :value="0">普通</option><option :value="1">高</option><option :value="2">紧急</option></select></div>
           </div>
+          <div class="ocr-hint">🔒 OCR 处理采用本地部署的 NLP 推理，数据不上云</div>
           <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
             <button class="btn-sm" @click="showCreate=false">取消</button>
             <button class="btn-primary" @click="handleCreateTask">提交任务</button>
@@ -90,6 +91,8 @@
             <div><dt>状态</dt><dd><span class="risk-tag" :class="'risk-tag--'+barClass(detailTask?.status)">{{ statusLabel(detailTask?.status) }}</span></dd></div>
             <div><dt>总页数</dt><dd>{{ detailTask?.total_pages || '—' }}</dd></div>
             <div><dt>已处理</dt><dd>{{ detailTask?.processed_pages || 0 }}</dd></div>
+            <div><dt>失败数</dt><dd style="color:var(--c-danger)">{{ detailTask?.failed_pages || 0 }}</dd></div>
+            <div><dt>剩余</dt><dd>{{ (detailTask?.total_pages || 0) - (detailTask?.processed_pages || 0) }}</dd></div>
             <div><dt>优先级</dt><dd>{{ priLabel(detailTask?.priority) }}</dd></div>
             <div><dt>创建时间</dt><dd>{{ detailTask?.created_at?.substring(0,19) }}</dd></div>
             <div class="span-2"><dt>筛选条件</dt><dd class="text-sm text-muted">{{ detailTask?.filter_criteria ? JSON.stringify(detailTask.filter_criteria) : '无' }}</dd></div>
@@ -178,6 +181,7 @@ async function handleAction(t: any, action: string) {
 .form-group{margin-bottom:16px}.form-group label{display:block;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}.field-input{height:40px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-base);background:var(--c-bg);outline:none;font-family:var(--font);width:100%}.field-input:focus{border-color:var(--c-accent)}.form-row{display:flex;gap:12px}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin:0}.detail-grid dt{font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:2px}.detail-grid dd{font-size:var(--fs-sm);color:var(--c-text);margin:0;font-weight:var(--fw-medium)}.span-2{grid-column:span 2}
 .pager{margin-top:16px;display:flex;justify-content:center}
+.ocr-hint{padding:8px 12px;margin-top:12px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:var(--r-sm);font-size:var(--fs-xs);color:#92400E}
 .filter-bar{display:flex;gap:8px;align-items:center;padding:8px 14px;background:var(--c-surface);border-radius:var(--r-md);border:1px solid var(--c-border)}
 .filter-select{height:32px;padding:0 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-xs);background:var(--c-bg);outline:none;cursor:pointer}
 </style>

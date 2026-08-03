@@ -24,8 +24,13 @@
       </div>
       <div class="filter-card">
         <div class="filter-title">归档年度</div>
+        <div class="year-range-row">
+          <input v-model.number="yearFrom" type="number" placeholder="起始年" class="year-input" />
+          <span class="year-sep">—</span>
+          <input v-model.number="yearTo" type="number" placeholder="截止年" class="year-input" />
+        </div>
         <div class="filter-tree">
-          <div v-for="y in yearList" :key="y.year" class="ft-node" :class="{active:activeYear===y.year}" @click="activeYear=y.year">
+          <div v-for="y in yearList" :key="y.year" class="ft-node" :class="{active:activeYear===y.year}" @click="activeYear=y.year; yearFrom=y.year; yearTo=y.year">
             <span>{{ y.year }}年</span>
             <span class="ft-count">{{ y.count }}</span>
           </div>
@@ -41,7 +46,7 @@
           </div>
         </div>
       </div>
-      <button class="filter-reset" v-if="activeCat||activeYear||activeOpenStatus" @click="activeCat='';activeYear=null;activeOpenStatus='';doSearch()">清除筛选</button>
+      <button class="filter-reset" v-if="activeCat||yearFrom||yearTo||activeOpenStatus" @click="activeCat='';activeYear=null;yearFrom=undefined;yearTo=undefined;activeOpenStatus='';doSearch()">清除筛选</button>
     </aside>
 
     <!-- 右侧主区域 -->
@@ -299,6 +304,8 @@ const searchMode = ref('keyword')
 const searchLevel = ref('all')
 const activeCat = ref('')
 const activeYear = ref<number | null>(null)
+const yearFrom = ref<number | undefined>(undefined)
+const yearTo = ref<number | undefined>(undefined)
 const activeOpenStatus = ref('')
 
 const categoryTree = ref(JSON.parse(JSON.stringify(CATEGORY_TREE)))
@@ -378,8 +385,8 @@ async function doSearch(resetPage = true) {
       res = await searchApi.semantic({ query: semanticQuery.value, scope_nodes: scopeNodes.value.length ? scopeNodes.value : undefined, ...base })
     } else if (searchMode.value === 'advanced') {
       const cat = advancedForm.category || activeCat.value || undefined
-      const yf = advancedForm.yearFrom ?? activeYear.value ?? undefined
-      const yt = advancedForm.yearTo ?? activeYear.value ?? undefined
+      const yf = advancedForm.yearFrom ?? yearFrom.value ?? undefined
+      const yt = advancedForm.yearTo ?? yearTo.value ?? undefined
       res = await searchApi.advanced({
         ...advancedForm, category: cat, year_from: yf, year_to: yt || yf,
         fonds_ids: selectedFondsIds.value.length ? selectedFondsIds.value : undefined,
@@ -388,12 +395,12 @@ async function doSearch(resetPage = true) {
       })
     } else {
       // 关键词 + 筛选: 有筛选条件时走 advanced，否则走 keyword
-      if (activeCat.value || activeYear.value || activeOpenStatus.value) {
+      if (activeCat.value || yearFrom.value || yearTo.value || activeOpenStatus.value) {
         res = await searchApi.advanced({
           keywords: keyword.value,
           category: activeCat.value || undefined,
-          year_from: activeYear.value ?? undefined,
-          year_to: activeYear.value ?? undefined,
+          year_from: yearFrom.value ?? undefined,
+          year_to: yearTo.value ?? undefined,
           open_status: activeOpenStatus.value || undefined,
           ...base,
         })
@@ -414,7 +421,7 @@ async function doSearch(resetPage = true) {
 }
 
 // 筛选栏变化自动重新搜索 + 展开对应节点
-watch([activeCat, activeYear, activeOpenStatus], () => {
+watch([activeCat, yearFrom, yearTo, activeOpenStatus], () => {
   if (activeCat.value && activeCat.value.includes('/')) {
     const parentKey = activeCat.value.split('/')[0]
     const parent = categoryTree.value.find(c => c.key === parentKey)
@@ -495,6 +502,10 @@ async function handleExport() {
   border-radius: var(--r-sm); transition: background var(--t-fast);
 }
 .filter-reset:hover { background: var(--c-accent-light); }
+.year-range-row { display: flex; gap: 4px; align-items: center; margin-bottom: 8px; }
+.year-input { flex: 1; height: 28px; padding: 0 6px; border: 1px solid var(--c-border); border-radius: var(--r-sm); font-size: var(--fs-xs); background: var(--c-bg); outline: none; width: 0; }
+.year-input:focus { border-color: var(--c-accent); }
+.year-sep { font-size: var(--fs-xs); color: var(--c-text-muted); }
 
 /* 分层树 */
 .filter-tree-hier { display: flex; flex-direction: column; }

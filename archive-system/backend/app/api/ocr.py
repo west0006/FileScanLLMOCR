@@ -1,7 +1,7 @@
 """OCR 识别 API — 任务管理 + 结果查看 + 质量报告 + 版面分析"""
 
 from fastapi import APIRouter, Depends, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from app.core.security import get_current_user
@@ -11,8 +11,10 @@ from app.models.models import OcrTask, Archive
 router = APIRouter()
 
 
+from pydantic import Field
+
 class CreateOcrTaskRequest(BaseModel):
-    task_name: str
+    task_name: str = Field(min_length=1, max_length=50)
     year_from: Optional[int] = None
     year_to: Optional[int] = None
     category: Optional[str] = None
@@ -28,6 +30,10 @@ def create_ocr_task(req: CreateOcrTaskRequest, request: Request, user: dict = De
     request.state.log_target_id = f"task-ocr-{req.task_name}"
     db = SessionLocal()
     try:
+        # 检查任务名称是否重复
+        existing = db.query(OcrTask).filter(OcrTask.task_name == req.task_name).first()
+        if existing:
+            return {"error": "任务名称已存在，请重新输入"}
         task = OcrTask(
             task_name=req.task_name,
             filter_criteria={"year_from": req.year_from, "year_to": req.year_to,
