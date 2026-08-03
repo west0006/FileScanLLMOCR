@@ -40,7 +40,13 @@
       </table>
     </div>
 
-    <div v-if="showCreate" class="modal-overlay" @click.self="showCreate=false"><div class="modal-card"><div class="modal-head"><h3>创建 AI 预审任务</h3><button class="modal-close" @click="showCreate=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="modal-body"><div class="form-group"><label>任务名称</label><input class="field-input" v-model="createForm.task_name" style="width:100%" /></div><div class="form-group"><label>批次名称</label><input class="field-input" v-model="createForm.batch_name" style="width:100%" /></div><div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px"><button class="btn-sm" @click="showCreate=false">取消</button><button class="btn-primary" @click="handleCreateTask">提交任务</button></div></div></div></div>
+    <div v-if="showCreate" class="modal-overlay" @click.self="showCreate=false"><div class="modal-card"><div class="modal-head"><h3>新建审核任务</h3><button class="modal-close" @click="showCreate=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="modal-body">
+      <div class="form-group"><label>任务名称</label><input class="field-input" v-model="createForm.task_name" placeholder="如: 2025年行政档案批量预审" /></div>
+      <div class="form-row"><div class="form-group" style="flex:1"><label>起始年度</label><select v-model="createForm.year_from" class="field-input"><option :value="undefined">不限</option><option v-for="y in yearOpts" :key="'rf'+y" :value="y">{{ y }}</option></select></div><div class="form-group" style="flex:1"><label>截止年度</label><select v-model="createForm.year_to" class="field-input"><option :value="undefined">不限</option><option v-for="y in yearOpts" :key="'rt'+y" :value="y">{{ y }}</option></select></div></div>
+      <div class="form-row"><div class="form-group" style="flex:1"><label>档案门类</label><select v-model="createForm.category" class="field-input"><option value="">全部</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div><div class="form-group" style="flex:1"><label>归口单位</label><input class="field-input" v-model="createForm.department" placeholder="可选，如: 教务处" /></div></div>
+      <div class="form-group"><label>批次名称</label><input class="field-input" v-model="createForm.batch_name" placeholder="如: 第一批开放审核" /></div>
+      <div class="scope-hint">📋 任务将对符合筛选条件的已 OCR 档案进行 AI 预审，结果可在「预审记录」页查看。</div>
+      <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px"><button class="btn-sm" @click="showCreate=false">取消</button><button class="btn-primary" @click="handleCreateTask">创建任务</button></div></div></div></div>
   </div>
 </template>
 
@@ -51,7 +57,9 @@ import { ElMessage } from 'element-plus'
 
 const tasks = ref<any[]>([])
 const showCreate = ref(false)
-const createForm = ref({ task_name: '', batch_name: '' })
+const yearOpts = Array.from({ length: 56 }, (_, i) => 1970 + i)
+const categories = ['行政档案', '党群档案', '教学档案', '科研档案', '人事档案', '财务档案', '基建档案', '声像档案']
+const createForm = ref({ task_name: '', batch_name: '', year_from: undefined as number | undefined, year_to: undefined as number | undefined, category: '', department: '' })
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
 
 onMounted(fetchTasks)
@@ -65,16 +73,27 @@ async function fetchTasks() {
 async function handleCreateTask() {
   if (!createForm.value.task_name) { ElMessage.warning('请输入任务名称'); return }
   try {
-    await reviewApi.createTask({ task_name: createForm.value.task_name, batch_name: createForm.value.batch_name || undefined })
+    await reviewApi.createTask({ task_name: createForm.value.task_name, batch_name: createForm.value.batch_name || undefined, year_from: createForm.value.year_from, year_to: createForm.value.year_to, category: createForm.value.category || undefined, department: createForm.value.department || undefined })
     ElMessage.success('任务已创建')
     showCreate.value = false
-    createForm.value = { task_name: '', batch_name: '' }
+    createForm.value = { task_name: '', batch_name: '', year_from: undefined, year_to: undefined, category: '', department: '' }
     fetchTasks()
   } catch { ElMessage.error('创建失败') }
 }
 function statusClass(s: string) { return { pending:'low', running:'mid', completed:'low', failed:'high' }[s]||'low' }
 function statusLabel(s: string) { return { pending:'待启动', running:'处理中', completed:'已完成', failed:'失败' }[s]||s }
-function handleExport() { ElMessage.success('导出任务已创建') }
+async function handleExport() {
+  try {
+    const res = await reviewApi.export({})
+    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `AI预审结果_${new Date().toISOString().slice(0, 10)}.xlsx`
+    document.body.appendChild(a); a.click(); document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } catch { ElMessage.error('导出失败，请确认已连接后端服务') }
+}
 function handleExportArchive() { ElMessage.info('档案原文压缩包导出功能将在部署环境配置后启用') }
 async function handleTaskAction(t: any, action: string) {
   if (action === 'view') {
@@ -116,4 +135,5 @@ async function handleTaskAction(t: any, action: string) {
 .export-row{display:flex;gap:8px;margin-top:16px}
 .metrics-card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);padding:20px;margin-top:16px}
 .metrics-card h3{font-size:var(--fs-base);font-weight:var(--fw-semibold);margin:0 0 12px}
+.form-row{display:flex;gap:12px}.scope-hint{padding:8px 12px;margin-top:8px;background:#FFFBEB;border-radius:var(--r-sm);font-size:var(--fs-xs);color:#92400E;line-height:1.6}
 </style>

@@ -12,7 +12,7 @@
       </div>
     </div>
 
-    <div class="process-banner"><IconSvg name="pin" size="14" /> 以下为AI预审完成的档案记录。可按风险等级、AI建议、年度范围进行筛选。<strong>建议优先查看高风险档案</strong>，通过导出功能批量获取预审结果表格。</div>
+    <div class="process-banner"><IconSvg name="pin" size="14" /> 以下为AI预审完成的档案记录。可按风险等级、AI建议、年度范围进行筛选。<strong>建议优先查看高风险档案</strong>，通过导出功能批量获取预审结果表格。共 <strong>{{ total }}</strong> 条记录，当前筛选结果 <strong>{{ filteredCount }}</strong> 条。</div>
 
     <!-- 视图切换 -->
     <div class="view-toggle">
@@ -35,11 +35,21 @@
         <option value="建议延期开放">建议延期开放</option>
         <option value="建议不开放">建议不开放</option>
       </select>
-      <input v-model.number="filters.year_from" type="number" placeholder="起始年度" class="filter-input filter-input--sm" />
+      <select v-model="yearFromStr" class="filter-select" style="width:90px" @change="filters.year_from = yearFromStr ? Number(yearFromStr) : undefined">
+        <option value="">起始年</option>
+        <option v-for="y in yearOptions" :key="'f'+y" :value="y">{{ y }}</option>
+      </select>
       <span class="filter-sep">—</span>
-      <input v-model.number="filters.year_to" type="number" placeholder="截止年度" class="filter-input filter-input--sm" />
+      <select v-model="yearToStr" class="filter-select" style="width:90px" @change="filters.year_to = yearToStr ? Number(yearToStr) : undefined">
+        <option value="">截止年</option>
+        <option v-for="y in yearOptions" :key="'t'+y" :value="y">{{ y }}</option>
+      </select>
       <button class="filter-btn" @click="fetchRecords">筛选</button>
       <button class="filter-btn-reset" @click="resetFilters">重置</button>
+    </div>
+    <!-- 筛选结果计数 -->
+    <div class="filter-summary" v-if="hasActiveFilter">
+      筛选：{{ activeFilterLabel }} — 共 <strong>{{ filteredCount }}</strong> 条
     </div>
 
     <!-- 按件展示 — 按部门分组 -->
@@ -51,18 +61,19 @@
         </div>
         <table class="data-table">
           <thead><tr>
-            <th style="width:36px"><input type="checkbox" :checked="group.allSelected" @change="toggleGroup(group)" /></th>
+            <th style="width:36px"><input type="checkbox" :checked="group.allSelected" @change="toggleGroup(group)" :ref="el => { if(el) el.indeterminate = group.someSelected && !group.allSelected }" /></th>
             <th>档案编号</th><th>题名</th><th style="width:100px">所属案卷</th>
             <th style="width:60px">年度</th><th style="width:140px">风险评分</th>
             <th style="width:60px">等级</th><th style="width:120px">AI 建议</th>
             <th style="width:100px">预审时间</th>
             <th style="width:60px">置信度</th>
+            <th style="width:70px">操作</th>
           </tr></thead>
           <tbody>
-            <tr v-for="row in group.items" :key="row.id" @click="showDetail(row)" class="clickable">
+            <tr v-for="row in group.items" :key="row.id" class="clickable">
               <td><input type="checkbox" :checked="selectedIds.includes(row.id)" @click.stop @change="toggleOne(row.id)" /></td>
               <td class="mono">{{ row.archive_id }}</td>
-              <td class="title-cell">{{ row.title }}</td>
+              <td class="title-cell" @click="showDetail(row)">{{ row.title }}</td>
               <td class="text-sm">{{ row.volume_id || '—' }}</td>
               <td>{{ row.year }}</td>
               <td><div class="mini-bar"><div class="mini-bar-fill" :class="'mini-bar--'+riskLevelClass(row.risk_level)" :style="{width:row.risk_score+'%'}"></div><span class="mini-bar-num">{{ row.risk_score }}</span></div></td>
@@ -70,30 +81,39 @@
               <td :class="'suggestion-' + suggestionClass(row.suggestion)">{{ row.suggestion }}</td>
               <td class="text-sm">{{ row.created_at?.substring(0,10) }}</td>
               <td>{{ ((row.confidence||0)*100).toFixed(0) }}%</td>
+              <td><button class="btn-xs" @click.stop="showDetail(row)">详情</button></td>
             </tr>
           </tbody>
         </table>
       </div>
+      <div v-if="!records.length" class="table-empty">暂无预审记录</div>
     </template>
 
     <!-- 按卷展示 -->
     <div class="table-card" v-if="reviewView === 'volume'">
       <table class="data-table">
         <thead><tr>
+          <th style="width:36px"><input type="checkbox" :checked="allVolumesSelected" @change="toggleAllVolumes" /></th>
           <th>案卷编号</th><th>案卷题名</th><th style="width:70px">年度</th>
           <th style="width:80px">件数</th><th style="width:80px">最高风险</th>
           <th style="width:140px">卷级建议</th>
+          <th style="width:160px">操作</th>
         </tr></thead>
         <tbody>
-          <tr v-for="v in volumeRecords" :key="v.archive_id" class="clickable" @dblclick="showVolumeDetail(v)">
-            <td class="mono">{{ v.archive_id }}</td>
-            <td class="title-cell">{{ v.title }}</td>
+          <tr v-for="v in volumeRecords" :key="v.archive_id" class="clickable">
+            <td><input type="checkbox" :checked="selectedVolumes.includes(v.archive_id)" @click.stop @change="toggleVolume(v.archive_id)" /></td>
+            <td class="mono" @dblclick="showVolumeDetail(v)">{{ v.archive_id }}</td>
+            <td class="title-cell" @dblclick="showVolumeDetail(v)">{{ v.title }}</td>
             <td>{{ v.year }}</td>
             <td>{{ v.item_count || '-' }}</td>
             <td><span class="risk-tag" :class="'risk-tag--'+riskLevelClass(v.max_risk)">{{ v.max_risk || '-' }}</span></td>
             <td>{{ v.suggestion || '-' }}</td>
+            <td>
+              <button class="btn-xs" @click.stop="showVolumeDetail(v)">查看案卷</button>
+              <button class="btn-xs" style="margin-left:4px" @click.stop="downloadVolume(v)">下载</button>
+            </td>
           </tr>
-          <tr v-if="!volumeRecords.length"><td colspan="6" class="table-empty">暂无案卷数据</td></tr>
+          <tr v-if="!volumeRecords.length"><td colspan="7" class="table-empty">暂无案卷数据</td></tr>
         </tbody>
       </table>
     </div>
@@ -151,10 +171,27 @@ import { ElMessage } from 'element-plus'
 const records = ref<any[]>([])
 const selected = ref<any>(null)
 const selectedIds = ref<number[]>([])
+const selectedVolumes = ref<string[]>([])
 const reviewView = ref('item')
 const volumeRecords = ref<any[]>([])
 
-// 按部门分组
+const yearOptions = Array.from({ length: 56 }, (_, i) => 1970 + i)
+const yearFromStr = ref('')
+const yearToStr = ref('')
+
+// 筛选状态
+const filteredCount = computed(() => reviewView.value === 'item' ? records.value.length : volumeRecords.value.length)
+const hasActiveFilter = computed(() => !!(filters.value.risk_level || filters.value.suggestion || filters.value.year_from || filters.value.year_to))
+const activeFilterLabel = computed(() => {
+  const parts: string[] = []
+  if (filters.value.risk_level) parts.push(filters.value.risk_level + '风险')
+  if (filters.value.suggestion) parts.push(filters.value.suggestion)
+  if (filters.value.year_from) parts.push(filters.value.year_from + '年起')
+  if (filters.value.year_to) parts.push(filters.value.year_to + '年止')
+  return parts.join(' / ') || '无'
+})
+
+// 按部门分组（含半选状态）
 const groupedRecords = computed(() => {
   const groups: Record<string, any[]> = {}
   for (const r of records.value) {
@@ -162,12 +199,31 @@ const groupedRecords = computed(() => {
     if (!groups[dept]) groups[dept] = []
     groups[dept].push(r)
   }
-  return Object.entries(groups).map(([dept, items]) => ({
-    dept,
-    items,
-    allSelected: items.length > 0 && items.every((i:any) => selectedIds.value.includes(i.id)),
-  }))
+  return Object.entries(groups).map(([dept, items]) => {
+    const selCount = items.filter((i: any) => selectedIds.value.includes(i.id)).length
+    return {
+      dept,
+      items,
+      allSelected: items.length > 0 && selCount === items.length,
+      someSelected: selCount > 0 && selCount < items.length,
+    }
+  })
 })
+
+// 按卷复选框
+const allVolumesSelected = computed(() =>
+  volumeRecords.value.length > 0 && volumeRecords.value.every(v => selectedVolumes.value.includes(v.archive_id))
+)
+function toggleVolume(aid: string) {
+  const idx = selectedVolumes.value.indexOf(aid)
+  if (idx >= 0) selectedVolumes.value.splice(idx, 1)
+  else selectedVolumes.value.push(aid)
+}
+function toggleAllVolumes() {
+  if (allVolumesSelected.value) { selectedVolumes.value = [] }
+  else { selectedVolumes.value = volumeRecords.value.map(v => v.archive_id) }
+}
+function downloadVolume(v: any) { ElMessage.info(`案卷 ${v.archive_id} 下载功能将在部署环境配置后启用`) }
 
 function toggleGroup(group: any) {
   const ids = group.items.map((i:any) => i.id)
@@ -208,6 +264,8 @@ function riskLevelClass(lvl: string) {
 }
 function resetFilters() {
   filters.value = { risk_level: '', suggestion: '', year_from: undefined, year_to: undefined }
+  yearFromStr.value = ''
+  yearToStr.value = ''
   fetchRecords()
 }
 async function fetchRecords() {
@@ -251,10 +309,15 @@ async function showDetail(row: any) {
 }
 async function handleExport() {
   try {
-    // 从选中的 record id 映射到真实的 archive_id
-    const selectedArchiveIds = selectedIds.value.length
-      ? records.value.filter(r => selectedIds.value.includes(r.id)).map(r => r.archive_id)
-      : records.value.map(r => r.archive_id)
+    // 从选中的 record/volume 映射到真实的 archive_id
+    let selectedArchiveIds: string[]
+    if (reviewView.value === 'volume' && selectedVolumes.value.length) {
+      selectedArchiveIds = selectedVolumes.value
+    } else if (selectedIds.value.length) {
+      selectedArchiveIds = records.value.filter(r => selectedIds.value.includes(r.id)).map(r => r.archive_id)
+    } else {
+      selectedArchiveIds = records.value.map(r => r.archive_id)
+    }
     const res = await reviewApi.export({ archive_ids: selectedArchiveIds })
     const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
@@ -417,4 +480,7 @@ async function handleExport() {
 .suggestion-high { color: var(--c-danger); font-weight: var(--fw-semibold); }
 .suggestion-mid { color: var(--c-warning); font-weight: var(--fw-medium); }
 .suggestion-low { color: var(--c-success); }
+.btn-xs { height: 24px; padding: 0 10px; border-radius: var(--r-sm); border: 1px solid var(--c-border); background: var(--c-surface); color: var(--c-accent); font-size: 11px; cursor: pointer; }
+.btn-xs:hover { background: var(--c-accent-light); border-color: var(--c-accent); }
+.filter-summary { padding: 6px 14px; margin-bottom: 12px; background: #EFF6FF; border-radius: var(--r-sm); font-size: var(--fs-sm); color: var(--c-text-secondary); }
 </style>
