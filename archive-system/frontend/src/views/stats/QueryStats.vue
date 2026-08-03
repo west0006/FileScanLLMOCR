@@ -139,11 +139,29 @@ async function fetchUserRanking() {
   }
 }
 
+const TREND_COLORS: Record<string, string> = { search: '#10B981', view: '#6366F1', download: '#F59E0B', print: '#06B6D4' }
+const TREND_NAMES: Record<string, string> = { search: '检索', view: '浏览', download: '下载', print: '打印' }
+
 async function loadTimeChart() {
   if(!timeChartRef.value) return
   let timeData:any[]=[]
   try{const res=await statsApi.byTime({granularity:timeGranularity.value,days:timeGranularity.value==='year'?365:timeGranularity.value==='quarter'?90:30});timeData=res.data.items||[]}catch{timeData=[]}
-  _initChart(timeChartRef, {tooltip:{trigger:'axis'},grid:{left:40,right:20,top:10,bottom:30},xAxis:{type:'category',data:timeData.map((i:any)=>i.period),axisLabel:{rotate:timeGranularity.value==='day'?45:0,fontSize:10}},yAxis:{type:'value',minInterval:1},series:[{type:'line',data:timeData.map((i:any)=>i.count),smooth:true,symbol:'circle',symbolSize:6,lineStyle:{color:'#10B981',width:2},itemStyle:{color:'#10B981'},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(16,185,129,0.25)'},{offset:1,color:'rgba(16,185,129,0.02)'}])}}]})
+  const types = ['search','view','download','print']
+  _initChart(timeChartRef, {
+    tooltip:{trigger:'axis'},
+    legend:{bottom:0, data: types.map(t => TREND_NAMES[t]), textStyle:{fontSize:10}},
+    grid:{left:40,right:20,top:10,bottom:35},
+    xAxis:{type:'category',data:timeData.map((i:any)=>i.period),axisLabel:{rotate:timeGranularity.value==='day'?45:0,fontSize:10}},
+    yAxis:{type:'value',minInterval:1},
+    series: types.map(t => ({
+      name: TREND_NAMES[t],
+      type:'line',
+      data:timeData.map((i:any)=>i[t]||0),
+      smooth:true, symbol:'circle', symbolSize:4,
+      lineStyle:{color:TREND_COLORS[t],width:2},
+      itemStyle:{color:TREND_COLORS[t]},
+    }))
+  })
 }
 
 const _charts: any[] = []

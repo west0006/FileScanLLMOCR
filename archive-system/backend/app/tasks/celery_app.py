@@ -26,6 +26,7 @@ if _celery_available:
             "app.tasks.ocr_tasks",
             "app.tasks.review_tasks",
             "app.tasks.sync_tasks",
+            "app.tasks.audit_tasks",
         ],
     )
     celery_app.conf.update(
@@ -38,6 +39,20 @@ if _celery_available:
         task_time_limit=60 * 60,
         task_soft_time_limit=50 * 60,
         broker_connection_retry_on_startup=True,
+        beat_schedule={
+            # 每月 1 号凌晨 2 点自动生成审计报告
+            "monthly-audit-report": {
+                "task": "app.tasks.audit_tasks.generate_monthly_audit_report",
+                "schedule": 30 * 24 * 3600.0,  # 30 天
+                "options": {"expires": 3600},
+            },
+            # 每天凌晨 3:00 清理超过 90 天未登录的用户
+            "deactivate-idle-users": {
+                "task": "app.tasks.audit_tasks.deactivate_idle_users",
+                "schedule": 24 * 3600.0,  # 每天
+                "options": {"expires": 1800},
+            },
+        },
     )
 else:
     # Redis 不可用 — 创建占位 Celery 实例（不会连接 broker）

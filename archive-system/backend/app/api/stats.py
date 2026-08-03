@@ -92,13 +92,14 @@ def stats_by_time(
     granularity: str = Query("day", description="day | week | month | quarter | year"),
     days: int = Query(30, description="统计最近 N 天"),
 ):
-    """按时间段统计 — 支持日/周/月/季度/年粒度"""
+    """按时间段统计 — 支持日/周/月/季度/年粒度，返回 search/view/download/print 拆分"""
     db = SessionLocal()
     try:
         cutoff = datetime.utcnow() - timedelta(days=days)
         logs = (
             _apply_stats_scope(user, db.query(OperationLog))
             .filter(OperationLog.created_at >= cutoff)
+            .filter(OperationLog.result != "failure")  # 排除失败操作
             .order_by(OperationLog.created_at.asc())
             .all()
         )
@@ -106,7 +107,8 @@ def stats_by_time(
         if not logs:
             return {"items": [], "granularity": granularity, "days": days}
 
-        buckets: dict[str, int] = {}
+        # 按周期 + 操作类型分组聚合
+        buckets: dict[str, dict[str, int]] = {}
         for log in logs:
             dt = log.created_at
             if granularity == "day":
@@ -120,9 +122,13 @@ def stats_by_time(
                 key = f"{dt.year}-Q{q}"
             else:  # year
                 key = dt.strftime("%Y")
-            buckets[key] = buckets.get(key, 0) + 1
+            if key not in buckets:
+                buckets[key] = {"search": 0, "view": 0, "download": 0, "print": 0}
+            op = log.operation_type or "other"
+            if op in ("search", "view", "download", "print"):
+                buckets[key][op] += 1
 
-        items = [{"period": k, "count": v} for k, v in sorted(buckets.items())]
+        items = [{"period": k, **v} for k, v in sorted(buckets.items())]
         return {"items": items, "granularity": granularity, "days": days}
     finally:
         db.close()
