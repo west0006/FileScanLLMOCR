@@ -114,8 +114,17 @@ class TestKnowledgeGraphEndpoint:
     def test_knowledge_graph_endpoint(self):
         """GET /search/archives/{id}/knowledge-graph"""
         token, client = self.get_token()
+        # 从种子数据获取第一个有 OCR 文本的档案 ID
+        from app.core.database import SessionLocal
+        from app.models.models import Archive
+        db = SessionLocal()
+        try:
+            first = db.query(Archive).filter(Archive.ocr_text.isnot(None), Archive.ocr_text != "").first()
+            aid = first.archive_id if first else "1973-DQ-001"
+        finally:
+            db.close()
         resp = client.get(
-            "/api/search/archives/1996-XZ-001/knowledge-graph",
+            f"/api/search/archives/{aid}/knowledge-graph",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code == 200

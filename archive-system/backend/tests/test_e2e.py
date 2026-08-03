@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
-from app.core.database import init_db
+from app.core.database import init_db, SessionLocal
 
 client = TestClient(app)
 
@@ -27,6 +27,17 @@ def get_token(username="admin", password="TestPass123!"):
     resp = client.post("/api/auth/login", json={"username": username, "password": password})
     assert resp.status_code == 200, f"登录失败: {resp.text}"
     return resp.json()["access_token"]
+
+
+def _first_active_archive_id() -> str:
+    """获取种子数据中的第一个档案 ID"""
+    from app.models.models import Archive
+    db = SessionLocal()
+    try:
+        a = db.query(Archive).first()
+        return a.archive_id if a else "1973-DQ-001"
+    finally:
+        db.close()
 
 
 # ============================================================
@@ -82,7 +93,8 @@ class TestFullFlow:
     def test_05_archive_detail(self):
         """档案详情"""
         token = get_token()
-        resp = client.get("/api/search/archives/1996-XZ-001", headers={"Authorization": f"Bearer {token}"})
+        aid = _first_active_archive_id()
+        resp = client.get(f"/api/search/archives/{aid}", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         data = resp.json()
         assert data.get("title") or data.get("error")
@@ -90,7 +102,8 @@ class TestFullFlow:
     def test_06_ocr_text(self):
         """OCR 文本"""
         token = get_token()
-        resp = client.get("/api/search/archives/1996-XZ-001/ocr", headers={"Authorization": f"Bearer {token}"})
+        aid = _first_active_archive_id()
+        resp = client.get(f"/api/search/archives/{aid}/ocr", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
 
     def test_07_review_preview(self):
@@ -140,12 +153,21 @@ class TestFullFlow:
         assert len(data.get("items", [])) >= 1  # 至少有一个用户
 
     def test_12_toggle_user_status(self):
-        """用户状态切换"""
+        """用户状态切换 — 使用非管理员测试用户，避免停用后 Token 失效"""
         token = get_token()
-        resp = client.put("/api/user/1/status", params={"is_active": False}, headers={"Authorization": f"Bearer {token}"})
+        # 找一个非 admin 的活跃用户来测试
+        db = SessionLocal()
+        try:
+            from app.models.models import User
+            test_user = db.query(User).filter(User.username != "admin", User.is_active == True).first()
+            uid = test_user.id if test_user else 2
+        finally:
+            db.close()
+        # 停用
+        resp = client.put(f"/api/user/{uid}/status", params={"is_active": False}, headers={"Authorization": f"Bearer {token}"})
+        # 恢复（用 admin token，不受测试用户状态影响）
         if resp.status_code == 200:
-            # 恢复
-            client.put("/api/user/1/status", params={"is_active": True}, headers={"Authorization": f"Bearer {token}"})
+            client.put(f"/api/user/{uid}/status", params={"is_active": True}, headers={"Authorization": f"Bearer {token}"})
 
     def test_13_list_roles(self):
         """角色列表"""
@@ -231,8 +253,9 @@ class TestFullFlow:
     def test_25_archive_download(self):
         """原文下载"""
         token = get_token()
+        aid = _first_active_archive_id()
         resp = client.get(
-            "/api/search/archives/1996-XZ-001/download",
+            f"/api/search/archives/{aid}/download",
             headers={"Authorization": f"Bearer {token}"},
         )
         assert resp.status_code in (200, 404)
