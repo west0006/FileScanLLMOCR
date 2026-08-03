@@ -126,7 +126,12 @@
 14.【GitHub】
     https://github.com/west0006/FileScanLLMOCR.git
 
-15.【待外部资源完成事项】
+15.【Real 模式测试】
+    从 mock 切换到真实推理的完整操作步骤见：
+    z.about/Real模式测试说明书.md
+    按 L1(ES) → L2(Ollama LLM) → L3(PaddleOCR) → L4(全栈) 逐级验证。
+
+16.【待外部资源完成事项】
     - LLaMA-Factory LoRA 微调（配置+数据就绪，需学校主机执行）
     - PaddleOCR GPU 真实推理（deploy/ 脚本就绪，需 GPU）
     - ES 全文检索投产（init_es.sh 就绪，需 Docker）
