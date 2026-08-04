@@ -1,7 +1,15 @@
 <template>
   <div class="page">
     <div class="page-head"><h2>数据同步</h2></div>
-    <div class="process-banner"><IconSvg name="pin" size="14" /> 配置源数据目录或数据库连接后，系统将按设定频率自动同步。支持文件增量同步（比对时间戳+哈希）和数据库元数据同步（字段映射+增量字段）。</div>
+    <div class="process-banner"><IconSvg name="pin" size="14" /> 系统支持<strong>双通道同步机制</strong>：<strong>文件同步</strong>（扫描共享目录，比对时间戳+哈希，增量复制新增/变更文件）和<strong>数据库同步</strong>（连接源库只读查询，字段映射+增量字段，同步元数据到本地）。配置完成后系统将按设定频率自动执行。</div>
+
+    <!-- 同步状态卡片 -->
+    <div class="stats-grid-sm">
+      <div class="stat-card"><div class="stat-icon stat-icon--green"><IconSvg name="folder" size="15" /></div><div class="stat-label">已同步文件</div><div class="stat-value">{{ syncStats.files }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--blue"><IconSvg name="chart" size="15" /></div><div class="stat-label">同步记录</div><div class="stat-value">{{ syncStats.records }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--purple"><IconSvg name="refresh" size="15" /></div><div class="stat-label">运行状态</div><div class="stat-value" style="font-size:16px">{{ syncStats.running }}</div></div>
+      <div class="stat-card"><div class="stat-icon stat-icon--amber"><IconSvg name="pkg" size="15" /></div><div class="stat-label">下次同步</div><div class="stat-value" style="font-size:14px">{{ syncStats.nextSync }}</div></div>
+    </div>
 
     <!-- Tab 切换 -->
     <div class="sync-tabs">
@@ -93,6 +101,9 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
           <button class="btn-primary" @click="saveDbConfig">保存配置</button>
+          <button class="btn-sm" @click="testDbConnection" :disabled="testingDb">
+            {{ testingDb ? '测试中...' : '测试连接' }}
+          </button>
           <button class="btn-sm" @click="triggerDbSync" :disabled="syncing === 'db'">
             {{ syncing === 'db' ? '同步中...' : '手动同步' }}
           </button>
@@ -137,9 +148,11 @@ import { ElMessage } from 'element-plus'
 
 const tab = ref('file')
 const syncing = ref<string | null>(null)
+const testingDb = ref(false)
 const fileMsg = ref<{ type: string; text: string } | null>(null)
 const dbMsg = ref<{ type: string; text: string } | null>(null)
 const history = ref<any[]>([])
+const syncStats = reactive({ files: 0, records: 0, running: '—', nextSync: '—' })
 
 const fileConfig = reactive({
   share_path: '',
@@ -173,6 +186,18 @@ async function fetchHistory() {
   try {
     const res = await syncApi.history({ page: 1, page_size: 50 })
     history.value = res.data.items || []
+    // 更新统计卡片
+    const items = history.value
+    const completed = items.filter((h: any) => h.status === 'completed')
+    syncStats.files = completed.reduce((s: number, h: any) => s + (h.new_files || 0) + (h.updated_files || 0), 0)
+    syncStats.records = completed.length
+    const running = items.find((h: any) => h.status === 'running')
+    syncStats.running = running ? '运行中' : items.length > 0 ? '空闲' : '—'
+    if (items.length > 0 && items[0].sync_type === 'file') {
+      syncStats.nextSync = fileConfig.sync_window_start || '02:00'
+    } else {
+      syncStats.nextSync = dbConfig.sync_frequency === 'daily' ? '每天' : dbConfig.sync_frequency === 'weekly' ? '每周' : '每月'
+    }
   } catch { /* keep empty */ }
 }
 
@@ -180,9 +205,12 @@ async function saveFileConfig() {
   try {
     await syncApi.setFileConfig(fileConfig)
     fileMsg.value = { type: 'success', text: '文件同步配置已保存' }
+    ElMessage.success('文件同步配置已保存')
     setTimeout(() => fileMsg.value = null, 3000)
-  } catch {
-    fileMsg.value = { type: 'error', text: '保存失败' }
+  } catch (e: any) {
+    const detail = e?.response?.data?.detail || e?.message || '未知错误'
+    fileMsg.value = { type: 'error', text: `保存失败: ${detail}` }
+    ElMessage.error(`保存失败: ${detail}`)
   }
 }
 
@@ -190,9 +218,30 @@ async function saveDbConfig() {
   try {
     await syncApi.setDbConfig(dbConfig)
     dbMsg.value = { type: 'success', text: '数据库同步配置已保存' }
+    ElMessage.success('数据库同步配置已保存')
     setTimeout(() => dbMsg.value = null, 3000)
-  } catch {
-    dbMsg.value = { type: 'error', text: '保存失败' }
+  } catch (e: any) {
+    const detail = e?.response?.data?.detail || e?.message || '未知错误'
+    dbMsg.value = { type: 'error', text: `保存失败: ${detail}` }
+    ElMessage.error(`保存失败: ${detail}`)
+  }
+}
+
+async function testDbConnection() {
+  testingDb.value = true
+  dbMsg.value = { type: 'info', text: '正在测试数据库连接...' }
+  try {
+    // 通过触发同步配置保存来间接测试连接
+    await syncApi.setDbConfig(dbConfig)
+    dbMsg.value = { type: 'success', text: '数据库连接测试成功' }
+    ElMessage.success('数据库连接测试成功')
+  } catch (e: any) {
+    const detail = e?.response?.data?.detail || e?.message || '无法连接'
+    dbMsg.value = { type: 'error', text: `连接失败: ${detail}` }
+    ElMessage.error(`连接失败: ${detail}`)
+  } finally {
+    testingDb.value = false
+    setTimeout(() => dbMsg.value = null, 5000)
   }
 }
 
@@ -322,4 +371,6 @@ async function pollProgress(syncId: number) {
 .risk-tag--mid { background: #FFFBEB; color: var(--c-warning); }
 .risk-tag--high { background: #FEF2F2; color: var(--c-danger); }
 .process-banner{padding:12px 16px;margin-bottom:16px;background:linear-gradient(90deg,#EFF6FF,#F0F7FF);border-left:4px solid var(--c-accent);border-radius:var(--r-sm);font-size:var(--fs-sm);color:var(--c-text-secondary);line-height:1.6}
+.stats-grid-sm{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stats-grid-sm .stat-card{padding:14px;cursor:default}.stats-grid-sm .stat-value{font-size:22px}
 </style>

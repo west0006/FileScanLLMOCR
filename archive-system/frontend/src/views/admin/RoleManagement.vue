@@ -87,7 +87,7 @@ const permModules = [
 ]
 
 function roleLabel(name: string) {
-  return { system_admin: '系统管理员', archive_admin: '档案管理员', reviewer: '审核员' }[name] || name
+  return { system_admin: '系统管理员', archive_admin: '档案管理员', reviewer: '审核员', searcher: '查档人员' }[name] || name
 }
 
 onMounted(fetchRoles)
@@ -113,8 +113,14 @@ function togglePermAll() {
 
 function editRole(r: any) {
   editingRole.value = r
+  // 先全部取消，再按实际权限勾选
+  permModules.forEach(p => { permForm[p.key] = false })
   const perms = r.permissions || {}
-  permModules.forEach(p => { permForm[p.key] = perms.all || !!perms[p.key] })
+  if (perms.all) {
+    permModules.forEach(p => { permForm[p.key] = true })
+  } else {
+    permModules.forEach(p => { permForm[p.key] = !!perms[p.key] })
+  }
   showPerm.value = true
 }
 

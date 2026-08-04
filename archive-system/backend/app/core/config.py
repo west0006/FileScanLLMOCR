@@ -4,8 +4,10 @@ import os
 from pydantic_settings import BaseSettings
 from typing import Optional
 
-# 项目根目录 (archive-system/)
+# 项目根目录 (archive-system/backend/)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# archive-system/ 目录（.env 所在）
+APP_ROOT = os.path.dirname(PROJECT_ROOT)
 
 
 class Settings(BaseSettings):
@@ -74,7 +76,7 @@ class Settings(BaseSettings):
 
     model_config = {
         "extra": "ignore",
-        "env_file": ".env",
+        "env_file": os.path.join(APP_ROOT, ".env"),
         "env_file_encoding": "utf-8",
     }
 
