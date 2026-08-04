@@ -273,7 +273,7 @@ function handleLogout() {
 .btn-logout:hover { border-color: var(--c-danger); color: var(--c-danger); }
 
 .content {
-  flex: 1; overflow-y: auto; padding: 24px;
+  flex: 1; overflow-y: auto; padding: var(--page-px, 32px);
 }
 
 /* 移动端：侧边栏自动折叠 */

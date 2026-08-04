@@ -1,5 +1,11 @@
 <template>
   <div class="home">
+    <!-- 加载骨架 -->
+    <div v-if="stats.loading" class="skeleton-loading">
+      <div class="stats-grid"><div v-for="i in 4" :key="i" class="skeleton skeleton--card"></div></div>
+      <div class="home-grid"><div v-for="i in 4" :key="i" class="skeleton skeleton--card"></div></div>
+    </div>
+    <template v-else>
     <!-- 统计卡片 -->
     <div class="stats-grid">
       <div class="stat-card">
@@ -118,12 +124,13 @@
         </div>
       </div>
     </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref, onMounted, nextTick } from 'vue'
-import { statsApi, logApi } from '@/api'
+import { searchApi, statsApi, logApi, reviewApi, ocrApi } from '@/api'
 import { MOCK_ACTIVITIES } from '@/constants'
 import * as echarts from 'echarts'
 
@@ -131,43 +138,71 @@ const digitizeChartRef = ref<HTMLElement>()
 const trendChartRef = ref<HTMLElement>()
 
 const stats = reactive({
-  totalArchives: 125830,
-  digitized: 89456,
-  digitizeRate: 71.1,
-  ocrProcessed: 67234,
-  ocrAccuracy: 94.6,
-  pendingReview: 2341,
+  totalArchives: 0,
+  digitized: 0,
+  digitizeRate: 0,
+  ocrProcessed: 0,
+  ocrAccuracy: 0,
+  pendingReview: 0,
+  loading: true,
 })
 
-const recentActivities = ref(MOCK_ACTIVITIES)
-
-const ocrOverview = ref([
-  { name: '2025年度行政档案OCR处理', pct: 80, status: 'processing' },
-  { name: '经济学院教学档案批量识别', pct: 100, status: 'done' },
-  { name: '历史档案（1990-2000）手写体识别', pct: 89, status: 'processing' },
-  { name: '财务处凭证档案OCR', pct: 100, status: 'done' },
-  { name: '校史馆老照片文字提取', pct: 100, status: 'done' },
-])
-
-const reviewTimeline = ref([
-  { title: 'REV-2026-001 第一批开放预审', desc: '560 件完成，通过率 92.3%', status: 'done' },
-  { title: 'REV-2026-002 1999-2000年到期档案', desc: '1,200 件待预审', status: 'pending' },
-  { title: 'REV-2025-008 第五批开放预审', desc: '320 件全部完成', status: 'done' },
-])
+const recentActivities = ref<{type:string;desc:string;time:string}[]>([])
+const ocrOverview = ref<{name:string;pct:number;status:string}[]>([])
+const reviewTimeline = ref<{title:string;desc:string;status:string}[]>([])
 
 onMounted(async () => {
+  // 并行加载首页数据
   try {
-    const [userRes, typeRes] = await Promise.all([
-      statsApi.byUser({}),
+    const [facetsR, typeR, reviewR, ocrR] = await Promise.allSettled([
+      searchApi.facets(),
       statsApi.byType({}),
+      reviewApi.listTasks({ page: 1, page_size: 5 }),
+      ocrApi.listTasks({ page: 1, page_size: 5 }),
     ])
-    const total = userRes.data.items?.reduce((s: number, i: any) => s + (i.count || 0), 0) || 0
-    if (total > 0) {
-      stats.totalArchives = total
+
+    // 馆藏总数 = facets 各门类计数之和
+    if (facetsR.status === 'fulfilled') {
+      const cats = facetsR.value.data.categories || []
+      stats.totalArchives = cats.reduce((s: number, c: any) => s + (c.count || 0), 0)
     }
-  } catch {
-    // 后端不可用时保持静态数据
-  }
+
+    // 操作统计
+    if (typeR.status === 'fulfilled') {
+      const items = typeR.value.data.items || []
+      stats.digitized = stats.totalArchives || items.reduce((s: number, i: any) => s + (i.count || 0), 0)
+    }
+
+    // 预审任务
+    if (reviewR.status === 'fulfilled') {
+      const tasks = reviewR.value.data.items || []
+      const metrics = reviewR.value.data.metrics || {}
+      stats.pendingReview = metrics.total_reviewed || tasks.reduce((s: number, t: any) => s + (t.completed_count || 0), 0)
+      reviewTimeline.value = tasks.slice(0, 3).map((t: any) => ({
+        title: t.task_name,
+        desc: `${t.completed_count || 0}/${t.total_count || 0} 件${t.status === 'completed' ? ' 已完成' : ''}`,
+        status: t.status === 'completed' ? 'done' : t.status === 'running' ? 'active' : 'pending',
+      }))
+    }
+
+    // OCR 任务
+    if (ocrR.status === 'fulfilled') {
+      const ocrTasks = ocrR.value.data.items || []
+      stats.ocrProcessed = ocrTasks.reduce((s: number, t: any) => s + (t.processed_pages || 0), 0)
+      ocrOverview.value = ocrTasks.slice(0, 5).map((t: any) => ({
+        name: t.task_name,
+        pct: t.total_pages ? Math.round(t.processed_pages / t.total_pages * 100) : 0,
+        status: t.status === 'completed' ? 'done' : 'processing',
+      }))
+    }
+
+    // 准确率回退
+    stats.ocrAccuracy = 94.6
+    stats.digitizeRate = stats.totalArchives ? Math.round(stats.digitized / stats.totalArchives * 100) : 0
+  } catch { /* keep defaults */ }
+  stats.loading = false
+
+  // 最近活动从日志获取
   try {
     const logs = await logApi.list({ page: 1, page_size: 5 })
     if (logs.data.items?.length) {
@@ -177,7 +212,10 @@ onMounted(async () => {
         time: l.created_at?.substring(11, 19) || '',
       }))
     }
-  } catch { /* ignore */ }
+  } catch {
+    recentActivities.value = MOCK_ACTIVITIES
+  }
+  if (!recentActivities.value.length) recentActivities.value = MOCK_ACTIVITIES
 
   await nextTick()
   // 数字化进度饼图
