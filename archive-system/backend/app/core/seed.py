@@ -32,10 +32,16 @@ def seed(force: bool = False):
                 Role(name="system_admin", description="系统管理员",
                      permissions={"all": True}, data_scope={"all": True}),
                 Role(name="archive_admin", description="档案管理员",
-                     permissions={"search": True, "ocr": True, "sync": True, "stats": True},
+                     permissions={
+                         "search": {"view": True, "download": True, "print": True},
+                         "ocr": True, "sync": True, "stats": True,
+                     },
                      data_scope={"all": True}),
                 Role(name="reviewer", description="审核员",
-                     permissions={"search": True, "review": True},
+                     permissions={
+                         "search": {"view": True, "download": False, "print": False},
+                         "review": {"view": True, "export": False},
+                     },
                      data_scope={"departments": []}),
             ])
 
@@ -59,20 +65,11 @@ def seed(force: bool = False):
             db.add_all(archives)
             db.commit()
 
-        # ---- 示例用户（除 admin 外，各角色测试用户） ----
-        if db.query(User).count() <= 1:
-            test_users = [
-                User(username="reviewer1", name="王建国", department="学校办公室",
-                     password_hash=hash_password("Test123456!"), role="reviewer", is_active=True),
-                User(username="reviewer2", name="赵静", department="教务处",
-                     password_hash=hash_password("Test123456!"), role="reviewer", is_active=True),
-                User(username="reviewer3", name="李芳", department="人事处",
-                     password_hash=hash_password("Test123456!"), role="reviewer", is_active=True),
-                User(username="archivist", name="陈小红", department="档案馆",
-                     password_hash=hash_password("Test123456!"), role="archive_admin", is_active=True),
-            ]
-            db.add_all(test_users)
-            db.commit()
+        # ---- 示例用户（除 admin 外，各角色测试用户，不存在则创建） ----
+        _ensure_test_user(db, "reviewer1", "王建国", "学校办公室", "reviewer")
+        _ensure_test_user(db, "reviewer2", "赵静", "教务处", "reviewer")
+        _ensure_test_user(db, "reviewer3", "李芳", "人事处", "reviewer")
+        _ensure_test_user(db, "archivist", "陈小红", "档案馆", "archive_admin")
 
         # ---- 示例预审记录（为部分档案生成，覆盖各风险等级） ----
         if db.query(ReviewRecord).count() == 0:
@@ -415,6 +412,17 @@ def _generate_seed_logs() -> list[OperationLog]:
         prev_hash = chain_hash
 
     return logs
+
+
+def _ensure_test_user(db, username: str, name: str, dept: str, role: str):
+    """确保测试用户存在，不存在则创建"""
+    existing = db.query(User).filter(User.username == username).first()
+    if not existing:
+        db.add(User(
+            username=username, name=name, department=dept,
+            password_hash=hash_password("Test123456!"), role=role, is_active=True,
+        ))
+        db.commit()
 
 
 def _seed_mock_files():

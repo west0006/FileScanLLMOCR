@@ -5,10 +5,21 @@ import { authApi } from '@/api'
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('access_token') || '')
   const user = ref<any>(null)
-  const permissions = ref<Record<string, boolean>>({})
+  const permissions = ref<Record<string, any>>({})
 
-  function can(module: string): boolean {
-    return permissions.value?.all === true || !!permissions.value?.[module]
+  function can(module: string, action?: string): boolean {
+    const p = permissions.value
+    if (!p) return false
+    if (p.all === true) return true
+    const mp = p[module]
+    if (mp === undefined) return false
+    // 向后兼容: bool 格式
+    if (typeof mp === 'boolean') return mp
+    // 新格式: {view: true, download: false}
+    if (action && typeof mp === 'object') return !!mp[action]
+    // 未指定操作 → 有任一权限
+    if (typeof mp === 'object') return Object.values(mp).some(Boolean)
+    return false
   }
 
   async function login(username: string, password: string) {

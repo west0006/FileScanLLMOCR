@@ -103,11 +103,14 @@ def require_role(*allowed_roles: str):
     return checker
 
 
-def require_permission(module: str):
+def require_permission(module: str, action: str | None = None):
     """
     依赖工厂：检查当前用户是否有指定模块的操作权限。
 
-    从 Role.permissions JSON 中读取，如 {"search": true, "review": true, "ocr": false}
+    权限格式（向后兼容）：
+      - 旧格式: {"search": true}               → bool, true=全部操作
+      - 新格式: {"search": {"view":true, "download":false}}
+
     system_admin / archive_admin 始终放行
     """
 
@@ -131,14 +134,37 @@ def require_permission(module: str):
                 raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="用户不存在")
 
             role = db.query(Role).filter(Role.name == u.role).first()
-            if role and role.permissions:
-                perms = role.permissions
-                if perms.get("all") or perms.get(module):
+            if not role or not role.permissions:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"权限不足 (模块: {module})")
+
+            perms = role.permissions
+
+            # 超级权限
+            if perms.get("all"):
+                return user
+
+            module_perm = perms.get(module)
+            if module_perm is None:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"权限不足 (模块: {module})")
+
+            # 向后兼容：旧格式 {"search": true}
+            if isinstance(module_perm, bool):
+                if module_perm:
+                    return user
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"权限不足 (模块: {module})")
+
+            # 新格式：{"search": {"view": true, "download": false}}
+            if isinstance(module_perm, dict):
+                if action is None:
+                    # 未指定操作 → 有任一权限即可
+                    if any(module_perm.values()):
+                        return user
+                elif module_perm.get(action):
                     return user
 
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"权限不足 (模块: {module})",
+                detail=f"权限不足 (模块: {module}" + (f", 操作: {action})" if action else ")"),
             )
         finally:
             db.close()

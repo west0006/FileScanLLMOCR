@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from app.core.security import get_current_user, apply_data_scope
+from app.core.security import get_current_user, apply_data_scope, require_permission
 from app.core.database import SessionLocal
 from app.models.models import ReviewTask, ReviewRecord, Archive
 from app.services.review_service import hybrid_review
@@ -125,11 +125,14 @@ def list_review_tasks(user: dict = Depends(get_current_user), page: int = 1, pag
         if status: q = q.filter(ReviewTask.status == status)
         total = q.count()
         items = q.order_by(ReviewTask.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
+        # 聚合指标
+        metrics = _compute_review_metrics(db)
         return {"total": total, "page": page, "page_size": page_size,
                 "items": [{"id": t.id, "task_name": t.task_name, "batch_name": t.batch_name,
                             "total_count": t.total_count, "completed_count": t.completed_count,
                             "status": t.status, "created_at": str(t.created_at),
-                            "risk_dist": _task_risk_dist(db, t.id)} for t in items]}
+                            "risk_dist": _task_risk_dist(db, t.id)} for t in items],
+                "metrics": metrics}
     finally:
         db.close()
 
@@ -267,8 +270,8 @@ class ReviewExportRequest(BaseModel):
 
 
 @router.post("/export")
-def export_review_results(req: ReviewExportRequest, user: dict = Depends(get_current_user)):
-    """导出预审结果 — 直接返回 Excel 文件下载"""
+def export_review_results(req: ReviewExportRequest, user: dict = Depends(require_permission("review", "export"))):
+    """导出预审结果 — 需要 review.export 权限"""
     from fastapi.responses import FileResponse
     db = SessionLocal()
     try:
@@ -313,6 +316,32 @@ def _sync_open_status(db, archive_id: str, suggestion: str):
     elif "开放" in suggestion:
         a.open_status = "已开放"
     # 不回写未审核状态（保留原值）
+
+
+def _compute_review_metrics(db) -> dict:
+    """聚合所有任务的指标"""
+    from sqlalchemy import func
+    tasks = db.query(ReviewTask).all()
+    records = db.query(ReviewRecord).all()
+
+    total_tasks = len(tasks)
+    active_tasks = sum(1 for t in tasks if t.status == "running")
+    total_reviewed = len(records)
+    total_completed = sum(t.completed_count or 0 for t in tasks)
+    total_count = sum(t.total_count or 0 for t in tasks)
+
+    # 平均耗时
+    times = [r.processing_time_ms for r in records if r.processing_time_ms]
+    avg_ms = round(sum(times) / len(times)) if times else 0
+
+    return {
+        "total_tasks": total_tasks,
+        "active_tasks": active_tasks,
+        "total_reviewed": total_reviewed,
+        "total_completed": total_completed,
+        "total_count": total_count,
+        "avg_processing_ms": avg_ms,
+    }
 
 
 def _task_risk_dist(db, task_id: int) -> dict:

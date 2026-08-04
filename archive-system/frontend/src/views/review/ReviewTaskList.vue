@@ -32,10 +32,10 @@
       <table class="data-table">
         <thead><tr><th>指标</th><th>数值</th></tr></thead>
         <tbody>
-          <tr><td>平均单件预审耗时</td><td>0.8 秒/件</td></tr>
-          <tr><td>敏感信息识别准确率</td><td>91.3%</td></tr>
-          <tr><td>风险等级判定一致率</td><td>87.5%</td></tr>
-          <tr><td>日处理能力</td><td>10万+件/天</td></tr>
+          <tr><td>平均单件预审耗时</td><td>{{ metrics.avg_processing_ms ? (metrics.avg_processing_ms / 1000).toFixed(1) + ' 秒/件' : '—' }}</td></tr>
+          <tr><td>已完成审核数</td><td>{{ metrics.total_reviewed || 0 }} 件</td></tr>
+          <tr><td>活跃任务数</td><td>{{ metrics.active_tasks || 0 }} 个</td></tr>
+          <tr><td>总任务数</td><td>{{ metrics.total_tasks || 0 }} 个</td></tr>
         </tbody>
       </table>
     </div>
@@ -56,6 +56,7 @@ import { reviewApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
 const tasks = ref<any[]>([])
+const metrics = ref<any>({})
 const showCreate = ref(false)
 const yearOpts = Array.from({ length: 56 }, (_, i) => 1970 + i)
 const categories = ['行政档案', '党群档案', '教学档案', '科研档案', '人事档案', '财务档案', '基建档案', '声像档案']
@@ -68,6 +69,7 @@ async function fetchTasks() {
     const res = await reviewApi.listTasks({ page: page.value, page_size: pageSize.value })
     tasks.value = res.data.items || []
     total.value = res.data.total || 0
+    metrics.value = res.data.metrics || {}
   } catch { /* keep empty */ }
 }
 async function handleCreateTask() {

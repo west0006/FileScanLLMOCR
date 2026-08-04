@@ -139,8 +139,90 @@ class TestStats:
         token = self.get_token()
         resp = client.get("/api/stats/by-type", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+        assert "failed" in data
+        assert "total" in data
+        # 验证 total = sum of items
+        assert data["total"] == sum(i["count"] for i in data["items"]), f"total={data['total']} != sum={sum(i['count'] for i in data['items'])}"
 
     def test_stats_by_user(self):
         token = self.get_token()
         resp = client.get("/api/stats/by-user", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
+
+    def test_stats_by_time_type_split(self):
+        """by-time 返回 search/view/download/print 拆分"""
+        token = self.get_token()
+        resp = client.get("/api/stats/by-time", params={"granularity": "day", "days": 7},
+                          headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+        for item in data["items"]:
+            assert "period" in item
+            # 验证每个 period 包含四种类型
+            for t in ("search", "view", "download", "print"):
+                assert t in item, f"missing key '{t}' in period {item['period']}"
+                assert isinstance(item[t], int)
+
+
+class TestSync:
+    """数据同步端点"""
+    def get_token(self):
+        return client.post("/api/auth/login", json={"username": "test", "password": "x"}).json()["access_token"]
+
+    def test_get_config(self):
+        token = self.get_token()
+        resp = client.get("/api/sync/config", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+
+    def test_sync_history(self):
+        token = self.get_token()
+        resp = client.get("/api/sync/history", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "items" in data
+        assert "total" in data
+
+
+class TestReviewSyncOpenStatus:
+    """预审结果回写 Archive.open_status"""
+    def get_token(self):
+        return client.post("/api/auth/login", json={"username": "test", "password": "x"}).json()["access_token"]
+
+    def test_sync_open_status_不开放(self):
+        from app.core.database import SessionLocal
+        from app.models.models import Archive
+        token = self.get_token()
+        # 预审一条结果
+        client.post("/api/review/preview", json={
+            "archive_id": "sync-test-001", "full_text": "机密文件涉及国家秘密",
+            "year": 2000, "department": "测试",
+        }, headers={"Authorization": f"Bearer {token}"})
+        # 验证 open_status 被同步
+        db = SessionLocal()
+        try:
+            a = db.query(Archive).filter(Archive.archive_id == "sync-test-001").first()
+            if a:
+                # 含"机密""国家秘密"→规则引擎高分→建议不开放
+                assert a.open_status in ("不开放", "延期开放", "未审核"), f"unexpected: {a.open_status}"
+        finally:
+            db.close()
+
+    def test_sync_open_status_开放(self):
+        from app.core.database import SessionLocal
+        from app.models.models import Archive
+        token = self.get_token()
+        client.post("/api/review/preview", json={
+            "archive_id": "sync-test-002", "full_text": "关于教学管理的常规工作报告，学校简介与规章制度。",
+            "year": 2020, "department": "教务处",
+        }, headers={"Authorization": f"Bearer {token}"})
+        db = SessionLocal()
+        try:
+            a = db.query(Archive).filter(Archive.archive_id == "sync-test-002").first()
+            if a:
+                # 无敏感词→低风险→建议开放
+                assert a.open_status in ("已开放", "部分开放", "未审核"), f"unexpected: {a.open_status}"
+        finally:
+            db.close()

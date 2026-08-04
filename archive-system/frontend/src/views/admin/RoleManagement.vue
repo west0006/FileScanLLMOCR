@@ -25,11 +25,22 @@
           <input type="checkbox" :checked="permAllSelected" @change="togglePermAll" />
           <span class="perm-label">全选 / 清空</span>
         </label>
-        <label v-for="p in permModules" :key="p.key" class="perm-item">
-          <input type="checkbox" v-model="permForm[p.key]" />
-          <span class="perm-label">{{ p.label }}</span>
-          <span class="perm-desc">{{ p.desc }}</span>
-        </label>
+        <template v-for="p in permModules" :key="p.key">
+          <!-- 无子操作的模块：单 checkbox -->
+          <label v-if="!p.actions.length" class="perm-item">
+            <input type="checkbox" v-model="permForm[p.key]" />
+            <span class="perm-label">{{ p.label }}</span>
+            <span class="perm-desc">{{ p.desc }}</span>
+          </label>
+          <!-- 有子操作的模块：模块名 + 子 checkbox -->
+          <div v-else class="perm-group">
+            <div class="perm-group-label">{{ p.label }} — {{ p.desc }}</div>
+            <label v-for="a in p.actions" :key="p.key+'-'+a" class="perm-item perm-item--sub">
+              <input type="checkbox" v-model="permForm[p.key][a]" />
+              <span class="perm-label perm-label--sub">{{ actionLabel(a) }}</span>
+            </label>
+          </div>
+        </template>
       </div>
       <template #footer>
         <button class="btn-sm" @click="showPerm=false">取消</button>
@@ -73,18 +84,22 @@ const page = ref(1); const pageSize = ref(10); const total = ref(0)
 const showPerm = ref(false)
 const showCreateRole = ref(false)
 const editingRole = ref<any>(null)
-const permForm = reactive<Record<string, boolean>>({})
+const permForm = reactive<Record<string, any>>({})
 const roleForm = reactive({ name: '', desc: '' })
 
 const permModules = [
-  { key: 'search', label: '智能检索', desc: '关键词/语义/高级检索' },
-  { key: 'ocr', label: 'OCR识别', desc: '创建任务、查看结果' },
-  { key: 'review', label: 'AI预审', desc: '审核工作台、任务管理' },
-  { key: 'sync', label: '数据同步', desc: '同步配置与监控' },
-  { key: 'user', label: '用户管理', desc: '用户增删改查' },
-  { key: 'log', label: '操作日志', desc: '日志查询与审计' },
-  { key: 'stats', label: '查询统计', desc: '利用统计分析' },
+  { key: 'search', label: '智能检索', desc: '关键词/语义/高级检索', actions: ['view', 'download', 'print'] },
+  { key: 'ocr', label: 'OCR识别', desc: '创建任务、查看结果', actions: [] },
+  { key: 'review', label: 'AI预审', desc: '审核工作台、任务管理', actions: ['view', 'export'] },
+  { key: 'sync', label: '数据同步', desc: '同步配置与监控', actions: [] },
+  { key: 'user', label: '用户管理', desc: '用户增删改查', actions: [] },
+  { key: 'log', label: '操作日志', desc: '日志查询与审计', actions: [] },
+  { key: 'stats', label: '查询统计', desc: '利用统计分析', actions: [] },
 ]
+
+function actionLabel(a: string): string {
+  return { view: '浏览', download: '下载', print: '打印', export: '导出' }[a] || a
+}
 
 function roleLabel(name: string) {
   return { system_admin: '系统管理员', archive_admin: '档案管理员', reviewer: '审核员', searcher: '查档人员' }[name] || name
@@ -105,29 +120,49 @@ async function fetchRoles() {
   }
 }
 
-const permAllSelected = computed(() => permModules.every(p => permForm[p.key]))
+const permAllSelected = computed(() => permModules.every(p => {
+  const v = permForm[p.key]
+  if (typeof v === 'boolean') return v
+  if (typeof v === 'object') return Object.values(v).some(Boolean)
+  return false
+}))
 function togglePermAll() {
   const val = !permAllSelected.value
-  permModules.forEach(p => { permForm[p.key] = val })
+  permModules.forEach(p => {
+    if (p.actions.length) {
+      const obj: Record<string, boolean> = {}
+      p.actions.forEach(a => obj[a] = val)
+      permForm[p.key] = obj
+    } else {
+      permForm[p.key] = val
+    }
+  })
 }
 
 function editRole(r: any) {
   editingRole.value = r
-  // 先全部取消，再按实际权限勾选
-  permModules.forEach(p => { permForm[p.key] = false })
   const perms = r.permissions || {}
-  if (perms.all) {
-    permModules.forEach(p => { permForm[p.key] = true })
-  } else {
-    permModules.forEach(p => { permForm[p.key] = !!perms[p.key] })
-  }
+  permModules.forEach(p => {
+    const v = perms[p.key]
+    if (p.actions.length) {
+      // 有子操作的模块：初始化为嵌套对象
+      const obj: Record<string, boolean> = {}
+      p.actions.forEach(a => {
+        obj[a] = perms.all ? true : (typeof v === 'object' ? !!v[a] : !!v)
+      })
+      permForm[p.key] = obj
+    } else {
+      // 无子操作：bool
+      permForm[p.key] = perms.all ? true : (typeof v === 'boolean' ? v : (typeof v === 'object' ? Object.values(v).some(Boolean) : false))
+    }
+  })
   showPerm.value = true
 }
 
 async function savePerm() {
   if (!editingRole.value) return
   try {
-    const perms: Record<string, boolean> = {}
+    const perms: Record<string, any> = {}
     permModules.forEach(p => { perms[p.key] = permForm[p.key] })
     await userApi.updatePermissions(editingRole.value.id, perms)
     ElMessage.success('权限已保存')
@@ -162,6 +197,9 @@ async function createRole() {
 <style scoped>
 .page{max-width:var(--page-max);margin:0 auto}.page-head{margin-bottom:20px}.page-head h2{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin:0}.card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);overflow:hidden}.data-table{width:100%;border-collapse:collapse}.data-table th{padding:12px 16px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--c-bg);border-bottom:1px solid var(--c-border)}.data-table td{padding:12px 16px;font-size:var(--fs-sm);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}.btn-sm{height:30px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-xs);cursor:pointer}.btn-sm:hover{border-color:var(--c-accent);color:var(--c-accent)}.btn-primary{height:32px;padding:0 20px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-sm);cursor:pointer}.btn-primary:hover{background:var(--c-accent-hover)}.font-medium{font-weight:var(--fw-medium)}.table-empty{padding:48px;text-align:center;color:var(--c-text-muted)}
 .perm-grid{display:flex;flex-direction:column;gap:10px}.perm-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--c-bg);border-radius:var(--r-sm);cursor:pointer;transition:background var(--t-fast)}.perm-item:hover{background:var(--c-border-light)}.perm-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--c-accent);cursor:pointer}.perm-label{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--c-text);min-width:80px}.perm-desc{font-size:var(--fs-xs);color:var(--c-text-muted)}
+.perm-group{margin-bottom:4px;padding:8px 10px;background:var(--c-bg);border-radius:var(--r-sm)}
+.perm-group-label{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--c-text);margin-bottom:4px}
+.perm-item--sub{padding-left:20px;margin-left:0}.perm-item--sub .perm-label{font-size:var(--fs-xs)}
 .pager{margin-top:16px;display:flex;justify-content:center}
 .security-card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);padding:20px;margin-top:16px}
 .security-card h3{font-size:var(--fs-base);font-weight:var(--fw-semibold);margin:0 0 12px}

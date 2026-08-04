@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from app.core.security import get_current_user, apply_data_scope
+from app.core.security import get_current_user, apply_data_scope, require_permission
 from app.core.database import SessionLocal
 from app.core.config import settings
 from app.models.models import Archive, OperationLog
@@ -142,7 +142,8 @@ def archive_ocr_text(archive_id: str, user: dict = Depends(get_current_user)):
 
 
 @router.get("/archives/{archive_id}/download")
-def archive_download(archive_id: str, page: int = 1, user: dict = Depends(get_current_user)):
+def archive_download(archive_id: str, page: int = 1, user: dict = Depends(require_permission("search", "download"))):
+    """单件原文下载 — 需要 search.download 权限"""
     """单件原文下载 — 返回原始文件（Content-Disposition: attachment），含数据权限校验"""
     import glob as _glob
     from fastapi.responses import FileResponse, JSONResponse

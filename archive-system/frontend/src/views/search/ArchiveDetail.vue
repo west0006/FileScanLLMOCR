@@ -176,7 +176,7 @@ import { useAuthStore } from '@/stores/auth'
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
-const canOperate = computed(() => auth.can('all') || auth.can('download'))
+const canOperate = computed(() => auth.can('all') || auth.can('search', 'download'))
 const archiveId = route.params.id as string
 const viewMode = ref('image')
 const archive = ref<any>({})

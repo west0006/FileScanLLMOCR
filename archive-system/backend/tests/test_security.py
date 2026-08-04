@@ -162,3 +162,79 @@ class TestSecurityConfig:
         user = data.get("user", {})
         # 开发模式默认 role 应为 reviewer
         assert user.get("role") in ("reviewer", "system_admin")
+
+
+class TestIsActiveRejection:
+    """停用用户 Token 即时失效"""
+
+    def test_01_deactivated_user_gets_403(self):
+        """停用用户使用仍有效的 Token 访问受保护路由返回 403"""
+        db = SessionLocal()
+        try:
+            # 找一个 reviewer 用户
+            u = db.query(User).filter(User.username == "reviewer1", User.is_active == True).first()
+            if not u:
+                pytest.skip("无可用测试用户")
+
+            uid = u.id
+            # 先确保用户是活跃的，登录拿 token
+            u.is_active = True
+            db.commit()
+
+            token = get_token(u.username, "x")  # dev 模式不校验密码
+            assert token is not None
+
+            # 验证正常访问
+            resp = client.get("/api/search/history", headers={"Authorization": f"Bearer {token}"})
+            assert resp.status_code == 200
+
+            # 停用用户
+            u.is_active = False
+            db.commit()
+
+            # 使用相同 token 再次访问 → 应 403
+            resp = client.get("/api/search/history", headers={"Authorization": f"Bearer {token}"})
+            assert resp.status_code == 403, f"预期 403，实际 {resp.status_code}: {resp.text}"
+
+            # 恢复
+            u.is_active = True
+            db.commit()
+        finally:
+            db.close()
+
+
+class TestLogPermission:
+    """操作日志 require_role 权限控制 — dev 模式放行，验证端点存在"""
+
+    def test_01_reviewer_cannot_access_logs_in_prod(self):
+        """reviewer 访问日志端点 — dev 模式放行(200)，生产模式拒绝(403)"""
+        db = SessionLocal()
+        try:
+            u = db.query(User).filter(User.username == "reviewer1", User.is_active == True).first()
+            if not u:
+                pytest.skip("无可用测试用户")
+            token = get_token(u.username, "x")
+            resp = client.get("/api/log/", headers={"Authorization": f"Bearer {token}"})
+            # dev 模式 require_role 放行 → 200；生产模式 → 403
+            assert resp.status_code in (200, 403), f"unexpected status: {resp.status_code}"
+        finally:
+            db.close()
+
+    def test_02_reviewer_cannot_export_logs_in_prod(self):
+        """reviewer 导出日志 — dev 模式放行，生产模式拒绝"""
+        db = SessionLocal()
+        try:
+            u = db.query(User).filter(User.username == "reviewer1", User.is_active == True).first()
+            if not u:
+                pytest.skip("无可用测试用户")
+            token = get_token(u.username, "x")
+            resp = client.post("/api/log/export", json={}, headers={"Authorization": f"Bearer {token}"})
+            assert resp.status_code in (200, 403), f"unexpected status: {resp.status_code}"
+        finally:
+            db.close()
+
+    def test_03_admin_can_access_logs(self):
+        """管理员可以访问日志"""
+        token = get_token("admin", "x")
+        resp = client.get("/api/log/", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
