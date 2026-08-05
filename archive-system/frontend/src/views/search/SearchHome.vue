@@ -81,7 +81,14 @@
             placeholder="输入关键词搜索档案..."
             class="search-input"
             @keyup.enter="doSearch"
+            @focus="showAutoComplete = true"
+            @blur="showAutoComplete = false"
+            @input="showAutoComplete = true"
+            list="search-autocomplete"
           />
+          <datalist id="search-autocomplete">
+            <option v-for="h in searchAutoList" :key="h" :value="h" />
+          </datalist>
           <button class="search-btn" @click="doSearch">检索</button>
           <label class="exact-toggle" title="精确匹配：完整字段值严格匹配"><input type="checkbox" v-model="exactMatch" /> 精确</label>
           <button class="history-btn" @click.stop="showHistory = !showHistory" title="检索历史">
@@ -230,6 +237,11 @@
         <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         <p>未找到匹配的档案</p>
         <span>尝试调整关键词或检索条件</span>
+        <div class="suggestions" v-if="searchSuggestions.length">
+          <span class="suggestions-label">您可能想找：</span>
+          <button v-for="(s, i) in searchSuggestions" :key="i" class="suggestion-chip" @click="keyword=s;doSearch()">{{ s }}</button>
+        </div>
+        <span class="help-text">提示：切换检索字段为「全部字段」可扩大搜索范围。已收录 {{ facetSummary }}</span>
       </div>
 
       <div v-else class="results-list">
@@ -360,6 +372,41 @@ const exactMatch = ref(false)
 const showHistory = ref(false)
 const searchHistory = ref<string[]>([])
 const searchDimension = ref('all')
+const showAutoComplete = ref(false)
+
+// 自动补全列表（历史+常见词）
+const searchAutoList = computed(() => {
+  const list = [...searchHistory.value]
+  const common = ['招生', '教学', '财务', '人事', '任职', '党委', '会议纪要', '基建', '科研', '档案管理', '退休', '处分']
+  for (const w of common) { if (!list.includes(w)) list.push(w) }
+  return list.filter(h => !keyword.value || h.includes(keyword.value)).slice(0, 10)
+})
+
+// 无结果时的搜索建议
+const searchSuggestions = computed(() => {
+  if (!keyword.value || keyword.value.length < 2) return []
+  const suggestions: string[] = []
+  // 年份联想
+  if (/^\d{1,4}$/.test(keyword.value.trim())) {
+    const yr = parseInt(keyword.value.trim())
+    suggestions.push(`${yr}年档案`)
+  }
+  // 常见门类联想
+  const catMap: Record<string, string> = { '招生': '招生', '教学': '教学计划', '财务': '财务报告', '人事': '任职', '党建': '党委', '科研': '科研' }
+  for (const [k, v] of Object.entries(catMap)) {
+    if (keyword.value.includes(k)) suggestions.push(v)
+  }
+  // 同义词扩展
+  if (keyword.value.includes('学生')) suggestions.push('学籍')
+  if (keyword.value.includes('老师') || keyword.value.includes('教师')) suggestions.push('教职工')
+  return suggestions.slice(0, 5)
+})
+
+// 门类数据摘要
+const facetSummary = computed(() => {
+  const cats = categoryTree.value.map((c: any) => c.label).slice(0, 4).join('、')
+  return cats ? `${cats}等门类档案` : ''
+})
 
 onMounted(() => {
   const stored = localStorage.getItem('search_history')
@@ -914,4 +961,9 @@ async function handleExport(format: string = 'excel') {
 }
 .history-item:hover { background: var(--c-bg); }
 .history-item svg { color: var(--c-text-muted); flex-shrink: 0; }
+.suggestions{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center}
+.suggestions-label{font-size:var(--fs-xs);color:var(--c-text-muted)}
+.suggestion-chip{padding:3px 12px;border-radius:var(--r-full);border:1px solid var(--c-accent);background:var(--c-accent-light);color:var(--c-accent);font-size:var(--fs-xs);cursor:pointer}
+.suggestion-chip:hover{background:var(--c-accent);color:#fff}
+.help-text{font-size:var(--fs-xs);color:var(--c-text-muted);margin-top:8px}
 </style>

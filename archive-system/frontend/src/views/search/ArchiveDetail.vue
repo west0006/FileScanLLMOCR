@@ -146,7 +146,14 @@
               </div>
             </div>
             <div v-else-if="viewMode === 'ocr'" class="ocr-panel">
-              <pre class="ocr-text">{{ ocrContent }}</pre>
+              <div class="ocr-toolbar">
+                <button :class="['ocr-mode-btn', { active: ocrEditMode }]" @click="ocrEditMode = !ocrEditMode">
+                  {{ ocrEditMode ? '💾 保存校对' : '✏️ 编辑校对' }}
+                </button>
+                <span v-if="ocrEditMode" class="ocr-hint">可直接修改识别文本，点击保存提交</span>
+              </div>
+              <textarea v-if="ocrEditMode" v-model="ocrEditable" class="ocr-editor" rows="15"></textarea>
+              <pre v-else class="ocr-text">{{ ocrContent }}</pre>
             </div>
             <div v-else class="compare-panel">
               <div class="compare-col">
@@ -181,6 +188,8 @@ const archiveId = route.params.id as string
 const viewMode = ref('image')
 const archive = ref<any>({})
 const ocrContent = ref('')
+const ocrEditMode = ref(false)
+const ocrEditable = ref('')
 
 const imageInfo = ref<any>(null)
 const imagePages = ref<any[]>([])
@@ -290,6 +299,7 @@ async function loadDetail(id: string) {
     if (seq !== loadSeq) return  // 已有更新的请求，丢弃本次结果
     archive.value = d.data
     ocrContent.value = o.data.ocr_text || d.data.ocr_text || '(暂无 OCR 文本)'
+    ocrEditable.value = ocrContent.value
     if (img.data) {
       imageInfo.value = img.data
       imagePages.value = img.data.files || []
@@ -316,6 +326,10 @@ async function loadDetail(id: string) {
 
 onMounted(() => { loadDetail(archiveId) })
 watch(() => route.params.id, (newId) => { if (newId) loadDetail(newId as string) })
+watch(ocrEditMode, (val) => {
+  if (val) { ocrEditable.value = ocrContent.value }
+  else { ocrContent.value = ocrEditable.value; ElMessage.success('校对文本已更新（本地暂存）') }
+})
 </script>
 
 <style scoped>
@@ -461,6 +475,11 @@ watch(() => route.params.id, (newId) => { if (newId) loadDetail(newId as string)
 .image-main { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f5f5f5; }
 .archive-image { max-width: 100%; max-height: 100%; object-fit: contain; }
 .archive-pdf { width: 100%; height: 100%; min-height: 500px; border: none; }
+.ocr-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.ocr-mode-btn{padding:5px 14px;border-radius:var(--r-sm);border:1px solid var(--c-accent);background:var(--c-surface);color:var(--c-accent);font-size:var(--fs-xs);cursor:pointer}
+.ocr-mode-btn.active{background:var(--c-accent);color:#fff}
+.ocr-hint{font-size:var(--fs-xs);color:var(--c-text-muted)}
+.ocr-editor{width:100%;padding:16px;border:1px solid var(--c-accent);border-radius:var(--r-md);font-family:var(--font);font-size:14px;line-height:1.8;resize:vertical;outline:none;min-height:300px}
 .image-file-list {
   display: flex; gap: 4px; padding: 8px; overflow-x: auto;
   border-top: 1px solid var(--c-border-light); background: var(--c-bg);

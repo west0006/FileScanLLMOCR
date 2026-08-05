@@ -30,7 +30,7 @@
     <div class="card">
       <div class="card-head">
         <h3>按用户账号统计 (ST-001)</h3>
-        <button class="btn-sm" @click="exportTable('user-ranking')"><IconSvg name="download" size="14" /> 导出报表</button>
+        <button class="btn-sm" @click="showExportOptions = true"><IconSvg name="download" size="14" /> 导出报表</button>
       </div>
       <div class="filter-bar">
         <select v-model="userFilter.role" class="filter-input-sm"><option value="">全部角色</option><option>system_admin</option><option>archive_admin</option><option>reviewer</option></select>
@@ -73,6 +73,24 @@
           <tr v-if="!methodDetail.length"><td colspan="5" class="table-empty">暂无数据</td></tr>
         </tbody>
       </table>
+    </div>
+    <!-- 导出选项弹窗 -->
+    <div v-if="showExportOptions" class="modal-overlay" @click.self="showExportOptions=false">
+      <div class="modal-card" style="width:400px">
+        <div class="modal-head"><h3>自定义导出</h3><button class="modal-close" @click="showExportOptions=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+        <div class="modal-body">
+          <div class="form-group"><label>文件格式</label>
+            <select v-model="exportFormat" class="field-input"><option value="csv">CSV</option><option value="excel">Excel</option></select>
+          </div>
+          <div class="form-group"><label>导出字段</label>
+            <label v-for="f in exportFields" :key="f.key" class="perm-item"><input type="checkbox" v-model="f.selected" /><span class="perm-label">{{ f.label }}</span></label>
+          </div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button class="btn-sm" @click="showExportOptions=false">取消</button>
+            <button class="btn-primary" @click="doExportTable">导出</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -188,6 +206,40 @@ function _resizeCharts() { _charts.forEach(c => { try { c.resize() } catch {} })
 onUnmounted(() => { _charts.forEach(c => { try { c.dispose() } catch {} }) })
 onMounted(() => { window.addEventListener('resize', _resizeCharts) })
 onUnmounted(() => { window.removeEventListener('resize', _resizeCharts) })
+
+const showExportOptions = ref(false)
+const exportFormat = ref('csv')
+const exportFields = reactive([
+  { key: 'name', label: '用户名', selected: true },
+  { key: 'role', label: '角色', selected: true },
+  { key: 'search', label: '检索次数', selected: true },
+  { key: 'view', label: '浏览次数', selected: true },
+  { key: 'download', label: '下载次数', selected: true },
+  { key: 'print', label: '打印次数', selected: true },
+])
+
+function doExportTable() {
+  const fields = exportFields.filter(f => f.selected)
+  if (!fields.length) { ElMessage.warning('至少选择一个字段'); return }
+  const rows = userRanking.value
+  if (!rows.length) { ElMessage.warning('暂无数据可导出'); return }
+  const headers = fields.map(f => f.label)
+  const keys = fields.map(f => f.key)
+  const csv = [
+    headers.join(','),
+    ...rows.map(r => keys.map(k => {
+      const v = k === 'name' ? (r.name || r.username) : k === 'role' ? roleLabel(r.role) : (r[k] || 0)
+      return `"${String(v).replace(/"/g, '""')}"`
+    }).join(','))
+  ].join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url; a.download = `统计报表_${new Date().toISOString().slice(0,10)}.csv`; a.click()
+  window.URL.revokeObjectURL(url)
+  ElMessage.success(`导出成功 (${fields.length} 个字段, ${rows.length} 条)`)
+  showExportOptions.value = false
+}
 
 function exportTable(id: string) {
   try {
