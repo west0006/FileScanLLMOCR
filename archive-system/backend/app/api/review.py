@@ -267,6 +267,7 @@ def get_review_record(record_id: int, user: dict = Depends(get_current_user)):
 class ReviewExportRequest(BaseModel):
     task_id: Optional[int] = None
     archive_ids: list[str] = []
+    format: str = "excel"  # excel | pdf
 
 
 @router.post("/export")
@@ -289,9 +290,12 @@ def export_review_results(req: ReviewExportRequest, user: dict = Depends(require
             "预审耗时(ms)": r.processing_time_ms, "模型": r.model_name or "",
             "预审时间": str(r.created_at)[:19] if r.created_at else "",
         } for r in rows]
-        path = export_to_excel("AI预审结果", data,
-            ["档案编号","风险评分","风险等级","AI建议","建议理由","置信度","敏感类型","预审耗时(ms)","模型","预审时间"],
-            output_dir=settings.UPLOAD_DIR or "/tmp")
+        columns = ["档案编号","风险评分","风险等级","AI建议","建议理由","置信度","敏感类型","预审耗时(ms)","模型","预审时间"]
+        if req.format == "pdf":
+            from app.services.export_service import export_to_pdf
+            path = export_to_pdf("AI预审结果", data, columns, output_dir=settings.UPLOAD_DIR or "/tmp")
+            return FileResponse(path, filename=os.path.basename(path), media_type="application/pdf")
+        path = export_to_excel("AI预审结果", data, columns, output_dir=settings.UPLOAD_DIR or "/tmp")
         return FileResponse(
             path,
             filename=os.path.basename(path),

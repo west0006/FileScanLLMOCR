@@ -74,3 +74,50 @@ def export_to_excel(title: str, rows: list[dict], columns: list[str], output_dir
     filepath = os.path.join(output_dir, filename)
     wb.save(filepath)
     return filepath
+
+
+def export_to_pdf(title: str, rows: list[dict], columns: list[str], output_dir: str = "/tmp") -> str:
+    """生成 PDF 文件，返回文件路径。"""
+    from fpdf import FPDF
+
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # 标题
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(0, 10, title, new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(4)
+
+    # 导出时间
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(128, 128, 128)
+    pdf.cell(0, 6, f"导出时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}   共 {len(rows)} 条",
+             new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.ln(6)
+
+    # 表头
+    pdf.set_fill_color(245, 246, 250)
+    pdf.set_text_color(100, 100, 100)
+    pdf.set_font("Helvetica", "B", 9)
+    col_w = (pdf.w - 20) / len(columns)
+    for col in columns:
+        pdf.cell(col_w, 8, col[:20], border=1, fill=True, align="L")
+    pdf.ln()
+
+    # 数据行
+    pdf.set_text_color(30, 30, 30)
+    pdf.set_font("Helvetica", "", 8)
+    for row in rows:
+        for col in columns:
+            val = str(row.get(col, ""))[:40]
+            if isinstance(row.get(col), list):
+                val = ", ".join(str(v) for v in row.get(col, []))[:40]
+            pdf.cell(col_w, 7, val, border=1, align="L")
+        pdf.ln()
+
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"{title}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+    filepath = os.path.join(output_dir, filename)
+    pdf.output(filepath)
+    return filepath

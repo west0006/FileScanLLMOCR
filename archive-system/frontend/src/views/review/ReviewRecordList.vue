@@ -5,9 +5,13 @@
       <h2>预审记录</h2>
       <div style="display:flex;align-items:center;gap:12px">
         <span v-if="selectedIds.length" class="selected-badge">已选 {{ selectedIds.length }} 条</span>
-        <button class="btn-export" @click="handleExport">
+        <button class="btn-export" @click="handleExport('excel')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          {{ selectedIds.length ? `导出 Excel (${selectedIds.length}条)` : '导出全部' }}
+          {{ selectedIds.length ? `Excel (${selectedIds.length}条)` : 'Excel' }}
+        </button>
+        <button class="btn-export" @click="handleExport('pdf')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          {{ selectedIds.length ? `PDF (${selectedIds.length}条)` : 'PDF' }}
         </button>
       </div>
     </div>
@@ -307,7 +311,7 @@ async function showDetail(row: any) {
     selected.value = row
   }
 }
-async function handleExport() {
+async function handleExport(format: string = 'excel') {
   try {
     // 从选中的 record/volume 映射到真实的 archive_id
     let selectedArchiveIds: string[]
@@ -318,12 +322,14 @@ async function handleExport() {
     } else {
       selectedArchiveIds = records.value.map(r => r.archive_id)
     }
-    const res = await reviewApi.export({ archive_ids: selectedArchiveIds })
-    const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const res = await reviewApi.export({ archive_ids: selectedArchiveIds, format })
+    const mime = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    const ext = format === 'pdf' ? 'pdf' : 'xlsx'
+    const blob = new Blob([res.data], { type: mime })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `AI预审结果_${new Date().toISOString().slice(0, 10)}.xlsx`
+    a.download = `AI预审结果_${new Date().toISOString().slice(0, 10)}.${ext}`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)

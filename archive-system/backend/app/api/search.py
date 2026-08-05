@@ -394,9 +394,12 @@ def export_results(req: ExportRequest, user: dict = Depends(get_current_user)):
             "门类": r.category or "", "归口单位": r.department or "",
             "保管期限": r.retention_period or "", "密级": r.security_level or "",
         } for r in rows]
-        path = export_to_excel("档案检索结果", data,
-            ["档案编号","题名","归档年度","门类","归口单位","保管期限","密级"],
-            output_dir=settings.UPLOAD_DIR or "/tmp")
+        columns = ["档案编号","题名","归档年度","门类","归口单位","保管期限","密级"]
+        if req.format == "pdf":
+            from app.services.export_service import export_to_pdf
+            path = export_to_pdf("档案检索结果", data, columns, output_dir=settings.UPLOAD_DIR or "/tmp")
+            return FileResponse(path, filename=os.path.basename(path), media_type="application/pdf")
+        path = export_to_excel("档案检索结果", data, columns, output_dir=settings.UPLOAD_DIR or "/tmp")
         return FileResponse(
             path,
             filename=os.path.basename(path),
