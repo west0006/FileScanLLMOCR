@@ -287,7 +287,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { searchApi } from '@/api'
 import { ElMessage } from 'element-plus'
