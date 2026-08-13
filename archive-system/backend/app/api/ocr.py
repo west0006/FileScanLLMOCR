@@ -19,6 +19,7 @@ class CreateOcrTaskRequest(BaseModel):
     year_to: Optional[int] = None
     category: Optional[str] = None
     department: Optional[str] = None
+    fonds_id: Optional[str] = None
     engine: Optional[str] = "paddleocr"  # paddleocr | mock
     enable_preprocess: Optional[bool] = True
     priority: Optional[int] = 0  # 0=普通, 1=高, 2=紧急
@@ -41,7 +42,8 @@ def create_ocr_task(req: CreateOcrTaskRequest, request: Request, user: dict = De
         task = OcrTask(
             task_name=req.task_name,
             filter_criteria={"year_from": req.year_from, "year_to": req.year_to,
-                             "category": req.category, "department": req.department},
+                             "category": req.category, "department": req.department,
+                             "fonds_id": req.fonds_id},
             created_by=user["user_id"],
             priority=req.priority or 0,
         )

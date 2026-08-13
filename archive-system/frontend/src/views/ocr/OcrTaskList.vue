@@ -79,6 +79,7 @@
             <div class="form-group" style="flex:1"><label>档案门类</label><select class="field-input" v-model="cf.category"><option value="">全部</option><option>行政档案</option><option>党群档案</option><option>教学档案</option><option>科研档案</option><option>人事档案</option><option>财务档案</option></select></div>
             <div class="form-group" style="flex:1"><label>优先级</label><select class="field-input" v-model.number="cf.priority"><option :value="0">普通</option><option :value="1">高</option><option :value="2">紧急</option></select></div>
           </div>
+          <div class="form-group"><label>全宗号</label><input class="field-input" v-model="cf.fonds_id" placeholder="如 XZ / DQ / JX（可留空）" /></div>
           <div class="ocr-hint">🔒 OCR 处理采用本地部署的 NLP 推理，数据不上云</div>
           <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
             <button class="btn-sm" @click="showCreate=false">取消</button>
@@ -120,7 +121,7 @@ const showCreate = ref(false)
 const showDetail = ref(false)
 const detailTask = ref<any>(null)
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
-const cf = reactive({ task_name: '', category: '', year_from: undefined as number|undefined, year_to: undefined as number|undefined, priority: 0 })
+const cf = reactive({ task_name: '', category: '', year_from: undefined as number|undefined, year_to: undefined as number|undefined, fonds_id: '', priority: 0 })
 const engineInfo = ref({ mode: 'mock', label: 'Mock 模式' })
 const quality = ref<any>({})
 const statusFilter = ref('')
@@ -146,11 +147,11 @@ async function handleCreateTask() {
   // 特殊字符校验
   if (/[\\/:*?"<>|]/.test(cf.task_name)) { ElMessage.warning('任务名称包含非法字符：\\ / : * ? " < > |'); return }
   try {
-    const res = await ocrApi.createTask({ task_name: cf.task_name, category: cf.category||undefined, year_from: cf.year_from, year_to: cf.year_to, priority: cf.priority })
+    const res = await ocrApi.createTask({ task_name: cf.task_name, category: cf.category||undefined, year_from: cf.year_from, year_to: cf.year_to, fonds_id: cf.fonds_id||undefined, priority: cf.priority })
     if (res.data && res.data.error) { ElMessage.error(res.data.error); return }
     ElMessage.success('任务已创建')
     showCreate.value = false
-    cf.task_name = ''; cf.category = ''; cf.year_from = undefined; cf.year_to = undefined; cf.priority = 0
+    cf.task_name = ''; cf.category = ''; cf.year_from = undefined; cf.year_to = undefined; cf.fonds_id = ''; cf.priority = 0
     fetchTasks()
   } catch { ElMessage.error('创建失败') }
 }

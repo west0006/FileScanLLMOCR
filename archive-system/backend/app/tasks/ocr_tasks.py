@@ -64,6 +64,8 @@ def process_ocr_task(self, task_id: int):
             q = q.filter(Archive.category == criteria["category"])
         if criteria.get("department"):
             q = q.filter(Archive.department == criteria["department"])
+        if criteria.get("fonds_id"):
+            q = q.filter(Archive.fonds_id == criteria["fonds_id"])
 
         archives = q.limit(500).all()  # 单次最多 500 条，分批
         total_archives = len(archives)
