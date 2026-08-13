@@ -12,8 +12,8 @@
 
     <!-- 图表行 -->
     <div class="charts-row">
-      <div class="chart-card"><h3>按操作类型统计</h3><div ref="typeChartRef" class="chart-box"></div></div>
-      <div class="chart-card"><h3>按用户统计 (Top 10)</h3><div ref="userChartRef" class="chart-box"></div></div>
+      <div class="chart-card"><h3>按操作类型统计</h3><div ref="typeChartRef" class="chart-box"></div><div v-if="!typeHasData" class="chart-empty">暂无数据</div></div>
+      <div class="chart-card"><h3>按用户统计 (Top 10)</h3><div ref="userChartRef" class="chart-box"></div><div v-if="!userHasData" class="chart-empty">暂无数据</div></div>
     </div>
     <div class="charts-row">
       <div class="chart-card chart-card--full">
@@ -23,6 +23,7 @@
           </select>
         </div>
         <div ref="timeChartRef" class="chart-box"></div>
+        <div v-if="!timeHasData" class="chart-empty">暂无数据</div>
       </div>
     </div>
 
@@ -112,6 +113,9 @@ const methodDetail = ref<any[]>([])
 const userFilter = reactive({ role:'', period:'month' })
 const hasError = ref(false)
 const errorMsg = ref('')
+const typeHasData = ref(true)
+const userHasData = ref(true)
+const timeHasData = ref(true)
 
 function roleLabel(r: string) { return ROLE_LABELS[r] || r }
 function typeLabel(t: string) { return OP_TYPE_LABELS[t] || t }
@@ -126,6 +130,8 @@ onMounted(async () => {
     summary.search_count = typeData.find((i:any)=>i.type==='search')?.count||0
     summary.review_count = typeData.find((i:any)=>i.type==='review')?.count||0
     summary.failed_count = (tr.data.failed || tr.data.items?.find((i:any)=>i.type==='failure')?.count) || 0
+    typeHasData.value = typeData.length > 0
+    userHasData.value = userData.length > 0
     await nextTick()
     loadTimeChart()
     if(typeChartRef.value){_initChart(typeChartRef, {tooltip:{trigger:'item'},legend:{bottom:0},series:[{type:'pie',radius:['45%','75%'],center:['50%','45%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:typeData.map((t:any)=>({name:typeLabel(t.type),value:t.count})),color:['#10B981','#6366F1','#8B5CF6','#06B6D4','#F59E0B','#94A3B8']}]})}
@@ -176,6 +182,7 @@ async function loadTimeChart() {
   if(!timeChartRef.value) return
   let timeData:any[]=[]
   try{const res=await statsApi.byTime({granularity:timeGranularity.value,days:timeGranularity.value==='year'?365:timeGranularity.value==='quarter'?90:30});timeData=res.data.items||[]}catch{timeData=[]}
+  timeHasData.value = timeData.length > 0
   const types = ['search','view','download','print']
   _initChart(timeChartRef, {
     tooltip:{trigger:'axis'},
@@ -225,12 +232,27 @@ function doExportTable() {
   if (!rows.length) { ElMessage.warning('暂无数据可导出'); return }
   const headers = fields.map(f => f.label)
   const keys = fields.map(f => f.key)
+  const dataRows = rows.map(r => keys.map(k => {
+    return k === 'name' ? (r.name || r.username) : k === 'role' ? roleLabel(r.role) : (r[k] || 0)
+  }))
+
+  if (exportFormat.value === 'excel') {
+    // 使用 xlsx 库生成真实 Excel
+    import('xlsx').then((XLSX) => {
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows])
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, '统计报表')
+      XLSX.writeFile(wb, `统计报表_${new Date().toISOString().slice(0,10)}.xlsx`)
+      ElMessage.success(`导出成功 (${fields.length} 个字段, ${rows.length} 条)`)
+      showExportOptions.value = false
+    }).catch(() => ElMessage.error('Excel 导出失败'))
+    return
+  }
+
+  // CSV
   const csv = [
     headers.join(','),
-    ...rows.map(r => keys.map(k => {
-      const v = k === 'name' ? (r.name || r.username) : k === 'role' ? roleLabel(r.role) : (r[k] || 0)
-      return `"${String(v).replace(/"/g, '""')}"`
-    }).join(','))
+    ...dataRows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
   ].join('\n')
   const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
   const url = window.URL.createObjectURL(blob)
@@ -279,6 +301,7 @@ function exportTable(id: string) {
 .chart-card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);padding:20px}
 .chart-card h3{font-size:var(--fs-base);font-weight:var(--fw-semibold);color:var(--c-text);margin:0 0 16px}
 .chart-box{height:300px}
+.chart-empty{height:200px;display:flex;align-items:center;justify-content:center;color:var(--c-text-muted);font-size:var(--fs-sm)}
 .chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
 .chart-head h3{margin:0}
 .chart-select{height:32px;padding:0 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-xs);background:var(--c-bg);outline:none;cursor:pointer}

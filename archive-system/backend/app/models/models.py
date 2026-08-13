@@ -132,6 +132,7 @@ class OperationLog(Base):
     target_id = Column(String(200))
     ip_address = Column(String(50))
     user_agent = Column(String(300))
+    session_id = Column(String(64), nullable=True)  # 会话标识（token 哈希前 16 位）
     chain_hash = Column(String(64))  # 哈希链校验：SHA256(prev_hash + content)
     result = Column(String(20))  # success/failure
     created_at = Column(DateTime, default=datetime.utcnow, index=True)

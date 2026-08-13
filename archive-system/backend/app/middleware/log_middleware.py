@@ -51,7 +51,7 @@ _OP_DETAIL_MAP = {
 def _write_log_sync(
     user_id: int, username: str, op_type: str, module: str,
     description: str, target_id: str, ip: str, result: str,
-    user_agent: str = "",
+    user_agent: str = "", session_id: str = "",
 ):
     """同步写日志（在独立线程中执行）— 含哈希链校验"""
     db = SessionLocal()
@@ -75,6 +75,7 @@ def _write_log_sync(
             ip_address=ip,
             result=result,
             user_agent=user_agent,
+            session_id=session_id,
             chain_hash=chain_hash,
         )
         db.add(log)
@@ -111,11 +112,15 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         user_id = 0
         username = "anonymous"
         user_name = ""
+        session_id = ""
         try:
             token = request.headers.get("Authorization", "")
             if token.startswith("Bearer "):
                 from app.core.security import decode_access_token
+                import hashlib
                 payload = decode_access_token(token[7:])
+                # session_id = token 哈希前 16 位，同一会话请求共享
+                session_id = hashlib.sha256(token[7:].encode()).hexdigest()[:16]
                 if payload:
                     user_id = int(payload.get("sub", 0))
                     username = payload.get("username", "anonymous")
@@ -202,7 +207,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         user_agent = request.headers.get("User-Agent", "")[:300]
         threading.Thread(
             target=_write_log_sync,
-            args=(user_id, username, op_type, module, description, target_id, ip, result, user_agent),
+            args=(user_id, username, op_type, module, description, target_id, ip, result, user_agent, session_id),
             daemon=True,
         ).start()
 

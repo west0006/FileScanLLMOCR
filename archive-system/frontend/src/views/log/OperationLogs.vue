@@ -26,18 +26,19 @@
     </div>
     <div class="card">
       <table class="data-table">
-        <thead><tr><th style="width:150px">操作时间</th><th style="width:80px">用户</th><th style="width:60px">类型</th><th>操作描述</th><th style="width:120px">操作对象</th><th style="width:110px">IP</th><th style="width:70px">结果</th></tr></thead>
+        <thead><tr><th style="width:150px">操作时间</th><th style="width:80px">用户</th><th style="width:60px">类型</th><th>操作描述</th><th style="width:120px">操作对象</th><th style="width:110px">IP</th><th style="width:110px">会话ID</th><th style="width:70px">结果</th></tr></thead>
         <tbody>
           <tr v-for="row in items" :key="row.id">
             <td class="text-sm">{{ row.created_at?.substring(0,19) }}</td>
             <td class="font-medium">{{ row.username }}</td>
             <td><span class="type-tag">{{ typeLabel(row.operation_type) }}</span></td>
-            <td class="truncate" style="max-width:280px">{{ row.description }}</td>
+            <td class="truncate" style="max-width:260px">{{ row.description }}</td>
             <td class="mono truncate" style="max-width:110px">{{ row.target_id || '—' }}</td>
             <td class="mono">{{ row.ip_address }}</td>
+            <td class="mono" style="font-size:10px">{{ row.session_id || '—' }}</td>
             <td><span class="risk-tag" :class="row.result==='success'?'risk-tag--low':'risk-tag--high'">{{ row.result==='success'?'成功':'失败' }}</span></td>
           </tr>
-          <tr v-if="items.length===0"><td colspan="7" class="table-empty">暂无日志</td></tr>
+          <tr v-if="items.length===0"><td colspan="8" class="table-empty">暂无日志</td></tr>
         </tbody>
       </table>
     </div>
@@ -83,13 +84,14 @@ async function fetchLogs() {
         logApi.list({ page:1, page_size:1, operation_type:'login' }),
         logApi.list({ page:1, page_size:1, operation_type:'search' }),
         logApi.list({ page:1, page_size:1, operation_type:'review' }),
-        logApi.auditSummary().catch(() => ({ data: { today_failed: 0 } })),
+        logApi.auditSummary().catch(() => ({ data: { today_total: 0, today_failed: 0 } })),
       ])
       logTabs.value[0].count = allR.data.total || 0
       logTabs.value[1].count = loginR.data.total || 0
       logTabs.value[2].count = searchR.data.total || 0
       logTabs.value[3].count = reviewR.data.total || 0
-      logStats.value.total = allR.data.total || 0
+      // 「今日操作」绑定审计摘要的 today_total，「失败」绑定 today_failed
+      logStats.value.total = summary.data.today_total || 0
       logStats.value.failed = summary.data.today_failed || 0
     } catch { /* ignore */ }
   } catch { /* ignore */ }

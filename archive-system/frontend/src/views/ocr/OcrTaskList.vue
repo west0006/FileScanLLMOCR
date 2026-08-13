@@ -19,7 +19,7 @@
 
     <!-- 筛选 -->
     <div class="filter-bar" style="margin-bottom:12px">
-      <select v-model="statusFilter" class="filter-select" @change="fetchTasks()"><option value="">全部状态</option><option value="pending">待处理</option><option value="running">处理中</option><option value="completed">已完成</option><option value="failed">失败</option></select>
+      <select v-model="statusFilter" class="filter-select" @change="fetchTasks()"><option value="">全部状态</option><option value="pending">待处理</option><option value="running">处理中</option><option value="paused">已暂停</option><option value="completed">已完成</option><option value="failed">失败</option><option value="cancelled">已取消</option></select>
       <button class="btn-sm" @click="statusFilter='';fetchTasks()">重置</button>
     </div>
 
@@ -49,7 +49,8 @@
               <button class="btn-sm" @click="openDetail(t)">详情</button>
               <button v-if="t.status==='pending'" class="btn-sm" style="margin-left:4px" @click="handleAction(t,'start')">启动</button>
               <button v-if="t.status==='running'" class="btn-sm" style="margin-left:4px" @click="handleAction(t,'pause')">暂停</button>
-              <button v-if="t.status==='running'||t.status==='pending'" class="btn-sm" style="margin-left:4px" @click="handleAction(t,'cancel')">取消</button>
+              <button v-if="t.status==='paused'" class="btn-sm" style="margin-left:4px" @click="handleAction(t,'resume')">恢复</button>
+              <button v-if="t.status==='running'||t.status==='pending'||t.status==='paused'" class="btn-sm" style="margin-left:4px" @click="handleAction(t,'cancel')">取消</button>
             </td>
           </tr>
           <tr v-if="tasks.length===0"><td colspan="7" class="table-empty">暂无 OCR 任务，点击右上角「创建任务」开始</td></tr>
@@ -142,8 +143,8 @@ async function handleCreateTask() {
     fetchTasks()
   } catch { ElMessage.error('创建失败') }
 }
-function barClass(s: string) { return { pending:'low',running:'mid',completed:'low',failed:'high',cancelled:'high' }[s]||'low' }
-function statusLabel(s: string) { return { pending:'待处理',running:'处理中',completed:'已完成',failed:'失败',cancelled:'已取消' }[s]||s }
+function barClass(s: string) { return { pending:'low',running:'mid',paused:'mid',completed:'low',failed:'high',cancelled:'high' }[s]||'low' }
+function statusLabel(s: string) { return { pending:'待处理',running:'处理中',paused:'已暂停',completed:'已完成',failed:'失败',cancelled:'已取消' }[s]||s }
 function priLabel(p: number) { return {0:'普通',1:'高',2:'紧急'}[p]||'普通' }
 async function openDetail(t: any) {
   try {

@@ -34,7 +34,11 @@ def list_logs(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_
         if date_to:
             try:
                 from datetime import datetime
-                q = q.filter(OperationLog.created_at <= datetime.fromisoformat(date_to.replace('00:00:00','23:59:59')))
+                # 归一化：仅日期时补全为当天 23:59:59，确保结束日数据不遗漏
+                dto = date_to.strip()
+                if len(dto) == 10:  # YYYY-MM-DD
+                    dto = dto + " 23:59:59"
+                q = q.filter(OperationLog.created_at <= datetime.fromisoformat(dto))
             except: pass
         total = q.count()
         items = q.order_by(OperationLog.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
@@ -43,7 +47,7 @@ def list_logs(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_
                             "operation_type": i.operation_type, "module": i.module,
                             "description": i.description, "target_id": i.target_id,
                             "ip_address": i.ip_address, "result": i.result,
-                            "chain_hash": i.chain_hash,
+                            "session_id": i.session_id, "chain_hash": i.chain_hash,
                             "created_at": str(i.created_at)} for i in items]}
     finally:
         db.close()
@@ -63,7 +67,11 @@ def login_logs(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE
             try: q = q.filter(OperationLog.created_at >= datetime.fromisoformat(date_from))
             except: pass
         if date_to:
-            try: q = q.filter(OperationLog.created_at <= datetime.fromisoformat(date_to.replace("00:00:00", "23:59:59")))
+            try:
+                dto = date_to.strip()
+                if len(dto) == 10:  # YYYY-MM-DD → 补全为当天 23:59:59
+                    dto = dto + " 23:59:59"
+                q = q.filter(OperationLog.created_at <= datetime.fromisoformat(dto))
             except: pass
         total = q.count()
         items = q.order_by(OperationLog.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
@@ -89,6 +97,20 @@ def export_logs(format: str = "excel", filters: dict = {}, user: dict = Depends(
         if filters.get("user_account"): q = q.filter(OperationLog.username == filters["user_account"])
         if filters.get("operation_type"): q = q.filter(OperationLog.operation_type == filters["operation_type"])
         if filters.get("module"): q = q.filter(OperationLog.module == filters["module"])
+        # 日期筛选（与 list_logs 一致的归一化逻辑）
+        if filters.get("date_from"):
+            try:
+                from datetime import datetime
+                q = q.filter(OperationLog.created_at >= datetime.fromisoformat(filters["date_from"]))
+            except: pass
+        if filters.get("date_to"):
+            try:
+                from datetime import datetime
+                dto = str(filters["date_to"]).strip()
+                if len(dto) == 10:
+                    dto = dto + " 23:59:59"
+                q = q.filter(OperationLog.created_at <= datetime.fromisoformat(dto))
+            except: pass
         rows = q.order_by(OperationLog.created_at.desc()).limit(2000).all()
         from app.services.export_service import export_to_excel
         from app.core.config import settings
@@ -109,7 +131,7 @@ def export_logs(format: str = "excel", filters: dict = {}, user: dict = Depends(
 
 
 @router.get("/audit/summary")
-def audit_summary(user: dict = Depends(get_current_user)):
+def audit_summary(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """安全审计摘要 — 含异常检测"""
     from datetime import datetime, timedelta
     from sqlalchemy import func
@@ -268,7 +290,7 @@ def _compute_access_trend(db, now) -> list[dict]:
 
 
 @router.get("/audit/report")
-def audit_report(user: dict = Depends(get_current_user)):
+def audit_report(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """
     合规审计报告 — 包含月度异常、访问趋势、链校验、合规性评估
     """
@@ -332,7 +354,7 @@ def audit_report(user: dict = Depends(get_current_user)):
 
 
 @router.get("/audit/chain-verify")
-def verify_chain(user: dict = Depends(get_current_user)):
+def verify_chain(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """哈希链完整性校验 — 检测日志是否被篡改"""
     import hashlib
     db = SessionLocal()
