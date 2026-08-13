@@ -345,22 +345,33 @@ const yearOptions = Array.from({ length: new Date().getFullYear() - 1969 }, (_, 
 const fondsOptions = FONDS_OPTIONS
 const selectedFondsIds = ref<string[]>([])
 
-// 目录树范围选择
+// 目录树范围选择（大类 → 部门 二级）
 const showScopeTree = ref(false)
 const scopeNodes = ref<string[]>([])
 const scopeCheckedKeys = ref<string[]>([])
-const scopeTreeData = [
-  { id: '行政档案', label: '行政档案' },
-  { id: '党群档案', label: '党群档案' },
-  { id: '教学档案', label: '教学档案' },
-  { id: '科研档案', label: '科研档案' },
-  { id: '人事档案', label: '人事档案' },
-  { id: '财务档案', label: '财务档案' },
-  { id: '基建档案', label: '基建档案' },
-  { id: '声像档案', label: '声像档案' },
-]
-function onScopeCheck(_: any, data: any) { scopeNodes.value = data.checkedKeys || [] }
-function clearScope() { scopeNodes.value = []; scopeCheckedKeys.value = [] }
+const scopeCategories = ref<string[]>([])
+const scopeDepartments = ref<string[]>([])
+const scopeTreeData = CATEGORY_TREE.map((c: any) => ({
+  id: c.key,
+  label: c.label,
+  children: (c.children || []).map((ch: any) => ({ id: `${c.key}/${ch.key}`, label: ch.label })),
+}))
+function onScopeCheck(_: any, data: any) {
+  const keys: string[] = data.checkedKeys || []
+  scopeNodes.value = keys
+  const cats = new Set<string>()
+  const depts = new Set<string>()
+  for (const k of keys) { if (!k.includes('/')) cats.add(k) }
+  for (const k of keys) {
+    if (k.includes('/')) {
+      const [c, d] = k.split('/')
+      if (!cats.has(c)) depts.add(d)  // 父大类未完整勾选 → 该部门为显式勾选
+    }
+  }
+  scopeCategories.value = [...cats]
+  scopeDepartments.value = [...depts]
+}
+function clearScope() { scopeNodes.value = []; scopeCheckedKeys.value = []; scopeCategories.value = []; scopeDepartments.value = [] }
 
 const searched = ref(false)
 const loading = ref(false)
@@ -454,7 +465,7 @@ async function doSearch(resetPage = true) {
     if (searchMode.value !== 'advanced') saveToHistory(searchMode.value === 'semantic' ? semanticQuery.value : keyword.value)
 
     if (searchMode.value === 'semantic') {
-      res = await searchApi.semantic({ query: semanticQuery.value, scope_nodes: scopeNodes.value.length ? scopeNodes.value : undefined, ...base })
+      res = await searchApi.semantic({ query: semanticQuery.value, scope_nodes: scopeCategories.value.length ? scopeCategories.value : undefined, ...base })
     } else if (searchMode.value === 'advanced') {
       const { category: catCat, department: catDept } = splitCategoryScope(activeCat.value)
       const cat = advancedForm.category || catCat || undefined
@@ -469,19 +480,22 @@ async function doSearch(resetPage = true) {
       })
     } else {
       // 关键词 + 筛选: 有筛选条件时走 advanced，否则走 keyword
-      if (activeCat.value || yearFrom.value || yearTo.value || activeOpenStatus.value) {
+      const hasScope = scopeCategories.value.length > 0 || scopeDepartments.value.length > 0
+      if (activeCat.value || yearFrom.value || yearTo.value || activeOpenStatus.value || hasScope) {
         const { category, department } = splitCategoryScope(activeCat.value)
+        const cat = category || scopeCategories.value[0] || undefined
+        const dep = department || scopeDepartments.value[0] || undefined
         res = await searchApi.advanced({
           keywords: keyword.value,
-          category: category,
-          department: department,
+          category: cat,
+          department: dep,
           year_from: yearFrom.value ?? undefined,
           year_to: yearTo.value ?? undefined,
           open_status: activeOpenStatus.value || undefined,
           ...base,
         })
       } else {
-        res = await searchApi.keyword({ keywords: keyword.value, exact: exactMatch.value, dimension: searchDimension.value, scope_nodes: scopeNodes.value.length ? scopeNodes.value : undefined, ...base })
+        res = await searchApi.keyword({ keywords: keyword.value, exact: exactMatch.value, dimension: searchDimension.value, ...base })
       }
     }
     results.value = res.data.results
