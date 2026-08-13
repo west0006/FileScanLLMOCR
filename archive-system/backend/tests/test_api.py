@@ -118,7 +118,8 @@ class TestUsers:
 
 class TestLogs:
     def get_token(self):
-        return client.post("/api/auth/login", json={"username": "test", "password": "x"}).json()["access_token"]
+        # 日志/审计为系统管理员专属，需用 admin 登录（reviewer 应 403）
+        return client.post("/api/auth/login", json={"username": "admin", "password": "x"}).json()["access_token"]
 
     def test_list_logs(self):
         token = self.get_token()

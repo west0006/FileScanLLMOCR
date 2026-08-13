@@ -172,15 +172,25 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         description = ""
 
         if method == "GET":
-            # GET 请求 → 功能访问
-            for prefix, (ot, desc) in _GET_PAGE_MAP.items():
-                if path.startswith(prefix):
-                    op_type = ot
-                    module = prefix.strip("/").replace("api/", "").replace("/", "")
-                    description = desc
-                    break
+            # 下载/打印操作优先分类（LG-006）
+            if path.endswith("/download"):
+                op_type = "download"
+                module = "search"
+                description = "下载档案原文"
+            elif path.endswith("/print"):
+                op_type = "print"
+                module = "search"
+                description = "打印档案"
             else:
-                return response  # 不记录
+                # GET 请求 → 功能访问
+                for prefix, (ot, desc) in _GET_PAGE_MAP.items():
+                    if path.startswith(prefix):
+                        op_type = ot
+                        module = prefix.strip("/").replace("api/", "").replace("/", "")
+                        description = desc
+                        break
+                else:
+                    return response  # 不记录
 
         elif method in ("POST", "PUT", "DELETE"):
             # 写操作 → 功能操作
@@ -192,7 +202,11 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                 username = login_user
                 user_name = login_user
 
-            if op_tag in _OP_DETAIL_MAP:
+            if path.endswith("/export"):
+                op_type = "export"
+                module = op_tag
+                description = "导出操作"
+            elif op_tag in _OP_DETAIL_MAP:
                 detail = _OP_DETAIL_MAP[op_tag]
                 if op_tag == "auth":
                     op_type, description = detail.get("logout" if path.endswith("/logout") else "login", detail.get("login", ("login", "用户登录")))
