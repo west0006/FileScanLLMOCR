@@ -135,6 +135,8 @@ async function fetchQuality() {
 }
 async function handleCreateTask() {
   if (!cf.task_name) { ElMessage.warning('请输入任务名称'); return }
+  // 特殊字符校验
+  if (/[\\/:*?"<>|]/.test(cf.task_name)) { ElMessage.warning('任务名称包含非法字符：\\ / : * ? " < > |'); return }
   try {
     await ocrApi.createTask({ task_name: cf.task_name, category: cf.category||undefined, year_from: cf.year_from, year_to: cf.year_to, priority: cf.priority })
     ElMessage.success('任务已创建')
@@ -156,7 +158,7 @@ async function openDetail(t: any) {
 async function handleAction(t: any, action: string) {
   try {
     await ocrApi.updateTask(t.id, action)
-    ElMessage.success({ start:'已启动',pause:'已暂停',cancel:'已取消' }[action]||'操作成功')
+    ElMessage.success({ start:'已启动',pause:'已暂停',resume:'已恢复',cancel:'已取消' }[action]||'操作成功')
     fetchTasks()
   } catch { ElMessage.error('操作失败') }
 }

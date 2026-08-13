@@ -30,6 +30,10 @@ def create_ocr_task(req: CreateOcrTaskRequest, request: Request, user: dict = De
     request.state.log_target_id = f"task-ocr-{req.task_name}"
     db = SessionLocal()
     try:
+        # 特殊字符校验
+        import re
+        if re.search(r'[\\/:*?"<>|]', req.task_name):
+            return {"error": "任务名称包含非法字符"}
         # 检查任务名称是否重复
         existing = db.query(OcrTask).filter(OcrTask.task_name == req.task_name).first()
         if existing:
