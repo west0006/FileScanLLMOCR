@@ -11,6 +11,21 @@ from app.services.review_service import hybrid_review
 logger = get_task_logger(__name__)
 
 
+def _sync_open_status(db, archive_id: str, suggestion: str):
+    """根据 AI 建议同步 Archive.open_status（与单件预审 preview 行为一致）"""
+    a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+    if not a:
+        return
+    if "不开放" in suggestion:
+        a.open_status = "不开放"
+    elif "延期" in suggestion:
+        a.open_status = "延期开放"
+    elif "部分" in suggestion or "脱敏" in suggestion:
+        a.open_status = "部分开放"
+    elif "开放" in suggestion:
+        a.open_status = "已开放"
+
+
 @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
 def process_review_task(self, task_id: int):
     """批量 AI 预审任务"""
@@ -76,6 +91,8 @@ def process_review_task(self, task_id: int):
                 )
                 db.add(record)
                 task.completed_count += 1
+                # 同步更新 Archive 开放状态（与单件预审 preview 行为一致）
+                _sync_open_status(db, archive.archive_id, result["suggestion"])
                 db.commit()
 
             except Exception as e:

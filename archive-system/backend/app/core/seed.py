@@ -12,7 +12,7 @@ from datetime import datetime
 
 from app.core.database import SessionLocal, Base, engine
 from app.core.security import hash_password
-from app.models.models import User, Role, Archive, ReviewRecord, OperationLog
+from app.models.models import User, Role, Archive, ReviewRecord, ReviewTask, OperationLog
 
 
 def seed(force: bool = False):
@@ -74,6 +74,21 @@ def seed(force: bool = False):
         # ---- 示例预审记录（为部分档案生成，覆盖各风险等级） ----
         if db.query(ReviewRecord).count() == 0:
             review_records = _generate_seed_reviews()
+            # 关联到一个示例预审任务，使「预审任务」页开箱即显示风险分布
+            if db.query(ReviewTask).count() == 0:
+                demo_task = ReviewTask(
+                    task_name="示例批量预审任务",
+                    batch_name="演示批次",
+                    status="completed",
+                    total_count=len(review_records),
+                    completed_count=len(review_records),
+                    created_by=1,
+                    finished_at=datetime.utcnow(),
+                )
+                db.add(demo_task)
+                db.flush()  # 获取 demo_task.id
+                for r in review_records:
+                    r.task_id = demo_task.id
             db.add_all(review_records)
             db.commit()
 

@@ -135,10 +135,13 @@ async function fetchQuality() {
 }
 async function handleCreateTask() {
   if (!cf.task_name) { ElMessage.warning('请输入任务名称'); return }
+  // 长度校验
+  if (cf.task_name.length > 50) { ElMessage.warning('任务名称不能超过50个字符'); return }
   // 特殊字符校验
   if (/[\\/:*?"<>|]/.test(cf.task_name)) { ElMessage.warning('任务名称包含非法字符：\\ / : * ? " < > |'); return }
   try {
-    await ocrApi.createTask({ task_name: cf.task_name, category: cf.category||undefined, year_from: cf.year_from, year_to: cf.year_to, priority: cf.priority })
+    const res = await ocrApi.createTask({ task_name: cf.task_name, category: cf.category||undefined, year_from: cf.year_from, year_to: cf.year_to, priority: cf.priority })
+    if (res.data && res.data.error) { ElMessage.error(res.data.error); return }
     ElMessage.success('任务已创建')
     showCreate.value = false
     cf.task_name = ''; cf.category = ''; cf.year_from = undefined; cf.year_to = undefined; cf.priority = 0

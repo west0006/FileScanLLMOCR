@@ -150,7 +150,8 @@ async function doCreate() {
   if (form.password.length < 12) { errorMsg.value = '密码不少于12个字符'; return }
   creating.value = true; errorMsg.value = ''
   try {
-    await userApi.create({ username: form.username, name: form.name, role: form.role, password: form.password, department: form.department })
+    const res = await userApi.create({ username: form.username, name: form.name, role: form.role, password: form.password, department: form.department })
+    if (res.data && res.data.error) { errorMsg.value = res.data.error; return }
     ElMessage.success(`用户 ${form.username} 已创建`)
     showCreate.value = false
     fetchUsers()
