@@ -35,8 +35,10 @@ class SemanticSearchRequest(BaseModel):
 
 class AdvancedSearchRequest(BaseModel):
     keywords: Optional[str] = None
+    title: Optional[str] = None
     author: Optional[str] = None
     file_code: Optional[str] = None
+    subject: Optional[str] = None
     year_from: Optional[int] = None
     year_to: Optional[int] = None
     category: Optional[str] = None
@@ -74,7 +76,7 @@ def advanced_search(req: AdvancedSearchRequest, request: Request, user: dict = D
     if req.department: parts.append(f"单位={req.department}")
     request.state.log_description = f"高级检索: {'; '.join(parts)}" if parts else "高级检索"
     return search_service.search_advanced(
-        keywords=req.keywords, author=req.author, file_code=req.file_code,
+        keywords=req.keywords, title=req.title, author=req.author, file_code=req.file_code, subject=req.subject,
         year_from=req.year_from, year_to=req.year_to,
         category=req.category, department=req.department, fonds_id=req.fonds_id,
         fonds_ids=req.fonds_ids,

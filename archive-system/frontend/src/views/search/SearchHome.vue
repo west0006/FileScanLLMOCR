@@ -46,7 +46,11 @@
           </div>
         </div>
       </div>
-      <button class="filter-reset" v-if="activeCat||yearFrom||yearTo||activeOpenStatus" @click="activeCat='';activeYear=null;yearFrom=undefined;yearTo=undefined;activeOpenStatus='';doSearch()">清除筛选</button>
+      <div class="filter-card">
+        <div class="filter-title">归口单位</div>
+        <input v-model="activeDepartment" placeholder="如 教务处" class="year-input" @keyup.enter="doSearch()" />
+      </div>
+      <button class="filter-reset" v-if="activeCat||yearFrom||yearTo||activeOpenStatus||activeDepartment" @click="activeCat='';activeYear=null;yearFrom=undefined;yearTo=undefined;activeOpenStatus='';activeDepartment='';doSearch()">清除筛选</button>
     </aside>
 
     <!-- 右侧主区域 -->
@@ -129,6 +133,22 @@
           <div class="adv-field">
             <label>关键词</label>
             <input v-model="advancedForm.keywords" placeholder="可选" class="adv-input" />
+          </div>
+          <div class="adv-field">
+            <label>题名</label>
+            <input v-model="advancedForm.title" placeholder="可选" class="adv-input" />
+          </div>
+          <div class="adv-field">
+            <label>责任者</label>
+            <input v-model="advancedForm.author" placeholder="可选" class="adv-input" />
+          </div>
+          <div class="adv-field">
+            <label>文件编号</label>
+            <input v-model="advancedForm.file_code" placeholder="可选" class="adv-input" />
+          </div>
+          <div class="adv-field">
+            <label>主题词</label>
+            <input v-model="advancedForm.subject" placeholder="可选" class="adv-input" />
           </div>
           <div class="adv-field">
             <label>归档年度</label>
@@ -329,13 +349,15 @@ const activeYear = ref<number | null>(null)
 const yearFrom = ref<number | undefined>(undefined)
 const yearTo = ref<number | undefined>(undefined)
 const activeOpenStatus = ref('')
+const activeDepartment = ref('')
 
 const categoryTree = ref(JSON.parse(JSON.stringify(CATEGORY_TREE)))
 const yearList = ref(MOCK_YEAR_LIST)
 const keyword = ref('')
 const semanticQuery = ref('')
 const advancedForm = reactive({
-  keywords: '', yearFrom: undefined as number | undefined, yearTo: undefined as number | undefined,
+  keywords: '', title: '', author: '', file_code: '', subject: '',
+  yearFrom: undefined as number | undefined, yearTo: undefined as number | undefined,
   category: '', department: '', openStatus: '', retention_period: '',
 })
 const openStatusOptions = [
@@ -431,6 +453,7 @@ const activeFilterTags = computed(() => {
   if (activeCat.value) tags.push({ key: 'cat', label: `目录：${activeCat.value}` })
   if (yearFrom.value || yearTo.value) tags.push({ key: 'year', label: `年份：${yearFrom.value ?? '不限'}—${yearTo.value ?? '不限'}` })
   if (activeOpenStatus.value) tags.push({ key: 'open', label: `开放状态：${activeOpenStatus.value}` })
+  if (activeDepartment.value) tags.push({ key: 'dept', label: `归口单位：${activeDepartment.value}` })
   return tags
 })
 
@@ -473,7 +496,7 @@ async function doSearch(resetPage = true) {
     } else if (searchMode.value === 'advanced') {
       const { category: catCat, department: catDept } = splitCategoryScope(activeCat.value)
       const cat = advancedForm.category || catCat || undefined
-      const dep = advancedForm.department || catDept || undefined
+      const dep = advancedForm.department || catDept || activeDepartment.value || undefined
       const yf = advancedForm.yearFrom ?? yearFrom.value ?? undefined
       const yt = advancedForm.yearTo ?? yearTo.value ?? undefined
       res = await searchApi.advanced({
@@ -485,10 +508,10 @@ async function doSearch(resetPage = true) {
     } else {
       // 关键词 + 筛选: 有筛选条件时走 advanced，否则走 keyword
       const hasScope = scopeCategories.value.length > 0 || scopeDepartments.value.length > 0
-      if (activeCat.value || yearFrom.value || yearTo.value || activeOpenStatus.value || hasScope) {
+      if (activeCat.value || yearFrom.value || yearTo.value || activeOpenStatus.value || activeDepartment.value || hasScope) {
         const { category, department } = splitCategoryScope(activeCat.value)
         const cat = category || scopeCategories.value[0] || undefined
-        const dep = department || scopeDepartments.value[0] || undefined
+        const dep = department || activeDepartment.value || scopeDepartments.value[0] || undefined
         res = await searchApi.advanced({
           keywords: keyword.value,
           category: cat,
@@ -515,7 +538,7 @@ async function doSearch(resetPage = true) {
 }
 
 // 筛选栏变化自动重新搜索 + 展开对应节点
-watch([activeCat, yearFrom, yearTo, activeOpenStatus], () => {
+watch([activeCat, yearFrom, yearTo, activeOpenStatus, activeDepartment], () => {
   if (activeCat.value && activeCat.value.includes('/')) {
     const parentKey = activeCat.value.split('/')[0]
     const parent = categoryTree.value.find(c => c.key === parentKey)

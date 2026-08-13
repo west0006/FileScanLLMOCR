@@ -92,8 +92,10 @@ def search_semantic(
 
 def search_advanced(
     keywords: str | None = None,
+    title: str | None = None,
     author: str | None = None,
     file_code: str | None = None,
+    subject: str | None = None,
     year_from: int | None = None,
     year_to: int | None = None,
     category: str | None = None,
@@ -113,7 +115,7 @@ def search_advanced(
 
     es = get_es()
     if es is None:
-        return _fallback_search(keywords or "", page, page_size, t0, sort, level=level, user=user, year_from=year_from, year_to=year_to, category=category, department=department, fonds_id=fonds_id, fonds_ids=fonds_ids, author=author, file_code=file_code, open_status=open_status, retention_period=retention_period)
+        return _fallback_search(keywords or "", page, page_size, t0, sort, level=level, user=user, year_from=year_from, year_to=year_to, category=category, department=department, fonds_id=fonds_id, fonds_ids=fonds_ids, title=title, author=author, file_code=file_code, subject=subject, open_status=open_status, retention_period=retention_period)
 
     must_clauses = []
     filters = []
@@ -144,10 +146,14 @@ def search_advanced(
         filters.append({"term": {"category": category}})
     if department:
         filters.append({"term": {"department": department}})
+    if title:
+        filters.append({"match": {"title": title}})
     if author:
         filters.append({"term": {"author": author}})
     if file_code:
         filters.append({"term": {"file_code": file_code}})
+    if subject:
+        filters.append({"match": {"subject": subject}})
     if fonds_id:
         filters.append({"term": {"fonds_id": fonds_id}})
     if fonds_ids:
@@ -390,7 +396,7 @@ def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, so
 
 # ==================== SQLite 降级 ====================
 
-def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None, level: str = "all", user: dict | None = None, year_from: int | None = None, year_to: int | None = None, category: str | None = None, department: str | None = None, fonds_id: str | None = None, fonds_ids: list[str] | None = None, author: str | None = None, file_code: str | None = None, open_status: str | None = None, retention_period: str | None = None, dimension: str = "all", exact: bool = False) -> dict:
+def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: str = "score", scope_nodes: list[str] | None = None, level: str = "all", user: dict | None = None, year_from: int | None = None, year_to: int | None = None, category: str | None = None, department: str | None = None, fonds_id: str | None = None, fonds_ids: list[str] | None = None, title: str | None = None, author: str | None = None, file_code: str | None = None, subject: str | None = None, open_status: str | None = None, retention_period: str | None = None, dimension: str = "all", exact: bool = False) -> dict:
     """ES 不可用时的 SQLite 降级搜索"""
     db = SessionLocal()
     try:
@@ -429,8 +435,10 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: 
         if year_to: query = query.filter(Archive.year <= year_to)
         if category: query = query.filter(Archive.category == category)
         if department: query = query.filter(Archive.department == department)
+        if title: query = query.filter(Archive.title.contains(title))
         if author: query = query.filter(Archive.author.contains(author))
         if file_code: query = query.filter(Archive.file_code.contains(file_code))
+        if subject: query = query.filter(Archive.subject.contains(subject))
         if fonds_id: query = query.filter(Archive.fonds_id == fonds_id)
         if fonds_ids: query = query.filter(Archive.fonds_id.in_(fonds_ids))
         if open_status: query = query.filter(Archive.open_status == open_status)
