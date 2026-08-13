@@ -195,13 +195,30 @@ def update_review_task(task_id: int, action: str, user: dict = Depends(get_curre
 def list_review_records(user: dict = Depends(get_current_user), page: int = 1, page_size: int = 20,
                         risk_level: Optional[str] = None, suggestion: Optional[str] = None,
                         year_from: Optional[int] = None, year_to: Optional[int] = None,
-                        department: Optional[str] = None):
+                        department: Optional[str] = None,
+                        date_from: Optional[str] = None, date_to: Optional[str] = None):
     """预审记录列表 — 支持多条件筛选"""
     db = SessionLocal()
     try:
         q = db.query(ReviewRecord)
         if risk_level: q = q.filter(ReviewRecord.risk_level == risk_level)
         if suggestion: q = q.filter(ReviewRecord.suggestion == suggestion)
+        # 预审时间范围（ReviewRecord.created_at）
+        if date_from:
+            try:
+                from datetime import datetime as _dt
+                q = q.filter(ReviewRecord.created_at >= _dt.fromisoformat(date_from))
+            except ValueError:
+                pass
+        if date_to:
+            try:
+                from datetime import datetime as _dt
+                dto = date_to.strip()
+                if len(dto) == 10:
+                    dto = dto + " 23:59:59"
+                q = q.filter(ReviewRecord.created_at <= _dt.fromisoformat(dto))
+            except ValueError:
+                pass
 
         # 数据权限：先查出用户可访问的档案 ID
         aq = apply_data_scope(user, db.query(Archive), Archive)
@@ -320,11 +337,13 @@ def _sync_open_status(db, archive_id: str, suggestion: str):
     a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
     if not a:
         return
-    # 优先级：不予开放 > 延期 > 开放
-    if "不予开放" in suggestion:
+    # 优先级：不开放 > 延期 > 部分 > 开放（避免"延期开放"被误判为"已开放"）
+    if "不开放" in suggestion:
         a.open_status = "不开放"
     elif "延期" in suggestion:
         a.open_status = "延期开放"
+    elif "部分" in suggestion or "脱敏" in suggestion:
+        a.open_status = "部分开放"
     elif "开放" in suggestion:
         a.open_status = "已开放"
     # 不回写未审核状态（保留原值）

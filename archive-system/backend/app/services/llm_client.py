@@ -44,8 +44,8 @@ SYSTEM_REVIEW = """你是中南财经政法大学档案馆的档案开放审核�
 - 干部任免/人员招聘（不含个人隐私细节）
 - 应急预案/整改情况/教学质量报告
 
-输出 JSON: {"risk_score":0-100,"risk_level":"低|中|高","sensitive_items":[{"type":"...","content":"...","start_char":0,"end_char":0}],"suggestion":"建议开放|建议延期|建议不予开放","reason":"...","confidence":0.0-1.0}
-评分：0-20低(建议开放)/21-60中(建议延期)/61-100高(建议不予开放)。宁可假阳性不可假阴性。不确定时标注低置信度。"""
+输出 JSON: {"risk_score":0-100,"risk_level":"低|中|高","sensitive_items":[{"type":"...","content":"...","start_char":0,"end_char":0}],"suggestion":"建议开放|建议部分开放（脱敏后）|建议延期开放|建议不开放","reason":"...","confidence":0.0-1.0}
+评分：0-20低(建议开放)/21-45中(建议部分开放,脱敏后)/46-70中(建议延期开放)/71-100高(建议不开放)。宁可假阳性不可假阴性。不确定时标注低置信度。"""
 
 SYSTEM_QUERY = "你是档案检索意图分析助手。用户输入查询，你输出 JSON: {\"intent\":\"exact_lookup|topic_research|person_lookup|stat_query\",\"entities\":[],\"keywords\":[],\"synonyms\":[],\"time_range\":null,\"suggest_fields\":[\"title^3\",\"full_text\"]}"
 
@@ -58,7 +58,7 @@ _MOCK_SENSITIVE = ["个人隐私","身份证号","家庭出身","健康信息","
 _MOCK_REASONS = {
     "low": "该档案为常规行政管理文件，不涉及国家秘密、商业秘密或个人隐私，建议开放。",
     "medium": "档案包含部分内部管理信息，建议人工复核后决定。",
-    "high": "档案涉及上级来文引用及个人敏感信息，建议不予开放。",
+    "high": "档案涉及上级来文引用及个人敏感信息，建议不开放。",
 }
 
 
@@ -94,11 +94,13 @@ class LLMClient:
                 hits.append({"type": word, "content": f"[MOCK] 检测到疑似{word}相关内容",
                              "start_char": full_text.find(word), "end_char": full_text.find(word)+len(word)})
         if not hits:
-            risk_score = rng.randint(0, 20); risk_level = "低"; suggestion = "建议开放"
+            risk_score = rng.randint(0, 15); risk_level = "低"; suggestion = "建议开放"
+        elif len(hits) <= 1:
+            risk_score = rng.randint(20, 40); risk_level = "中"; suggestion = "建议部分开放（脱敏后）"
         elif len(hits) <= 3:
-            risk_score = rng.randint(21, 60); risk_level = "中"; suggestion = "建议延期"
+            risk_score = rng.randint(45, 65); risk_level = "中"; suggestion = "建议延期开放"
         else:
-            risk_score = rng.randint(61, 95); risk_level = "高"; suggestion = "建议不予开放"
+            risk_score = rng.randint(70, 95); risk_level = "高"; suggestion = "建议不开放"
         return {
             "risk_score": risk_score, "risk_level": risk_level, "sensitive_items": hits,
             "suggestion": suggestion, "confidence": round(rng.uniform(0.75, 0.98), 2),
