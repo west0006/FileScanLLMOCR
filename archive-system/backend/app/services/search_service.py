@@ -184,6 +184,7 @@ def _build_keyword_query(
         "archive_id": ["archive_id^10"],
         "author": ["author^10"],
         "subject": ["subject^8"],
+        "file_code": ["file_code^10"],
     }
     fields = dim_fields.get(dimension, dim_fields["all"])
 
@@ -406,6 +407,7 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: 
                 "archive_id":["archive_id"],
                 "author":    ["author"],
                 "subject":   ["subject"],
+                "file_code": ["file_code"],
             }
             fields = dim_field_map.get(dimension, dim_field_map["all"])
             for kw in keywords.split():

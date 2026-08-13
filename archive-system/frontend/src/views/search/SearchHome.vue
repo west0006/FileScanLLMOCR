@@ -72,6 +72,7 @@
             <option value="archive_id">档号</option>
             <option value="author">责任者</option>
             <option value="subject">主题词</option>
+            <option value="file_code">文件编号</option>
           </select>
         </div>
         <div class="search-box">
@@ -209,7 +210,7 @@
           <span class="results-time">{{ queryTime }}ms</span>
         </div>
         <div class="results-actions">
-          <select v-model="sortBy" class="sort-select">
+          <select v-model="sortBy" class="sort-select" @change="doSearch()">
             <option value="score">相关度排序</option>
             <option value="time_desc">时间倒序</option>
             <option value="time_asc">时间正序</option>
@@ -223,6 +224,10 @@
             PDF
           </button>
         </div>
+      </div>
+
+      <div class="filter-tags" v-if="activeFilterTags.length">
+        <span v-for="t in activeFilterTags" :key="t.key" class="filter-tag">{{ t.label }}</span>
       </div>
 
       <div v-if="loading" class="results-loading">
@@ -408,6 +413,15 @@ const facetSummary = computed(() => {
   return cats ? `${cats}等门类档案` : ''
 })
 
+// 激活筛选标签（结果区展示）
+const activeFilterTags = computed(() => {
+  const tags: { key: string; label: string }[] = []
+  if (activeCat.value) tags.push({ key: 'cat', label: `目录：${activeCat.value}` })
+  if (yearFrom.value || yearTo.value) tags.push({ key: 'year', label: `年份：${yearFrom.value ?? '不限'}—${yearTo.value ?? '不限'}` })
+  if (activeOpenStatus.value) tags.push({ key: 'open', label: `开放状态：${activeOpenStatus.value}` })
+  return tags
+})
+
 onMounted(() => {
   const stored = localStorage.getItem('search_history')
   if (stored) searchHistory.value = JSON.parse(stored)
@@ -420,6 +434,16 @@ function saveToHistory(q: string) {
 function clearHistory() {
   searchHistory.value = []
   localStorage.removeItem('search_history')
+}
+
+// 拆分目录范围：大类 / 部门
+function splitCategoryScope(cat: string): { category: string | undefined; department: string | undefined } {
+  if (!cat) return { category: undefined, department: undefined }
+  if (cat.includes('/')) {
+    const [c, d] = cat.split('/')
+    return { category: c, department: d }
+  }
+  return { category: cat, department: undefined }
 }
 
 async function doSearch(resetPage = true) {
@@ -435,11 +459,13 @@ async function doSearch(resetPage = true) {
     if (searchMode.value === 'semantic') {
       res = await searchApi.semantic({ query: semanticQuery.value, scope_nodes: scopeNodes.value.length ? scopeNodes.value : undefined, ...base })
     } else if (searchMode.value === 'advanced') {
-      const cat = advancedForm.category || activeCat.value || undefined
+      const { category: catCat, department: catDept } = splitCategoryScope(activeCat.value)
+      const cat = advancedForm.category || catCat || undefined
+      const dep = advancedForm.department || catDept || undefined
       const yf = advancedForm.yearFrom ?? yearFrom.value ?? undefined
       const yt = advancedForm.yearTo ?? yearTo.value ?? undefined
       res = await searchApi.advanced({
-        ...advancedForm, category: cat, year_from: yf, year_to: yt || yf,
+        ...advancedForm, category: cat, department: dep, year_from: yf, year_to: yt || yf,
         fonds_ids: selectedFondsIds.value.length ? selectedFondsIds.value : undefined,
         open_status: advancedForm.openStatus || activeOpenStatus.value || undefined,
         ...base,
@@ -447,9 +473,11 @@ async function doSearch(resetPage = true) {
     } else {
       // 关键词 + 筛选: 有筛选条件时走 advanced，否则走 keyword
       if (activeCat.value || yearFrom.value || yearTo.value || activeOpenStatus.value) {
+        const { category, department } = splitCategoryScope(activeCat.value)
         res = await searchApi.advanced({
           keywords: keyword.value,
-          category: activeCat.value || undefined,
+          category: category,
+          department: department,
           year_from: yearFrom.value ?? undefined,
           year_to: yearTo.value ?? undefined,
           open_status: activeOpenStatus.value || undefined,
@@ -966,4 +994,6 @@ async function handleExport(format: string = 'excel') {
 .suggestion-chip{padding:3px 12px;border-radius:var(--r-full);border:1px solid var(--c-accent);background:var(--c-accent-light);color:var(--c-accent);font-size:var(--fs-xs);cursor:pointer}
 .suggestion-chip:hover{background:var(--c-accent);color:#fff}
 .help-text{font-size:var(--fs-xs);color:var(--c-text-muted);margin-top:8px}
+.filter-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.filter-tag{padding:3px 10px;border-radius:var(--r-full);background:var(--c-accent-light);color:var(--c-accent);font-size:var(--fs-xs);font-weight:var(--fw-medium)}
 </style>
