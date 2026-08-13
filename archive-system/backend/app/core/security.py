@@ -86,8 +86,8 @@ def require_role(*allowed_roles: str):
     async def checker(user: dict = Depends(get_current_user)):
         if user["role"] in allowed_roles:
             return user
-        # dev 模式：放行但记录警告，不持久化提权
-        if settings.APP_ENV == "development":
+        # dev 模式：仅在 DEV_PERMISSIVE=true 时放行（默认强制权限）
+        if settings.APP_ENV == "development" and settings.DEV_PERMISSIVE:
             import logging
             logger = logging.getLogger("security")
             logger.warning(
@@ -119,8 +119,8 @@ def require_permission(module: str, action: str | None = None):
         if user["role"] in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
             return user
 
-        # dev 模式：放行
-        if settings.APP_ENV == "development":
+        # dev 模式：仅在 DEV_PERMISSIVE=true 时放行（默认强制权限）
+        if settings.APP_ENV == "development" and settings.DEV_PERMISSIVE:
             return user
 
         # 查用户角色权限

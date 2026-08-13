@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     LOGIN_LOCK_MINUTES: int = 15
     PASSWORD_MIN_LENGTH: int = 12
     PASSWORD_EXPIRE_DAYS: int = 30
+    # 开发模式是否放行权限（默认 False=强制权限；开发联调需要时设为 true）
+    DEV_PERMISSIVE: bool = False
 
     # AI 模式
     LLM_MODE: str = "mock"  # mock | ollama | real
