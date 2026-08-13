@@ -35,9 +35,8 @@
       <select v-model="filters.suggestion" class="filter-select">
         <option value="">全部 AI 建议</option>
         <option value="建议开放">建议开放</option>
-        <option value="建议部分开放（脱敏后）">建议部分开放（脱敏后）</option>
-        <option value="建议延期开放">建议延期开放</option>
-        <option value="建议不开放">建议不开放</option>
+        <option value="建议延期">建议延期</option>
+        <option value="建议不予开放">建议不予开放</option>
       </select>
       <select v-model="yearFromStr" class="filter-select" style="width:90px" @change="filters.year_from = yearFromStr ? Number(yearFromStr) : undefined">
         <option value="">起始年</option>
@@ -258,9 +257,8 @@ onMounted(() => fetchRecords())
 
 function suggestionClass(s: string) {
   if (!s) return ''
-  if (s.includes('不开放')) return 'high'
+  if (s.includes('不予开放')) return 'high'
   if (s.includes('延期')) return 'mid'
-  if (s.includes('脱敏') || s.includes('部分')) return 'mid'
   return 'low'
 }
 function riskLevelClass(lvl: string) {
@@ -282,7 +280,7 @@ async function fetchRecords() {
     })
     records.value = res.data.items || []
     total.value = res.data.total || 0
-    // 按卷聚合（卷级建议：任一件建议不开放则整卷建议不开放）
+    // 按卷聚合（卷级建议：任一件建议不予开放则整卷建议不予开放）
     const volMap: Record<string, any> = {}
     for (const r of records.value) {
       const vid = r.volume_id || r.archive_id?.split('-').slice(0,2).join('-') || r.archive_id
@@ -292,9 +290,8 @@ async function fetchRecords() {
       if (r.risk_level === '高' || (r.risk_score||0) > (volMap[vid]._maxScore||0)) { volMap[vid]._maxScore = r.risk_score||0; volMap[vid].max_risk = r.risk_level }
       // 卷级建议传播：任一件不开放/延期开放 → 整卷提升建议级别
       const s = r.suggestion || ''
-      if (s.includes('不开放')) volMap[vid].suggestion = '建议不开放'
-      else if (s.includes('延期') && !volMap[vid].suggestion.includes('不开放')) volMap[vid].suggestion = '建议延期开放'
-      else if (s.includes('脱敏') && volMap[vid].suggestion === '建议开放') volMap[vid].suggestion = '建议部分开放（脱敏后）'
+      if (s.includes('不予开放')) volMap[vid].suggestion = '建议不予开放'
+      else if (s.includes('延期') && volMap[vid].suggestion !== '建议不予开放') volMap[vid].suggestion = '建议延期'
     }
     volumeRecords.value = Object.values(volMap)
   } catch { /* ignore */ }

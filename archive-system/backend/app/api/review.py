@@ -310,13 +310,11 @@ def _sync_open_status(db, archive_id: str, suggestion: str):
     a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
     if not a:
         return
-    # 优先级：不开放 > 延期 > 部分 > 开放（避免"延期开放"被误判为"已开放"）
-    if "不开放" in suggestion:
+    # 优先级：不予开放 > 延期 > 开放
+    if "不予开放" in suggestion:
         a.open_status = "不开放"
     elif "延期" in suggestion:
         a.open_status = "延期开放"
-    elif "部分" in suggestion or "脱敏" in suggestion:
-        a.open_status = "部分开放"
     elif "开放" in suggestion:
         a.open_status = "已开放"
     # 不回写未审核状态（保留原值）

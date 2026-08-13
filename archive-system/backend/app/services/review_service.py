@@ -377,15 +377,13 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     # 第四层：融合 (规则 50% + LLM 50%——审核场景需偏保守)
     final_score = round(rule_score * 0.5 + llm_score * 0.5, 1)
 
-    # 最终等级
+    # 最终等级（按方案书：0-20低/21-60中/61-100高）
     if final_score <= 20:
         final_level, suggestion = "低", "建议开放"
-    elif final_score <= 45:
-        final_level, suggestion = "中", "建议部分开放（脱敏后）"
-    elif final_score <= 70:
-        final_level, suggestion = "中", "建议延期开放"
+    elif final_score <= 60:
+        final_level, suggestion = "中", "建议延期"
     else:
-        final_level, suggestion = "高", "建议不开放"
+        final_level, suggestion = "高", "建议不予开放"
 
     # 合并敏感项
     sensitive_items = llm_result.get("sensitive_items", [])

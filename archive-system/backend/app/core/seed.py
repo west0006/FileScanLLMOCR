@@ -341,9 +341,8 @@ def _generate_seed_reviews() -> list[ReviewRecord]:
 
     suggestions_pool = [
         ("建议开放", 8, 20, "低"),
-        ("建议部分开放（脱敏后）", 25, 45, "中"),
-        ("建议延期开放", 50, 70, "中"),
-        ("建议不开放", 75, 95, "高"),
+        ("建议延期", 25, 60, "中"),
+        ("建议不予开放", 61, 95, "高"),
     ]
 
     reviews = []
@@ -412,13 +411,19 @@ def _generate_seed_logs() -> list[OperationLog]:
             keywords = ["招生", "教学", "财务", "人事", "基建", "科研", "档案", "管理"]
             desc = f"关键词检索: {rng.choice(keywords)} {rng.randint(1970,2025)}"
 
-        content = f"{uname}|{op_type}|{module}|{desc}||{result}"
+        # 从描述中提取操作对象标识（如档案编号），补齐审计七要素
+        import re as _re
+        _m = _re.search(r'\d{4}-[A-Z]{2,3}-\d{3}', desc)
+        target_id = _m.group(0) if _m else ""
+
+        content = f"{uname}|{op_type}|{module}|{desc}|{target_id}|{result}"
         chain_hash = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
 
         logs.append(OperationLog(
             user_id=1, username=uname,
             operation_type=op_type, module=module,
             description=desc,
+            target_id=target_id,
             ip_address=f"192.168.1.{rng.randint(10,99)}",
             result=result,
             chain_hash=chain_hash,
