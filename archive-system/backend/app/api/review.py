@@ -318,6 +318,10 @@ def export_review_results(req: ReviewExportRequest, user: dict = Depends(require
             "预审时间": str(r.created_at)[:19] if r.created_at else "",
         } for r in rows]
         columns = ["档案编号","风险评分","风险等级","AI建议","建议理由","置信度","敏感类型","预审耗时(ms)","模型","预审时间"]
+        if req.format == "csv":
+            from app.services.export_service import export_to_csv
+            path = export_to_csv("AI预审结果", data, columns, output_dir=settings.UPLOAD_DIR or "/tmp")
+            return FileResponse(path, filename=os.path.basename(path), media_type="text/csv")
         if req.format == "pdf":
             from app.services.export_service import export_to_pdf
             path = export_to_pdf("AI预审结果", data, columns, output_dir=settings.UPLOAD_DIR or "/tmp")

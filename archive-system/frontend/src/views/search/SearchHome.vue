@@ -220,6 +220,10 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Excel
           </button>
+          <button class="btn-export" @click="handleExport('csv')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            CSV
+          </button>
           <button class="btn-export" @click="handleExport('pdf')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             PDF
@@ -542,8 +546,8 @@ async function handleExport(format: string = 'excel') {
   try {
     const ids = results.value.map((r: any) => r.archive_id).filter(Boolean)
     const res = await searchApi.export({ format, archive_ids: ids })
-    const mime = format === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    const ext = format === 'pdf' ? 'pdf' : 'xlsx'
+    const mime = format === 'pdf' ? 'application/pdf' : format === 'csv' ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    const ext = format === 'pdf' ? 'pdf' : format === 'csv' ? 'csv' : 'xlsx'
     const blob = new Blob([res.data], { type: mime })
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')

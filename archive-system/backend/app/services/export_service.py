@@ -149,3 +149,20 @@ def export_to_pdf(title: str, rows: list[dict], columns: list[str], output_dir: 
     filepath = os.path.join(output_dir, filename)
     pdf.output(filepath)
     return filepath
+
+
+def export_to_csv(title: str, rows: list[dict], columns: list[str], output_dir: str = "/tmp") -> str:
+    """生成 CSV 文件（UTF-8 BOM，Excel 可直接打开），返回文件路径"""
+    import csv as _csv
+    os.makedirs(output_dir, exist_ok=True)
+    filename = f"{title}_{datetime.now().strftime('%Y%m%d%H%M%S')}.csv"
+    filepath = os.path.join(output_dir, filename)
+    with open(filepath, "w", newline="", encoding="utf-8-sig") as f:
+        writer = _csv.writer(f)
+        writer.writerow(columns)
+        for row in rows:
+            writer.writerow([
+                ", ".join(str(v) for v in row.get(col, [])) if isinstance(row.get(col, ""), list) else row.get(col, "")
+                for col in columns
+            ])
+    return filepath

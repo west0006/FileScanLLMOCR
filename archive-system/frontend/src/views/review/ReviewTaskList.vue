@@ -4,13 +4,14 @@
     <div class="process-banner"><IconSvg name="pin" size="14" /> 系统对每批审核任务自动完成 AI 智能预审，生成风险评分、敏感信息标注、开放建议。<strong>审核人员无需在系统中进行人工复核</strong>，可通过导出按钮获取预审数据。</div>
     <div class="card">
       <table class="data-table">
-        <thead><tr><th>任务名称</th><th>批次</th><th>截止日期</th><th style="width:200px">进度</th><th>风险分布</th><th>状态</th><th style="width:180px">操作</th></tr></thead>
+        <thead><tr><th>任务名称</th><th>批次</th><th>截止日期</th><th style="width:200px">进度</th><th>风险分布</th><th>通过率</th><th>状态</th><th style="width:180px">操作</th></tr></thead>
         <tbody>
           <tr v-for="t in tasks" :key="t.id">
             <td>{{ t.task_name }}</td><td>{{ t.batch_name }}</td>
             <td class="text-sm">{{ t.deadline?.substring(0,10) || '—' }}</td>
             <td><div class="mini-bar"><div class="mini-bar-fill mini-bar--low" :style="{width:(t.completed_count/t.total_count*100||0)+'%'}"></div><span class="mini-bar-num">{{ t.completed_count }}/{{ t.total_count }}</span></div></td>
             <td><span class="text-xs"><span style="color:var(--c-danger)">高{{ t.risk_dist?.high||0 }}</span> / <span style="color:var(--c-warning)">中{{ t.risk_dist?.medium||0 }}</span> / <span style="color:var(--c-success)">低{{ t.risk_dist?.low||0 }}</span></span></td>
+            <td class="text-sm">{{ passRate(t) }}</td>
             <td><span class="risk-tag" :class="'risk-tag--'+statusClass(t.status)">{{ statusLabel(t.status) }}</span></td>
             <td>
               <button v-if="t.status==='pending'" class="btn-sm" @click="handleTaskAction(t, 'start')">启动</button>
@@ -86,6 +87,14 @@ async function handleCreateTask() {
 }
 function statusClass(s: string) { return { pending:'low', running:'mid', completed:'low', failed:'high' }[s]||'low' }
 function statusLabel(s: string) { return { pending:'待启动', running:'处理中', completed:'已完成', failed:'失败' }[s]||s }
+// 预审通过率 = 低风险（建议开放）数 / 总完成数
+function passRate(t: any) {
+  const h = t.risk_dist?.high || 0
+  const m = t.risk_dist?.medium || 0
+  const l = t.risk_dist?.low || 0
+  const total = h + m + l
+  return total > 0 ? Math.round(l / total * 100) + '%' : '—'
+}
 async function handleExport() {
   try {
     const res = await reviewApi.export({})
