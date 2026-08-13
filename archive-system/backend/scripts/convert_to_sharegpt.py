@@ -37,7 +37,7 @@ SYSTEM_PROMPT = """你是中南财经政法大学档案馆的档案开放审核�
 - risk_score: 0-100 风险评分
 - risk_level: "低"/"中"/"高"
 - sensitive_items: [{type, content, start_char, end_char}]
-- suggestion: "建议开放"/"建议部分开放"/"建议延期开放"/"建议不予开放"
+- suggestion: "建议开放"/"建议部分开放"/"建议延期开放"/"建议不开放"
 - reason: 建议理由
 - confidence: 0.0-1.0 置信度"""
 
@@ -55,7 +55,7 @@ def convert_record(record: dict) -> dict | None:
         "建议开放": {"risk_score": 10, "risk_level": "低", "suggestion": "建议开放"},
         "建议部分开放": {"risk_score": 40, "risk_level": "中", "suggestion": "建议部分开放"},
         "建议延期开放": {"risk_score": 75, "risk_level": "高", "suggestion": "建议延期开放"},
-        "建议不予开放": {"risk_score": 90, "risk_level": "高", "suggestion": "建议不予开放"},
+        "建议不开放": {"risk_score": 90, "risk_level": "高", "suggestion": "建议不开放"},
     }
 
     mapped = suggestion_map.get(conclusion, {"risk_score": 30, "risk_level": "中", "suggestion": "建议人工复核"})

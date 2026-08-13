@@ -55,7 +55,7 @@ SEED_ARCHIVES = [
             "经校党委常委会研究决定：任命张某某同志为会计系党总支副书记。\n\n"
             "该同志家庭出身工人，政治面貌中共党员…"
         ),
-        "human_label": "建议不予开放",
+        "human_label": "建议不开放",
     },
     {
         "archive_id": "1973-JX-008",
@@ -269,7 +269,7 @@ SYSTEM_PROMPT = """你是中南财经政法大学档案馆的档案开放审核�
 - risk_score: 0-100 风险评分
 - risk_level: "低"/"中"/"高"
 - sensitive_items: [{type, content, start_char, end_char}]
-- suggestion: "建议开放"/"建议部分开放"/"建议延期开放"/"建议不予开放"
+- suggestion: "建议开放"/"建议部分开放"/"建议延期开放"/"建议不开放"
 - reason: 建议理由（100字以内）
 - confidence: 0.0-1.0 置信度"""
 

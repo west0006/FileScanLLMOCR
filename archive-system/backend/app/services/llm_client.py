@@ -44,8 +44,8 @@ SYSTEM_REVIEW = """你是中南财经政法大学档案馆的档案开放审核�
 - 干部任免/人员招聘（不含个人隐私细节）
 - 应急预案/整改情况/教学质量报告
 
-输出 JSON: {"risk_score":0-100,"risk_level":"低|中|高","sensitive_items":[{"type":"...","content":"...","start_char":0,"end_char":0}],"suggestion":"建议开放|建议部分开放（脱敏后）|建议延期开放|建议不开放","reason":"...","confidence":0.0-1.0}
-评分：0-20低(建议开放)/21-45中(建议部分开放,脱敏后)/46-70中(建议延期开放)/71-100高(建议不开放)。宁可假阳性不可假阴性。不确定时标注低置信度。"""
+输出 JSON: {"risk_score":0-100,"risk_level":"低|中|高","sensitive_items":[{"type":"...","content":"...","start_char":0,"end_char":0}],"suggestion":"建议开放|建议部分开放|建议延期开放|建议不开放","reason":"...","confidence":0.0-1.0}
+评分：0-20低(建议开放)/21-45中(建议部分开放)/46-70中(建议延期开放)/71-100高(建议不开放)。宁可假阳性不可假阴性。不确定时标注低置信度。"""
 
 SYSTEM_QUERY = "你是档案检索意图分析助手。用户输入查询，你输出 JSON: {\"intent\":\"exact_lookup|topic_research|person_lookup|stat_query\",\"entities\":[],\"keywords\":[],\"synonyms\":[],\"time_range\":null,\"suggest_fields\":[\"title^3\",\"full_text\"]}"
 
@@ -96,7 +96,7 @@ class LLMClient:
         if not hits:
             risk_score = rng.randint(0, 15); risk_level = "低"; suggestion = "建议开放"
         elif len(hits) <= 1:
-            risk_score = rng.randint(20, 40); risk_level = "中"; suggestion = "建议部分开放（脱敏后）"
+            risk_score = rng.randint(20, 40); risk_level = "中"; suggestion = "建议部分开放"
         elif len(hits) <= 3:
             risk_score = rng.randint(45, 65); risk_level = "中"; suggestion = "建议延期开放"
         else:

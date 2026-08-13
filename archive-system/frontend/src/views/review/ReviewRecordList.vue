@@ -39,7 +39,7 @@
       <select v-model="filters.suggestion" class="filter-select">
         <option value="">全部 AI 建议</option>
         <option value="建议开放">建议开放</option>
-        <option value="建议部分开放（脱敏后）">建议部分开放（脱敏后）</option>
+        <option value="建议部分开放">建议部分开放</option>
         <option value="建议延期开放">建议延期开放</option>
         <option value="建议不开放">建议不开放</option>
       </select>
@@ -269,7 +269,7 @@ function suggestionClass(s: string) {
   if (!s) return ''
   if (s.includes('不开放')) return 'high'
   if (s.includes('延期')) return 'mid'
-  if (s.includes('脱敏') || s.includes('部分')) return 'mid'
+  if (s.includes('部分')) return 'mid'
   return 'low'
 }
 function riskLevelClass(lvl: string) {
@@ -306,7 +306,7 @@ async function fetchRecords() {
       const s = r.suggestion || ''
       if (s.includes('不开放')) volMap[vid].suggestion = '建议不开放'
       else if (s.includes('延期') && !volMap[vid].suggestion.includes('不开放')) volMap[vid].suggestion = '建议延期开放'
-      else if (s.includes('脱敏') && volMap[vid].suggestion === '建议开放') volMap[vid].suggestion = '建议部分开放（脱敏后）'
+      else if (s.includes('部分') && volMap[vid].suggestion === '建议开放') volMap[vid].suggestion = '建议部分开放'
     }
     volumeRecords.value = Object.values(volMap)
   } catch { /* ignore */ }

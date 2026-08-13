@@ -95,7 +95,7 @@ class ReviewRecord(Base):
     risk_score = Column(Float)
     risk_level = Column(String(10))    # 低/中/高
     sensitive_items = Column(JSON)     # [{type, content, position}]
-    suggestion = Column(String(50))    # 建议开放/建议部分开放(脱敏后)/建议延期开放/建议不开放
+    suggestion = Column(String(50))    # 建议开放/建议部分开放/建议延期开放/建议不开放
     reason = Column(Text)
     confidence = Column(Float)
     model_name = Column(String(100))

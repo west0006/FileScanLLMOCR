@@ -12,7 +12,7 @@
     "year": 1996,
     "department": "保卫部",
     "category": "行政档案",
-    "review_conclusion": "建议开放",  // 或 "建议不予开放" "建议部分开放"
+    "review_conclusion": "建议开放",  // 或 "建议不开放" "建议部分开放"
     "sensitive_notes": "...",         // 审核员备注
     "source_file": "1996中南财经大学档案开放审核工作用表（表2一表3）保卫部.xls"
   }
