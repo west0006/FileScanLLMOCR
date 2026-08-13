@@ -214,6 +214,7 @@
             <option value="score">相关度排序</option>
             <option value="time_desc">时间倒序</option>
             <option value="time_asc">时间正序</option>
+            <option value="title_asc">题名排序</option>
           </select>
           <button class="btn-export" @click="handleExport('excel')">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -281,11 +282,7 @@
         </div>
       </div>
 
-      <div v-if="total > pageSize" class="results-pager">
-        <button class="pager-btn" :disabled="page <= 1" @click="page--; doSearch(false)">上一页</button>
-        <span class="pager-info">{{ page }} / {{ Math.ceil(total / pageSize) }}</span>
-        <button class="pager-btn" :disabled="page >= Math.ceil(total/pageSize)" @click="page++; doSearch(false)">下一页</button>
-      </div>
+      <el-pagination v-if="total > pageSize" class="results-pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;doSearch(false)}" @size-change="s=>{pageSize=s;page=1;doSearch()}" />
     </div>
     </div><!-- /search-main -->
   </div>

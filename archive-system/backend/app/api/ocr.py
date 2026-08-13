@@ -59,8 +59,8 @@ def create_ocr_task(req: CreateOcrTaskRequest, request: Request, user: dict = De
 
 
 @router.put("/tasks/{task_id}")
-def update_ocr_task(task_id: int, action: str, user: dict = Depends(get_current_user)):
-    """暂停/恢复/取消 OCR 任务"""
+def update_ocr_task(task_id: int, action: str, priority: Optional[int] = None, user: dict = Depends(get_current_user)):
+    """暂停/恢复/取消/调整优先级 OCR 任务"""
     db = SessionLocal()
     try:
         t = db.query(OcrTask).filter(OcrTask.id == task_id).first()
@@ -77,8 +77,10 @@ def update_ocr_task(task_id: int, action: str, user: dict = Depends(get_current_
             try: process_ocr_task.delay(task_id)
             except: pass
         elif action == "cancel": t.status = "cancelled"
+        elif action == "set_priority" and priority is not None:
+            t.priority = priority
         db.commit()
-        return {"task_id": task_id, "action": action, "status": t.status}
+        return {"task_id": task_id, "action": action, "status": t.status, "priority": t.priority}
     finally:
         db.close()
 

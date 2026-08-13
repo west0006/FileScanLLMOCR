@@ -15,6 +15,12 @@
         <span><IconSvg name="pkg" size="15" /> 保留 <strong>{{ logStats.retention }}</strong> 天</span>
       </div>
     </div>
+    <div class="log-stat-grid">
+      <div class="log-stat-card"><div class="lsc-label">全部日志</div><div class="lsc-value">{{ logStats.allCount }}</div></div>
+      <div class="log-stat-card"><div class="lsc-label">用户登录</div><div class="lsc-value">{{ logStats.loginCount }}</div></div>
+      <div class="log-stat-card"><div class="lsc-label">功能访问</div><div class="lsc-value">{{ logStats.accessCount }}</div></div>
+      <div class="log-stat-card"><div class="lsc-label">功能操作</div><div class="lsc-value">{{ logStats.operationCount }}</div></div>
+    </div>
     <div class="filter-bar">
       <input v-model="filters.username" placeholder="用户" class="filter-input" @keyup.enter="fetchLogs"/>
       <select v-model="filters.type" class="filter-select"><option value="">全部类型</option><option value="search">检索</option><option value="view">浏览</option><option value="download">下载</option><option value="admin">管理</option><option value="login">登录</option></select>
@@ -62,7 +68,7 @@ const logTabs = ref([
   { key: 'search', label: '检索日志', count: 0 },
   { key: 'review', label: '预审日志', count: 0 },
 ])
-const logStats = ref({ total: 0, failed: 0, retention: 1095 })
+const logStats = ref({ total: 0, failed: 0, retention: 1095, allCount: 0, loginCount: 0, accessCount: 0, operationCount: 0 })
 
 onMounted(() => fetchLogs())
 
@@ -79,11 +85,12 @@ async function fetchLogs() {
     total.value = res.data.total || 0
     // 更新统计卡和 tab 计数
     try {
-      const [allR, loginR, searchR, reviewR, summary] = await Promise.all([
+      const [allR, loginR, searchR, reviewR, viewR, summary] = await Promise.all([
         logApi.list({ page:1, page_size:1 }),
         logApi.list({ page:1, page_size:1, operation_type:'login' }),
         logApi.list({ page:1, page_size:1, operation_type:'search' }),
         logApi.list({ page:1, page_size:1, operation_type:'review' }),
+        logApi.list({ page:1, page_size:1, operation_type:'view' }),
         logApi.auditSummary().catch(() => ({ data: { today_total: 0, today_failed: 0 } })),
       ])
       logTabs.value[0].count = allR.data.total || 0
@@ -93,6 +100,11 @@ async function fetchLogs() {
       // 「今日操作」绑定审计摘要的 today_total，「失败」绑定 today_failed
       logStats.value.total = summary.data.today_total || 0
       logStats.value.failed = summary.data.today_failed || 0
+      // 四张统计卡：全部 / 登录 / 功能访问 / 功能操作
+      logStats.value.allCount = allR.data.total || 0
+      logStats.value.loginCount = loginR.data.total || 0
+      logStats.value.accessCount = viewR.data.total || 0
+      logStats.value.operationCount = Math.max(0, (allR.data.total || 0) - (viewR.data.total || 0) - (loginR.data.total || 0))
     } catch { /* ignore */ }
   } catch { /* ignore */ }
 }
@@ -122,4 +134,8 @@ function handleExport() {
 .page{max-width:var(--page-max);margin:0 auto}.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}.page-head h2{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin:0}.btn-export{display:flex;align-items:center;gap:6px;height:36px;padding:0 18px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer}.btn-export:hover{border-color:var(--c-accent);color:var(--c-accent)}.log-toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px}.log-tabs{display:flex;gap:4px}.log-tab{padding:5px 14px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-sm);cursor:pointer;transition:all var(--t-fast);display:flex;align-items:center;gap:6px}.log-tab.active{background:var(--c-accent);color:#fff;border-color:var(--c-accent)}.log-tab:hover:not(.active){border-color:var(--c-accent);color:var(--c-accent)}.tab-badge{padding:0 6px;border-radius:var(--r-full);font-size:10px;background:var(--c-bg);font-weight:var(--fw-bold)}.log-tab.active .tab-badge{background:rgba(255,255,255,0.2)}.stats-card{display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--c-text-secondary);white-space:nowrap}.stats-sep{color:var(--c-border)}.filter-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:var(--c-surface);border-radius:var(--r-md);border:1px solid var(--c-border)}.filter-input{height:36px;padding:0 10px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-sm);background:var(--c-bg);outline:none;font-family:var(--font)}.filter-select{height:36px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-sm);background:var(--c-bg);outline:none;cursor:pointer}.filter-btn{height:36px;padding:0 20px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-sm);font-weight:var(--fw-medium);cursor:pointer;margin-left:auto}.filter-btn:hover{background:var(--c-accent-hover)}.filter-btn-reset{height:36px;padding:0 16px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-sm);cursor:pointer}.filter-btn-reset:hover{border-color:var(--c-text-muted);color:var(--c-text)}
 .filter-input--date{width:130px}.filter-sep{font-size:var(--fs-sm);color:var(--c-text-muted)}.card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);overflow:hidden;overflow-x:auto}.data-table{width:100%;border-collapse:collapse}.data-table th{padding:12px 16px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--c-bg);border-bottom:1px solid var(--c-border)}.data-table td{padding:12px 16px;font-size:var(--fs-sm);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}.mono{font-family:'SF Mono','Fira Code',monospace;font-size:11px;color:var(--c-text-secondary)}.risk-tag{padding:2px 10px;border-radius:var(--r-full);font-size:11px;font-weight:var(--fw-bold)}.risk-tag--low{background:#F0FDF4;color:var(--c-success)}.risk-tag--high{background:#FEF2F2;color:var(--c-danger)}.type-tag{padding:1px 8px;border-radius:var(--r-full);font-size:11px;background:var(--c-bg);color:var(--c-text-secondary)}.table-empty{padding:48px;text-align:center;color:var(--c-text-muted)}.text-sm{font-size:var(--fs-xs);color:var(--c-text-secondary)}.font-medium{font-weight:var(--fw-medium)}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pager{margin-top:16px;display:flex;justify-content:center}
+.log-stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.log-stat-card{background:var(--c-surface);border:1px solid var(--c-border);border-radius:var(--r-md);padding:14px 16px;text-align:center}
+.lsc-label{font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:6px}
+.lsc-value{font-size:24px;font-weight:var(--fw-bold);color:var(--c-text)}
 </style>

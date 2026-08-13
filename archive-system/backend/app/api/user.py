@@ -1,6 +1,6 @@
 """用户管理 API — CRUD + 角色 + 权限 + 目录树授权"""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -30,7 +30,7 @@ class UpdateUserRequest(BaseModel):
 # ===================== 用户管理 =====================
 
 @router.post("/")
-def create_user(req: CreateUserRequest, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
+def create_user(req: CreateUserRequest, request: Request, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """新建用户"""
     db = SessionLocal()
     try:
@@ -45,6 +45,7 @@ def create_user(req: CreateUserRequest, user: dict = Depends(require_role(ROLE_S
         db.add(new_user)
         db.commit()
         db.refresh(new_user)
+        request.state.log_target_id = new_user.username
         return {"user_id": new_user.id, "username": new_user.username, "status": "created"}
     finally:
         db.close()

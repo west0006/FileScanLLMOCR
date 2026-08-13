@@ -42,7 +42,13 @@
               </div>
             </td>
             <td><span style="color:var(--c-danger)">{{ t.failed_pages || 0 }}</span></td>
-            <td><span class="priority-tag" :class="'pri--'+t.priority">{{ priLabel(t.priority) }}</span></td>
+            <td>
+              <select v-model="t.priority" class="pri-select" @change="setPriority(t)">
+                <option :value="0">普通</option>
+                <option :value="1">高</option>
+                <option :value="2">紧急</option>
+              </select>
+            </td>
             <td><span class="risk-tag" :class="'risk-tag--'+barClass(t.status)">{{ statusLabel(t.status) }}</span></td>
             <td class="text-sm">{{ t.created_at?.substring(0,10) }}</td>
             <td>
@@ -158,6 +164,12 @@ async function openDetail(t: any) {
   } catch { detailTask.value = t }
   showDetail.value = true
 }
+async function setPriority(t: any) {
+  try {
+    await ocrApi.updateTask(t.id, 'set_priority', t.priority)
+    ElMessage.success('优先级已调整')
+  } catch { ElMessage.error('调整失败') }
+}
 async function handleAction(t: any, action: string) {
   try {
     await ocrApi.updateTask(t.id, action)
@@ -183,6 +195,7 @@ async function handleAction(t: any, action: string) {
 .mini-bar{display:flex;align-items:center;gap:8px}.mini-bar-fill{height:6px;border-radius:var(--r-full);min-width:2px}.mini-bar--low{background:var(--c-success)}.mini-bar--mid{background:var(--c-warning)}.mini-bar--high{background:var(--c-danger)}.mini-bar-num{font-size:var(--fs-xs);color:var(--c-text-secondary)}
 .risk-tag{padding:2px 10px;border-radius:var(--r-full);font-size:11px;font-weight:var(--fw-bold)}.risk-tag--low{background:#F0FDF4;color:var(--c-success)}.risk-tag--mid{background:#FFFBEB;color:var(--c-warning)}.risk-tag--high{background:#FEF2F2;color:var(--c-danger)}
 .priority-tag{padding:1px 8px;border-radius:var(--r-full);font-size:11px}.pri--0{background:var(--c-bg);color:var(--c-text-secondary)}.pri--1{background:#FFFBEB;color:var(--c-warning)}.pri--2{background:#FEF2F2;color:var(--c-danger)}
+.pri-select{height:28px;padding:0 4px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-xs);background:var(--c-bg);cursor:pointer}
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(4px)}.modal-card{width:480px;background:var(--c-surface);border-radius:var(--r-lg);box-shadow:var(--s-dropdown);max-height:80vh;overflow-y:auto}.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--c-border-light)}.modal-head h3{margin:0;font-size:var(--fs-lg)}.modal-close{width:32px;height:32px;border-radius:var(--r-sm);border:none;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--c-text-muted)}.modal-close:hover{background:var(--c-bg)}.modal-body{padding:24px}
 .form-group{margin-bottom:16px}.form-group label{display:block;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}.field-input{height:40px;padding:0 12px;border:1px solid var(--c-border);border-radius:var(--r-sm);font-size:var(--fs-base);background:var(--c-bg);outline:none;font-family:var(--font);width:100%}.field-input:focus{border-color:var(--c-accent)}.form-row{display:flex;gap:12px}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 24px;margin:0}.detail-grid dt{font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:2px}.detail-grid dd{font-size:var(--fs-sm);color:var(--c-text);margin:0;font-weight:var(--fw-medium)}.span-2{grid-column:span 2}

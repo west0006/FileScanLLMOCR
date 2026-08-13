@@ -329,6 +329,7 @@ def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, so
     sort_clause = [{"_score": "desc"}]
     if sort == "time_asc": sort_clause = [{"year": "asc"}]
     elif sort == "time_desc": sort_clause = [{"year": "desc"}]
+    elif sort == "title_asc": sort_clause = [{"title.keyword": "asc"}]
 
     body = {
         "query": query,
@@ -444,6 +445,7 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: 
         total = query.count()
         if sort == "time_asc": query = query.order_by(Archive.year.asc())
         elif sort == "time_desc": query = query.order_by(Archive.year.desc())
+        elif sort == "title_asc": query = query.order_by(Archive.title.asc())
         rows = query.offset((page - 1) * page_size).limit(page_size).all()
         results = [{
             "archive_id": r.archive_id,
