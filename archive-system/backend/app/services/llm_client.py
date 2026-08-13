@@ -152,8 +152,12 @@ class LLMClient:
     def _ollama_understand_query(self, query: str) -> dict:
         user = f'用户查询："{query}"\n\n仅输出 JSON。'
         result = self._call_ollama(SYSTEM_QUERY, user, temperature=0.0, max_tokens=256)
-        try: return json.loads(result)
-        except json.JSONDecodeError:
+        # _call_ollama 已返回 dict（经 _parse_llm_json），无需再 json.loads
+        if isinstance(result, dict):
+            return result
+        try:
+            return json.loads(result)
+        except (json.JSONDecodeError, TypeError):
             return {"intent":"keyword_search","entities":[],"time_range":None,
                     "keywords":query.split(),"synonyms":[],"suggest_fields":["title^3","full_text"]}
 

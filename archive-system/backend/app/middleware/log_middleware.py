@@ -86,6 +86,34 @@ def _write_log_sync(
         db.close()
 
 
+def _log_exception_failure(self, request: Request, exc: Exception, duration_ms: float):
+    """端点抛出未处理异常时，记录一条失败日志（不阻塞异常传播）"""
+    try:
+        method = request.method
+        path = request.url.path
+        token = request.headers.get("Authorization", "")
+        username = "anonymous"
+        user_id = 0
+        session_id = ""
+        if token.startswith("Bearer "):
+            from app.core.security import decode_access_token
+            import hashlib
+            payload = decode_access_token(token[7:])
+            session_id = hashlib.sha256(token[7:].encode()).hexdigest()[:16]
+            if payload:
+                user_id = int(payload.get("sub", 0))
+                username = payload.get("username", "anonymous")
+        op_tag = path.split("/")[2] if len(path.split("/")) > 2 else "other"
+        desc = f"{method} {path} — 服务异常: {str(exc)[:150]}"
+        threading.Thread(
+            target=_write_log_sync,
+            args=(user_id, username, op_tag, op_tag, desc, "", request.client.host if request.client else "", "failure", "", session_id),
+            daemon=True,
+        ).start()
+    except Exception:
+        pass
+
+
 def _extract_target_id(path: str, request) -> str:
     """从 URL 路径提取操作对象 ID"""
     custom = getattr(request.state, "log_target_id", None)
@@ -102,7 +130,13 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         t0 = time.time()
-        response = await call_next(request)
+        try:
+            response = await call_next(request)
+        except Exception as exc:
+            # 端点抛异常（未处理 500）时也记录失败日志
+            duration_ms = round((time.time() - t0) * 1000)
+            self._log_exception_failure(request, exc, duration_ms)
+            raise
         duration_ms = round((time.time() - t0) * 1000)
 
         method = request.method
