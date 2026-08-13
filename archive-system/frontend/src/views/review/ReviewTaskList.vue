@@ -4,10 +4,11 @@
     <div class="process-banner"><IconSvg name="pin" size="14" /> 系统对每批审核任务自动完成 AI 智能预审，生成风险评分、敏感信息标注、开放建议。<strong>审核人员无需在系统中进行人工复核</strong>，可通过导出按钮获取预审数据。</div>
     <div class="card">
       <table class="data-table">
-        <thead><tr><th>任务名称</th><th>批次</th><th style="width:200px">进度</th><th>风险分布</th><th>状态</th><th style="width:180px">操作</th></tr></thead>
+        <thead><tr><th>任务名称</th><th>批次</th><th>截止日期</th><th style="width:200px">进度</th><th>风险分布</th><th>状态</th><th style="width:180px">操作</th></tr></thead>
         <tbody>
           <tr v-for="t in tasks" :key="t.id">
             <td>{{ t.task_name }}</td><td>{{ t.batch_name }}</td>
+            <td class="text-sm">{{ t.deadline?.substring(0,10) || '—' }}</td>
             <td><div class="mini-bar"><div class="mini-bar-fill mini-bar--low" :style="{width:(t.completed_count/t.total_count*100||0)+'%'}"></div><span class="mini-bar-num">{{ t.completed_count }}/{{ t.total_count }}</span></div></td>
             <td><span class="text-xs"><span style="color:var(--c-danger)">高{{ t.risk_dist?.high||0 }}</span> / <span style="color:var(--c-warning)">中{{ t.risk_dist?.medium||0 }}</span> / <span style="color:var(--c-success)">低{{ t.risk_dist?.low||0 }}</span></span></td>
             <td><span class="risk-tag" :class="'risk-tag--'+statusClass(t.status)">{{ statusLabel(t.status) }}</span></td>
@@ -45,6 +46,7 @@
       <div class="form-row"><div class="form-group" style="flex:1"><label>起始年度</label><select v-model="createForm.year_from" class="field-input"><option :value="undefined">不限</option><option v-for="y in yearOpts" :key="'rf'+y" :value="y">{{ y }}</option></select></div><div class="form-group" style="flex:1"><label>截止年度</label><select v-model="createForm.year_to" class="field-input"><option :value="undefined">不限</option><option v-for="y in yearOpts" :key="'rt'+y" :value="y">{{ y }}</option></select></div></div>
       <div class="form-row"><div class="form-group" style="flex:1"><label>档案门类</label><select v-model="createForm.category" class="field-input"><option value="">全部</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div><div class="form-group" style="flex:1"><label>归口单位</label><input class="field-input" v-model="createForm.department" placeholder="可选，如: 教务处" /></div></div>
       <div class="form-group"><label>批次名称</label><input class="field-input" v-model="createForm.batch_name" placeholder="如: 第一批开放审核" /></div>
+      <div class="form-group"><label>截止日期</label><input class="field-input" type="date" v-model="createForm.deadline" /></div>
       <div class="scope-hint">📋 任务将对符合筛选条件的已 OCR 档案进行 AI 预审，结果可在「预审记录」页查看。</div>
       <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px"><button class="btn-sm" @click="showCreate=false">取消</button><button class="btn-primary" @click="handleCreateTask">创建任务</button></div></div></div></div>
   </div>
@@ -60,7 +62,7 @@ const metrics = ref<any>({})
 const showCreate = ref(false)
 const yearOpts = Array.from({ length: 56 }, (_, i) => 1970 + i)
 const categories = ['行政档案', '党群档案', '教学档案', '科研档案', '人事档案', '财务档案', '基建档案', '声像档案']
-const createForm = ref({ task_name: '', batch_name: '', year_from: undefined as number | undefined, year_to: undefined as number | undefined, category: '', department: '' })
+const createForm = ref({ task_name: '', batch_name: '', year_from: undefined as number | undefined, year_to: undefined as number | undefined, category: '', department: '', deadline: '' })
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
 
 onMounted(fetchTasks)
@@ -75,7 +77,7 @@ async function fetchTasks() {
 async function handleCreateTask() {
   if (!createForm.value.task_name) { ElMessage.warning('请输入任务名称'); return }
   try {
-    await reviewApi.createTask({ task_name: createForm.value.task_name, batch_name: createForm.value.batch_name || undefined, year_from: createForm.value.year_from, year_to: createForm.value.year_to, category: createForm.value.category || undefined, department: createForm.value.department || undefined })
+    await reviewApi.createTask({ task_name: createForm.value.task_name, batch_name: createForm.value.batch_name || undefined, year_from: createForm.value.year_from, year_to: createForm.value.year_to, category: createForm.value.category || undefined, department: createForm.value.department || undefined, deadline: createForm.value.deadline || undefined })
     ElMessage.success('任务已创建')
     showCreate.value = false
     createForm.value = { task_name: '', batch_name: '', year_from: undefined, year_to: undefined, category: '', department: '' }

@@ -21,6 +21,22 @@ Base = declarative_base()
 def init_db():
     """创建所有表（SQLite 模式下自动调用）"""
     Base.metadata.create_all(bind=engine)
+    if settings.DB_MODE == "sqlite":
+        _add_missing_columns()
+
+
+def _add_missing_columns():
+    """SQLite create_all 不会为已存在的表新增列，这里补齐新增列"""
+    from sqlalchemy import inspect, text
+    try:
+        insp = inspect(engine)
+        with engine.begin() as conn:
+            if insp.has_table("review_tasks"):
+                cols = {c["name"] for c in insp.get_columns("review_tasks")}
+                if "deadline" not in cols:
+                    conn.execute(text("ALTER TABLE review_tasks ADD COLUMN deadline DATETIME"))
+    except Exception:
+        pass
 
 
 def get_db():

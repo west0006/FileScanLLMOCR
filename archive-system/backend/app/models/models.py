@@ -82,6 +82,7 @@ class ReviewTask(Base):
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
     finished_at = Column(DateTime)
+    deadline = Column(DateTime, nullable=True)   # 截止日期
 
 
 class ReviewRecord(Base):

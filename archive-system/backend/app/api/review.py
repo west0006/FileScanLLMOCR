@@ -20,6 +20,7 @@ class CreateReviewTaskRequest(BaseModel):
     year_to: Optional[int] = None
     category: Optional[str] = None
     department: Optional[str] = None
+    deadline: Optional[str] = None
 
 
 class PreviewRequest(BaseModel):
@@ -92,6 +93,13 @@ def create_review_task(req: CreateReviewTaskRequest, request: Request, user: dic
     request.state.log_target_id = f"task-{req.task_name}"
     db = SessionLocal()
     try:
+        deadline = None
+        if req.deadline:
+            from datetime import datetime as _dt
+            try:
+                deadline = _dt.fromisoformat(req.deadline)
+            except ValueError:
+                deadline = None
         task = ReviewTask(
             task_name=req.task_name,
             batch_name=req.batch_name,
@@ -101,6 +109,7 @@ def create_review_task(req: CreateReviewTaskRequest, request: Request, user: dic
                 "category": req.category, "department": req.department,
             },
             created_by=user["user_id"],
+            deadline=deadline,
         )
         db.add(task)
         db.commit()
@@ -131,6 +140,7 @@ def list_review_tasks(user: dict = Depends(get_current_user), page: int = 1, pag
                 "items": [{"id": t.id, "task_name": t.task_name, "batch_name": t.batch_name,
                             "total_count": t.total_count, "completed_count": t.completed_count,
                             "status": t.status, "created_at": str(t.created_at),
+                            "deadline": str(t.deadline) if t.deadline else None,
                             "risk_dist": _task_risk_dist(db, t.id)} for t in items],
                 "metrics": metrics}
     finally:
