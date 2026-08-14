@@ -169,7 +169,8 @@ def list_roles(user: dict = Depends(get_current_user)):
             items = []
             for r in roles:
                 cnt = db.query(User).filter(User.role == r.name).count()
-                items.append({"id": r.id, "name": r.name, "description": r.description or "", "user_count": cnt})
+                items.append({"id": r.id, "name": r.name, "description": r.description or "", "user_count": cnt,
+                            "permissions": r.permissions or {}, "data_permissions": r.data_permissions or {}})
             return {"items": items}
         # 回退：种子数据
         return {"items": [
@@ -198,15 +199,18 @@ def create_role(name: str, description: str = "", user: dict = Depends(require_r
 
 
 @router.put("/roles/{role_id}/permissions")
-def update_role_permissions(role_id: int, permissions: dict, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
-    """配置角色权限"""
+def update_role_permissions(role_id: int, permissions: dict, data_permissions: Optional[dict] = None, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
+    """配置角色权限（含案卷级/卷内级数据权限）"""
     db = SessionLocal()
     try:
         role = db.query(Role).filter(Role.id == role_id).first()
         if role:
             role.permissions = permissions
+            if data_permissions is not None:
+                role.data_permissions = data_permissions
             db.commit()
-            return {"role_id": role_id, "permissions": permissions, "status": "updated"}
+            return {"role_id": role_id, "permissions": permissions,
+                    "data_permissions": role.data_permissions or {}, "status": "updated"}
         return {"error": "role_not_found"}
     finally:
         db.close()

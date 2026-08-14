@@ -10,6 +10,6 @@ export const userApi = {
   listOnline: () => api.get('/user/online'),
   listRoles: () => api.get('/user/roles'),
   createRole: (name: string, description: string) => api.post('/user/roles', null, { params: { name, description } }),
-  updatePermissions: (roleId: number, perms: any) => api.put(`/user/roles/${roleId}/permissions`, perms),
+  updatePermissions: (roleId: number, perms: any, dataPerms?: any) => api.put(`/user/roles/${roleId}/permissions`, { permissions: perms, data_permissions: dataPerms }),
   deleteRole: (roleId: number) => api.delete(`/user/roles/${roleId}`),
 }

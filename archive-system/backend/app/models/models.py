@@ -35,6 +35,7 @@ class Role(Base):
     description = Column(String(200))
     permissions = Column(JSON, default=dict)  # {"search": true, "ocr": true, "review": false, ...}
     data_scope = Column(JSON, default=dict)   # {"categories": [], "years": [], "departments": []}
+    data_permissions = Column(JSON, default=dict)  # {"box": {"entry_view": true}, "file": {"entry_view": true, "view": true, "download": true, "print": true}}
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

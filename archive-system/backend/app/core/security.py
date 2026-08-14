@@ -234,3 +234,34 @@ def apply_data_scope(user: dict, query, model):
         return query
     finally:
         db.close()
+
+
+def has_data_permission(user: dict, level: str, action: str) -> bool:
+    """
+    判断用户是否有指定层级（案卷级 box / 卷内级 file）的指定操作权限。
+
+    - system_admin / archive_admin 始终放行
+    - 角色 data_permissions 为空（未配置）→ 放行（兼容现状，不误伤现有用户）
+    - 否则按 data_permissions[level][action] 判断
+    """
+    if user["role"] in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+        return True
+    from app.core.database import SessionLocal
+    from app.models.models import Role, User as UserModel
+
+    db = SessionLocal()
+    try:
+        u = db.query(UserModel).filter(UserModel.id == user["user_id"]).first()
+        role_name = u.role if u else user.get("role")
+        role = db.query(Role).filter(Role.name == role_name).first()
+        if not role:
+            return False
+        dp = role.data_permissions or {}
+        if not dp:  # 未配置 → 全量放行
+            return True
+        level_perm = dp.get(level)
+        if not isinstance(level_perm, dict):
+            return False
+        return bool(level_perm.get(action))
+    finally:
+        db.close()

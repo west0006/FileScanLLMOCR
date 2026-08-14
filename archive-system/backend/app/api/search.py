@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from app.core.security import get_current_user, apply_data_scope, require_permission
+from app.core.security import get_current_user, apply_data_scope, require_permission, has_data_permission
 from app.core.database import SessionLocal
 from app.core.config import settings
 from app.models.models import Archive, OperationLog
@@ -120,7 +120,7 @@ def archive_detail(archive_id: str, user: dict = Depends(get_current_user)):
                     "fonds_id": a.fonds_id, "retention_period": a.retention_period,
                     "security_level": a.security_level, "level": a.level or "file",
                     "open_status": a.open_status or "未审核", "file_count": a.file_count,
-                    "ocr_text": (a.ocr_text or "")[:500],
+                    "ocr_text": (a.ocr_text or "")[:500] if has_data_permission(user, "file", "view") else "",
                     "ocr_status": a.ocr_status,
                     "ocr_engine": a.ocr_engine or "", "ocr_model_version": a.ocr_model_version or "",
                     "ocr_duration_ms": a.ocr_duration_ms or 0}
@@ -135,7 +135,7 @@ def archive_ocr_text(archive_id: str, user: dict = Depends(get_current_user)):
     db = SessionLocal()
     try:
         a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
-        if a and a.ocr_text:
+        if a and a.ocr_text and has_data_permission(user, "file", "view"):
             return {"archive_id": archive_id, "ocr_text": a.ocr_text,
                     "ocr_confidence": a.ocr_confidence, "ocr_status": a.ocr_status}
         return {"archive_id": archive_id, "ocr_text": None}
@@ -158,6 +158,9 @@ def archive_download(archive_id: str, page: int = 1, user: dict = Depends(requir
         if not a:
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=404, content={"error": "archive_not_found"})
+
+        if not has_data_permission(user, "file", "download"):
+            return JSONResponse(status_code=403, content={"error": "无卷内级文件下载权限"})
 
         year_dir = str(a.year) if a.year else "unknown"
         fonds_dir = a.fonds_id or "XX"
@@ -330,6 +333,9 @@ def archive_image(archive_id: str, page: int = 1, user: dict = Depends(get_curre
         a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
         if not a:
             return {"archive_id": archive_id, "page": page, "image_url": None, "error": "archives_not_found"}
+
+        if not has_data_permission(user, "file", "view"):
+            return {"archive_id": archive_id, "page": page, "image_url": None, "error": "无卷内级文件浏览权限"}
 
         # 按年度/fonds_id/archive_id 构造文件路径
         import os

@@ -238,3 +238,59 @@ class TestLogPermission:
         token = get_token("admin", "x")
         resp = client.get("/api/log/", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
+
+
+class TestDataPermission:
+    """案卷级 / 卷内级数据权限"""
+
+    def test_01_admin_always_allowed(self):
+        """管理员不受数据权限限制"""
+        from app.core.security import has_data_permission
+        admin_user = {"user_id": 1, "username": "admin", "role": "system_admin"}
+        assert has_data_permission(admin_user, "file", "view") is True
+        assert has_data_permission(admin_user, "file", "download") is True
+
+    def test_02_unconfigured_role_allowed(self):
+        """data_permissions 未配置 → 全量放行（兼容现状）"""
+        from app.core.security import has_data_permission
+        db = SessionLocal()
+        try:
+            u = db.query(User).filter(User.username == "reviewer1", User.is_active == True).first()
+            if not u:
+                pytest.skip("无 reviewer1 用户")
+            user = {"user_id": u.id, "username": u.username, "role": u.role}
+            # 未配置（seed 默认 data_permissions 为空 dict）→ 放行
+            assert has_data_permission(user, "file", "view") is True
+        finally:
+            db.close()
+
+    def test_03_restricted_role_denied(self):
+        """配置 data_permissions 后，未授权操作被拒绝"""
+        from app.core.security import has_data_permission
+        from app.models.models import Role
+        db = SessionLocal()
+        try:
+            u = db.query(User).filter(User.username == "reviewer1", User.is_active == True).first()
+            if not u:
+                pytest.skip("无 reviewer1 用户")
+            role = db.query(Role).filter(Role.name == "reviewer").first()
+            original = None
+            if role:
+                original = role.data_permissions
+                role.data_permissions = {
+                    "box": {"entry_view": True},
+                    "file": {"entry_view": True, "view": False, "download": False, "print": False},
+                }
+                db.commit()
+            user = {"user_id": u.id, "username": u.username, "role": u.role}
+            try:
+                assert has_data_permission(user, "box", "entry_view") is True
+                assert has_data_permission(user, "file", "view") is False
+                assert has_data_permission(user, "file", "download") is False
+                assert has_data_permission(user, "file", "print") is False
+            finally:
+                if role:
+                    role.data_permissions = original
+                    db.commit()
+        finally:
+            db.close()

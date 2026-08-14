@@ -41,6 +41,29 @@
             </label>
           </div>
         </template>
+        <div class="perm-group" style="margin-top:8px">
+          <div class="perm-group-label">数据权限（案卷级 / 卷内级）</div>
+          <label class="perm-item perm-item--sub">
+            <input type="checkbox" v-model="dataPermForm.box.entry_view" />
+            <span class="perm-label perm-label--sub">案卷级 — 条目浏览</span>
+          </label>
+          <label class="perm-item perm-item--sub">
+            <input type="checkbox" v-model="dataPermForm.file.entry_view" />
+            <span class="perm-label perm-label--sub">卷内级 — 条目浏览</span>
+          </label>
+          <label class="perm-item perm-item--sub">
+            <input type="checkbox" v-model="dataPermForm.file.view" />
+            <span class="perm-label perm-label--sub">卷内级 — 文件浏览</span>
+          </label>
+          <label class="perm-item perm-item--sub">
+            <input type="checkbox" v-model="dataPermForm.file.download" />
+            <span class="perm-label perm-label--sub">卷内级 — 文件下载</span>
+          </label>
+          <label class="perm-item perm-item--sub">
+            <input type="checkbox" v-model="dataPermForm.file.print" />
+            <span class="perm-label perm-label--sub">卷内级 — 文件打印</span>
+          </label>
+        </div>
       </div>
       <template #footer>
         <button class="btn-sm" @click="showPerm=false">取消</button>
@@ -85,6 +108,7 @@ const showPerm = ref(false)
 const showCreateRole = ref(false)
 const editingRole = ref<any>(null)
 const permForm = reactive<Record<string, any>>({})
+const dataPermForm = reactive({ box: { entry_view: true }, file: { entry_view: true, view: true, download: true, print: true } })
 const roleForm = reactive({ name: '', desc: '' })
 
 const permModules = [
@@ -156,6 +180,13 @@ function editRole(r: any) {
       permForm[p.key] = perms.all ? true : (typeof v === 'boolean' ? v : (typeof v === 'object' ? Object.values(v).some(Boolean) : false))
     }
   })
+  // 回填数据权限（未配置则默认全选）
+  const dp = r.data_permissions || {}
+  dataPermForm.box.entry_view = dp.box?.entry_view ?? true
+  dataPermForm.file.entry_view = dp.file?.entry_view ?? true
+  dataPermForm.file.view = dp.file?.view ?? true
+  dataPermForm.file.download = dp.file?.download ?? true
+  dataPermForm.file.print = dp.file?.print ?? true
   showPerm.value = true
 }
 
@@ -164,7 +195,9 @@ async function savePerm() {
   try {
     const perms: Record<string, any> = {}
     permModules.forEach(p => { perms[p.key] = permForm[p.key] })
-    await userApi.updatePermissions(editingRole.value.id, perms)
+    const dataPerms = { box: { ...dataPermForm.box }, file: { ...dataPermForm.file } }
+    const res: any = await userApi.updatePermissions(editingRole.value.id, perms, dataPerms)
+    if (res.data && res.data.error) { ElMessage.error(res.data.error); return }
     ElMessage.success('权限已保存')
     showPerm.value = false
     fetchRoles()
