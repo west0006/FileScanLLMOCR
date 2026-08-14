@@ -65,6 +65,27 @@ def seed(force: bool = False):
             db.add_all(archives)
             db.commit()
 
+        # ---- 示例项目级档案（SE-004 检索层级"项目级"验证） ----
+        if db.query(Archive).filter(Archive.level == "project").count() == 0:
+            db.add_all([
+                Archive(archive_id="PRJ-2018-校园信息化建设", title="校园信息化建设项目", year=2018,
+                        category="基建档案", department="基建处", fonds_id="JJ", level="project",
+                        open_status="已开放", retention_period="永久",
+                        ocr_text="校园信息化建设项目立项与实施情况汇总。", ocr_status="done", ocr_confidence=0.95,
+                        ocr_engine="mock", ocr_model_version="mock-v1", ocr_duration_ms=800),
+                Archive(archive_id="PRJ-2020-档案馆数字化", title="档案馆数字化项目", year=2020,
+                        category="声像档案", department="档案馆", fonds_id="SX", level="project",
+                        open_status="已开放", retention_period="长期",
+                        ocr_text="档案馆数字化扫描与全文索引建设项目。", ocr_status="done", ocr_confidence=0.96,
+                        ocr_engine="mock", ocr_model_version="mock-v1", ocr_duration_ms=600),
+                Archive(archive_id="PRJ-2023-教学档案整理", title="教学档案整理项目", year=2023,
+                        category="教学档案", department="教务处", fonds_id="JX", level="project",
+                        open_status="未审核", retention_period="长期",
+                        ocr_text="教学档案整理与数字化归档项目。", ocr_status="done", ocr_confidence=0.94,
+                        ocr_engine="mock", ocr_model_version="mock-v1", ocr_duration_ms=700),
+            ])
+            db.commit()
+
         # ---- 示例用户（除 admin 外，各角色测试用户，不存在则创建） ----
         _ensure_test_user(db, "reviewer1", "王建国", "学校办公室", "reviewer")
         _ensure_test_user(db, "reviewer2", "赵静", "教务处", "reviewer")

@@ -9,4 +9,5 @@ export const reviewApi = {
   listRecords: (params: any) => api.get('/review/records', { params }),
   getRecord: (id: number) => api.get(`/review/records/${id}`),
   export: (data: any) => api.post('/review/export', data, { responseType: 'blob' }),
+  exportArchive: (archiveIds: string[]) => api.post('/review/export-archive', { archive_ids: archiveIds }, { responseType: 'blob' }),
 }

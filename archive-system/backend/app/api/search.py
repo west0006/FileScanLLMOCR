@@ -1,7 +1,7 @@
 """智能检索 API — 关键词/语义/高级检索 + 结果导出 + 档案详情"""
 
 import os
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Query, Request, File, UploadFile, Form
 from pydantic import BaseModel
 from typing import Optional
 
@@ -435,5 +435,61 @@ def search_facets(user: dict = Depends(get_current_user)):
         years = [{"year": r[0], "count": r[1]} for r in year_rows if r[0]]
 
         return {"categories": categories, "years": years}
+    finally:
+        db.close()
+
+
+@router.post("/ingest")
+async def ingest_document(
+    file: UploadFile = File(...),
+    archive_id: str = Form(...),
+    title: str = Form(""),
+    year: int = Form(None),
+    category: str = Form(""),
+    department: str = Form(""),
+    user: dict = Depends(get_current_user),
+):
+    """异质文档摄取（SE-008）— 上传 PDF/Word/TXT，提取全文写入档案，立即可检索"""
+    import tempfile
+    from app.services.ingest_service import extract_text
+
+    suffix = os.path.splitext(file.filename or "")[1] or ".txt"
+    fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(await file.read())
+        text = extract_text(tmp_path)
+    finally:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+
+    if not text:
+        return {"error": "无法提取文本（需 pypdf/python-docx 依赖，或文件为空）"}
+
+    db = SessionLocal()
+    try:
+        a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+        if a:
+            a.ocr_text = text
+            a.ocr_status = "done"
+            a.ocr_engine = "ingest"
+            a.ocr_model_version = "extract-v1"
+        else:
+            a = Archive(
+                archive_id=archive_id, title=title or archive_id, year=year,
+                category=category or "文书档案", department=department or "",
+                level="file", ocr_text=text, ocr_status="done",
+                ocr_engine="ingest", ocr_model_version="extract-v1",
+            )
+            db.add(a)
+        db.commit()
+        try:
+            from app.tasks.ocr_tasks import _update_es_index
+            _update_es_index(a)
+        except Exception:
+            pass
+        return {"archive_id": archive_id, "status": "ingested", "text_length": len(text)}
     finally:
         db.close()

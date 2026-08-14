@@ -17,6 +17,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           {{ selectedIds.length ? `PDF (${selectedIds.length}条)` : 'PDF' }}
         </button>
+        <button class="btn-export" @click="handleExportArchive">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          {{ selectedIds.length ? `原文压缩包 (${selectedIds.length}条)` : '原文压缩包' }}
+        </button>
       </div>
     </div>
 
@@ -349,6 +353,30 @@ async function handleExport(format: string = 'excel') {
     ElMessage.success('导出成功')
     selectedIds.value = []
   } catch { ElMessage.error('导出失败') }
+}
+
+async function handleExportArchive() {
+  try {
+    let selectedArchiveIds: string[]
+    if (reviewView.value === 'volume' && selectedVolumes.value.length) {
+      selectedArchiveIds = selectedVolumes.value
+    } else if (selectedIds.value.length) {
+      selectedArchiveIds = records.value.filter(r => selectedIds.value.includes(r.id)).map(r => r.archive_id)
+    } else {
+      selectedArchiveIds = records.value.map(r => r.archive_id)
+    }
+    const res = await reviewApi.exportArchive(selectedArchiveIds)
+    const blob = new Blob([res.data], { type: 'application/zip' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `预审原文_${new Date().toISOString().slice(0, 10)}.zip`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    ElMessage.success('原文压缩包已导出')
+  } catch { ElMessage.error('导出失败，原文文件可能尚未同步') }
 }
 </script>
 

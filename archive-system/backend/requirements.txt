@@ -27,6 +27,8 @@ python-magic==0.4.27
 Pillow==10.2.0
 openpyxl==3.1.2
 fpdf2==2.8.1
+pypdf==4.2.0
+python-docx==1.1.2
 
 # OCR 图像预处理
 opencv-python-headless>=4.9.0

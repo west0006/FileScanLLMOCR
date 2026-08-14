@@ -218,6 +218,10 @@
             </div>
           </div>
         </div>
+        <button class="scope-tree-btn" style="margin-left:8px" @click="fileInputRef?.click()">
+          <IconSvg name="doc" size="15" /> 文档入库
+        </button>
+        <input ref="fileInputRef" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none" @change="onIngestFile" />
       </div>
     </div>
 
@@ -398,6 +402,24 @@ function onScopeCheck(_: any, data: any) {
   scopeDepartments.value = [...depts]
 }
 function clearScope() { scopeNodes.value = []; scopeCheckedKeys.value = []; scopeCategories.value = []; scopeDepartments.value = [] }
+
+// 文档入库（SE-008 异质检索摄取）
+const fileInputRef = ref<HTMLInputElement>()
+async function onIngestFile(e: any) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  const fd = new FormData()
+  fd.append('file', file)
+  const baseName = file.name.replace(/\.[^.]+$/, '')
+  fd.append('archive_id', `INGEST-${Date.now()}-${baseName}`)
+  fd.append('title', file.name)
+  try {
+    const res = await searchApi.ingest(fd)
+    if (res.data?.error) { ElMessage.error(res.data.error); return }
+    ElMessage.success(`文档已入库（${res.data.text_length} 字），可用关键词检索`)
+    e.target.value = ''
+  } catch { ElMessage.error('入库失败，请检查后端 pypdf/python-docx 依赖') }
+}
 
 const searched = ref(false)
 const loading = ref(false)

@@ -118,7 +118,7 @@ async function handleExport() {
     ElMessage.success('导出成功')
   } catch { ElMessage.error('导出失败，请确认已连接后端服务') }
 }
-function handleExportArchive() { ElMessage.info('档案原文压缩包导出功能将在部署环境配置后启用') }
+function handleExportArchive() { ElMessage.info('请前往「预审记录」页选择档案后导出原文压缩包') }
 async function handleTaskAction(t: any, action: string) {
   if (action === 'view') {
     ElMessage.info(`任务 #${t.id}: ${t.task_name}`)

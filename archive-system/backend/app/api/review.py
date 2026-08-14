@@ -342,6 +342,49 @@ def export_review_results(req: ReviewExportRequest, user: dict = Depends(require
         db.close()
 
 
+class ExportArchiveRequest(BaseModel):
+    archive_ids: list[str] = []
+
+
+@router.post("/export-archive")
+def export_archive_bundle(req: ExportArchiveRequest, user: dict = Depends(require_permission("review", "export"))):
+    """导出选中档案的原文压缩包（RV-010，zipfile 打包原始文件）"""
+    import zipfile
+    import glob
+    import time as _time
+    from fastapi.responses import FileResponse
+    from app.core.config import settings
+
+    db = SessionLocal()
+    try:
+        q = apply_data_scope(user, db.query(Archive), Archive)
+        archives = q.filter(Archive.archive_id.in_(req.archive_ids)).all() if req.archive_ids else []
+        if not archives:
+            return {"error": "无有效档案"}
+
+        out_dir = settings.UPLOAD_DIR or "/tmp"
+        os.makedirs(out_dir, exist_ok=True)
+        zip_path = os.path.join(out_dir, f"archive_bundle_{int(_time.time())}.zip")
+
+        packaged = 0
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for a in archives:
+                year_dir = str(a.year) if a.year else "unknown"
+                fonds_dir = a.fonds_id or "XX"
+                pattern = os.path.join(settings.SYNC_DATA_DIR, year_dir, fonds_dir, f"{a.archive_id}*.*")
+                for fp in sorted(glob.glob(pattern)):
+                    zf.write(fp, arcname=os.path.join(a.archive_id, os.path.basename(fp)))
+                    packaged += 1
+
+        if packaged == 0:
+            os.remove(zip_path)
+            return {"error": "所选档案无原文文件，无法打包"}
+
+        return FileResponse(zip_path, filename=os.path.basename(zip_path), media_type="application/zip")
+    finally:
+        db.close()
+
+
 def _sync_open_status(db, archive_id: str, suggestion: str):
     """同步更新 Archive.open_status 根据 AI 建议"""
     a = db.query(Archive).filter(Archive.archive_id == archive_id).first()

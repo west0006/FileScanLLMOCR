@@ -13,4 +13,5 @@ export const searchApi = {
   knowledgeGraph: (id: string) => api.get(`/search/archives/${id}/knowledge-graph`),
   export: (data: any) => api.post('/search/export', data, { responseType: 'blob' }),
   facets: () => api.get('/search/facets'),
+  ingest: (formData: FormData) => api.post('/search/ingest', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 }
