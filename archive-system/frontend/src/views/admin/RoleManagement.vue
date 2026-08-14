@@ -174,7 +174,8 @@ async function savePerm() {
 async function deleteRole(r: any) {
   try {
     await ElMessageBox.confirm(`确认删除角色「${r.name}」？`, '删除确认', { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' })
-    await userApi.deleteRole(r.id)
+    const res: any = await userApi.deleteRole(r.id)
+    if (res.data && res.data.error) { ElMessage.error(res.data.error); return }
     ElMessage.success('角色已删除')
     fetchRoles()
   } catch (e: any) {
@@ -185,7 +186,8 @@ async function deleteRole(r: any) {
 async function createRole() {
   if (!roleForm.name) { ElMessage.warning('请输入角色标识'); return }
   try {
-    await userApi.createRole(roleForm.name, roleForm.desc)
+    const res: any = await userApi.createRole(roleForm.name, roleForm.desc)
+    if (res.data && res.data.error) { ElMessage.error(res.data.error); return }
     ElMessage.success('角色已创建')
     showCreateRole.value = false
     roleForm.name = ''; roleForm.desc = ''

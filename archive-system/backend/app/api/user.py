@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from app.core.security import get_current_user, require_role, ROLE_SYSTEM_ADMIN, hash_password
+from app.core.security import get_current_user, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN, hash_password
 from app.core.database import SessionLocal
 from app.models.models import User, Role
 
@@ -136,7 +136,7 @@ def toggle_user_status(user_id: int, is_active: bool, user: dict = Depends(requi
 # ===================== 在线用户 =====================
 
 @router.get("/online")
-def list_online_users(user: dict = Depends(get_current_user)):
+def list_online_users(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """在线用户列表 — 最近2小时内有活动的用户"""
     from datetime import datetime, timedelta
     db = SessionLocal()
@@ -220,6 +220,9 @@ def delete_role(role_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMI
         role = db.query(Role).filter(Role.id == role_id).first()
         if not role:
             return {"error": "role_not_found"}
+        # 内置角色不可删除
+        if role.name in {"system_admin", "archive_admin", "reviewer"}:
+            return {"error": "系统内置角色不可删除"}
         # 检查是否有用户使用此角色
         user_count = db.query(User).filter(User.role == role.name).count()
         if user_count > 0:
