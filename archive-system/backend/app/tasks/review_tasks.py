@@ -65,6 +65,11 @@ def process_review_task(self, task_id: int):
         model_name = "deepseek-r1-32b-lora-v1"
 
         for archive in archives:
+            # 检查是否被手动暂停/取消，中断处理
+            db.refresh(task)
+            if task.status in ("paused", "cancelled"):
+                logger.info(f"Review task #{task_id} 被手动{task.status}，中断处理")
+                break
             t_start = time.time()
 
             metadata = {
@@ -102,8 +107,11 @@ def process_review_task(self, task_id: int):
                 task.completed_count += 1
                 db.commit()
 
-        task.status = "completed"
-        db.commit()
+        # 仅在仍处于 running 时置 completed（避免覆盖手动暂停/取消/标记完成）
+        db.refresh(task)
+        if task.status == "running":
+            task.status = "completed"
+            db.commit()
 
     except Exception as exc:
         task = db.query(ReviewTask).filter(ReviewTask.id == task_id).first()

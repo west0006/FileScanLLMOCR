@@ -53,11 +53,29 @@
       <div class="form-group"><label>截止日期</label><input class="field-input" type="date" v-model="createForm.deadline" /></div>
       <div class="scope-hint">📋 任务将对符合筛选条件的已 OCR 档案进行 AI 预审，结果可在「预审记录」页查看。</div>
       <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px"><button class="btn-sm" @click="showCreate=false">取消</button><button class="btn-primary" @click="handleCreateTask">创建任务</button></div></div></div></div>
+
+    <div v-if="showReport" class="modal-overlay" @click.self="showReport=false"><div class="modal-card" style="width:520px"><div class="modal-head"><h3>预审报告 — {{ reportTask?.task_name }}</h3><button class="modal-close" @click="showReport=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div><div class="modal-body">
+      <dl class="detail-grid">
+        <div><dt>批次</dt><dd>{{ reportTask?.batch_name || '—' }}</dd></div>
+        <div><dt>状态</dt><dd><span class="risk-tag" :class="'risk-tag--'+statusClass(reportTask?.status)">{{ statusLabel(reportTask?.status) }}</span></dd></div>
+        <div><dt>完成进度</dt><dd>{{ reportTask?.completed_count }}/{{ reportTask?.total_count }}</dd></div>
+        <div><dt>通过率</dt><dd>{{ passRate(reportTask) }}</dd></div>
+        <div><dt>截止日期</dt><dd>{{ reportTask?.deadline?.substring(0,10) || '—' }}</dd></div>
+        <div><dt>创建时间</dt><dd>{{ reportTask?.created_at?.substring(0,19) || '—' }}</dd></div>
+      </dl>
+      <h4 style="margin:16px 0 8px;font-size:var(--fs-sm);font-weight:var(--fw-semibold)">风险分布</h4>
+      <div class="risk-dist-row">
+        <span style="color:var(--c-danger)">高风险 {{ reportRisk.high }}</span>
+        <span style="color:var(--c-warning)">中风险 {{ reportRisk.medium }}</span>
+        <span style="color:var(--c-success)">低风险 {{ reportRisk.low }}</span>
+      </div>
+      <div class="scope-hint">📊 完整预审明细可在「预审记录」页按任务筛选查看与导出。</div>
+    </div></div></div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { reviewApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
@@ -89,7 +107,7 @@ async function handleCreateTask() {
   } catch { ElMessage.error('创建失败') }
 }
 function statusClass(s: string) { return { pending:'low', running:'mid', completed:'low', failed:'high' }[s]||'low' }
-function statusLabel(s: string) { return { pending:'待启动', running:'处理中', completed:'已完成', failed:'失败' }[s]||s }
+function statusLabel(s: string) { return { pending:'待启动', running:'处理中', paused:'已暂停', completed:'已完成', failed:'失败', cancelled:'已取消' }[s]||s }
 // 预审通过率 = 低风险（建议开放）数 / 总完成数
 function passRate(t: any) {
   const h = t.risk_dist?.high || 0
@@ -119,9 +137,28 @@ async function handleExport() {
   } catch { ElMessage.error('导出失败，请确认已连接后端服务') }
 }
 function handleExportArchive() { ElMessage.info('请前往「预审记录」页选择档案后导出原文压缩包') }
+// 预审报告（RV-008 已完成任务查看报告）
+const showReport = ref(false)
+const reportTask = ref<any>(null)
+const reportRisk = computed(() => {
+  const d = reportTask.value?.risk_distribution || reportTask.value?.risk_dist || {}
+  return {
+    high: d.high ?? d['高'] ?? 0,
+    medium: d.medium ?? d['中'] ?? 0,
+    low: d.low ?? d['低'] ?? 0,
+  }
+})
+async function openReport(t: any) {
+  reportTask.value = t
+  showReport.value = true
+  try {
+    const res = await reviewApi.getTask(t.id)
+    reportTask.value = { ...t, ...res.data }
+  } catch { /* 使用列表已有数据 */ }
+}
 async function handleTaskAction(t: any, action: string) {
   if (action === 'view') {
-    ElMessage.info(`任务 #${t.id}: ${t.task_name}`)
+    openReport(t)
     return
   }
   try {
@@ -164,4 +201,6 @@ async function handleTaskAction(t: any, action: string) {
 .metrics-card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);padding:20px;margin-top:16px}
 .metrics-card h3{font-size:var(--fs-base);font-weight:var(--fw-semibold);margin:0 0 12px}
 .form-row{display:flex;gap:12px}.scope-hint{padding:8px 12px;margin-top:8px;background:#FFFBEB;border-radius:var(--r-sm);font-size:var(--fs-xs);color:#92400E;line-height:1.6}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px 20px;margin:0}.detail-grid dt{font-size:var(--fs-xs);color:var(--c-text-muted);margin-bottom:2px}.detail-grid dd{font-size:var(--fs-sm);color:var(--c-text);margin:0;font-weight:var(--fw-medium)}
+.risk-dist-row{display:flex;gap:16px;padding:12px 14px;background:var(--c-bg);border-radius:var(--r-sm);font-size:var(--fs-sm)}
 </style>

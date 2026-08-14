@@ -454,17 +454,8 @@ def _task_risk_dist(db, task_id: int) -> dict:
 
 def _task_rate(task) -> dict:
     """计算预审任务处理速率（件/分钟）与预计剩余时间（秒）"""
-    from datetime import datetime as _dt
-    if not task.started_at or task.status != "running":
-        return {"speed": 0, "eta_seconds": None}
-    elapsed = (_dt.utcnow() - task.started_at).total_seconds()
-    done = task.completed_count or 0
-    if elapsed <= 0 or done <= 0:
-        return {"speed": 0, "eta_seconds": None}
-    speed_per_min = done / (elapsed / 60.0)
-    remaining = max(0, (task.total_count or 0) - done)
-    eta = int(remaining / speed_per_min * 60) if speed_per_min > 0 else None
-    return {"speed": round(speed_per_min, 1), "eta_seconds": eta}
+    from app.services.task_progress import calc_rate
+    return calc_rate(task.started_at, task.completed_count or 0, task.total_count or 0, task.status)
 
 
 def _derive_volume_id(archive_id: str) -> str:

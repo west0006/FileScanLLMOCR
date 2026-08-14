@@ -89,6 +89,11 @@ def process_ocr_task(self, task_id: int):
         failed_count = 0
 
         for archive in archives:
+            # 检查是否被手动暂停/取消，中断处理
+            db.refresh(task)
+            if task.status in ("paused", "cancelled"):
+                logger.info(f"OCR 任务 #{task_id} 被手动{task.status}，中断处理")
+                break
             try:
                 # 查找图像文件
                 image_paths = _find_images(archive.archive_id)
@@ -174,8 +179,11 @@ def process_ocr_task(self, task_id: int):
                 db.commit()
                 failed_count += 1
 
-        task.status = "completed"
-        db.commit()
+        # 仅在仍处于 running 时置 completed（避免覆盖手动暂停/取消）
+        db.refresh(task)
+        if task.status == "running":
+            task.status = "completed"
+            db.commit()
 
         logger.info(
             f"OCR 任务 #{task_id} 完成: {processed_count} 成功, "
