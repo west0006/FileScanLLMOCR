@@ -5,6 +5,7 @@
       <h2>预审记录</h2>
       <div style="display:flex;align-items:center;gap:12px">
         <span v-if="selectedIds.length" class="selected-badge">已选 {{ selectedIds.length }} 条</span>
+        <template v-if="canExport">
         <button class="btn-export" @click="handleExport('excel')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           {{ selectedIds.length ? `Excel (${selectedIds.length}条)` : 'Excel' }}
@@ -21,6 +22,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           {{ selectedIds.length ? `原文压缩包 (${selectedIds.length}条)` : '原文压缩包' }}
         </button>
+        </template>
       </div>
     </div>
 
@@ -183,6 +185,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { reviewApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+// 导出按钮门控：仅有 review.export 权限的用户可见（reviewer 默认 export=False）
+const canExport = computed(() => auth.can('all') || auth.can('review', 'export'))
 
 const records = ref<any[]>([])
 const selected = ref<any>(null)

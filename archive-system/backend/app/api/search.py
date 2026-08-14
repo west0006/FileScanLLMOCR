@@ -464,20 +464,24 @@ async def ingest_document(
 
     # 上传大小上限 50MB
     MAX_SIZE = 50 * 1024 * 1024
-    if file.size and file.size > MAX_SIZE:
-        return {"error": "文件超过 50MB 上限"}
 
     suffix = os.path.splitext(file.filename or "")[1] or ".txt"
     fd, tmp_path = tempfile.mkstemp(suffix=suffix)
+    total_bytes = 0
     try:
-        # 分块写入，避免整文件读入内存
+        # 分块写入并累计字节数，超限即中断（防绕过 file.size=None 的超大文件）
         with os.fdopen(fd, "wb") as f:
             while True:
                 chunk = await file.read(1024 * 1024)
                 if not chunk:
                     break
+                total_bytes += len(chunk)
+                if total_bytes > MAX_SIZE:
+                    raise ValueError("文件超过 50MB 上限")
                 f.write(chunk)
         text = extract_text(tmp_path)
+    except ValueError as e:
+        return {"error": str(e)}
     finally:
         try:
             os.unlink(tmp_path)

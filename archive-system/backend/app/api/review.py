@@ -173,6 +173,10 @@ def update_review_task(task_id: int, action: str, user: dict = Depends(get_curre
     try:
         t = db.query(ReviewTask).filter(ReviewTask.id == task_id).first()
         if not t: return {"error": "not_found"}
+        # 归属校验：仅任务创建者或管理员可操作
+        from app.core.security import ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
+        if t.created_by and t.created_by != user["user_id"] and user["role"] not in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+            return {"error": "无权操作该任务"}
         if action == "start":
             t.status = "running"
             from app.tasks.review_tasks import process_review_task
@@ -352,7 +356,6 @@ class ExportArchiveRequest(BaseModel):
 def export_archive_bundle(req: ExportArchiveRequest, user: dict = Depends(require_permission("review", "export"))):
     """导出选中档案的原文压缩包（RV-010，zipfile 打包原始文件）"""
     import zipfile
-    import glob
     import time as _time
     from fastapi.responses import FileResponse
     from app.core.config import settings
@@ -372,12 +375,8 @@ def export_archive_bundle(req: ExportArchiveRequest, user: dict = Depends(requir
         packaged = 0
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for a in archives:
-                year_dir = str(a.year) if a.year else "unknown"
-                # basename 防路径穿越（archive_id/fonds_id 可能含 ../ 等）
-                fonds_dir = os.path.basename(a.fonds_id or "XX")
                 safe_aid = os.path.basename(a.archive_id)
-                pattern = os.path.join(settings.SYNC_DATA_DIR, year_dir, fonds_dir, f"{safe_aid}*.*")
-                for fp in sorted(glob.glob(pattern)):
+                for fp in _find_archive_files(safe_aid):
                     zf.write(fp, arcname=os.path.join(safe_aid, os.path.basename(fp)))
                     packaged += 1
 
@@ -396,6 +395,33 @@ def export_archive_bundle(req: ExportArchiveRequest, user: dict = Depends(requir
         return FileResponse(zip_path, filename=os.path.basename(zip_path), media_type="application/zip", background=BackgroundTask(_cleanup_zip))
     finally:
         db.close()
+
+
+def _find_archive_files(archive_id: str) -> list[str]:
+    """递归搜索档案原文文件（按文件名精确匹配，无目录布局假设）
+
+    种子数据在 {year}/{门类}/ 下，OCR 任务在 {year}/{fonds_id}/ 下，
+    目录布局不统一，故递归 + 精确匹配（去扩展名 == archive_id），
+    避免前缀匹配把相邻档案（如 1996-XZ-001-2）误打包。
+    """
+    from app.core.config import settings
+    sync_dir = settings.SYNC_DATA_DIR
+    if not os.path.isdir(sync_dir):
+        return []
+    exts = (".tiff", ".tif", ".jpg", ".jpeg", ".png", ".pdf", ".doc", ".docx")
+    # 先按年度目录缩小范围（若存在），否则全目录
+    parts = archive_id.split("-")
+    year_dir = parts[0] if parts else ""
+    roots = [os.path.join(sync_dir, year_dir)] if os.path.isdir(os.path.join(sync_dir, year_dir)) else [sync_dir]
+    found = []
+    for root in roots:
+        for dirpath, dirs, files in os.walk(root):
+            for f in files:
+                if not f.lower().endswith(exts):
+                    continue
+                if os.path.splitext(f)[0] == archive_id:
+                    found.append(os.path.join(dirpath, f))
+    return sorted(found)
 
 
 def _sync_open_status(db, archive_id: str, suggestion: str):

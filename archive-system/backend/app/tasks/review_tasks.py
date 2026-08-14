@@ -67,8 +67,8 @@ def process_review_task(self, task_id: int):
         for archive in archives:
             # 检查是否被手动暂停/取消，中断处理
             db.refresh(task)
-            if task.status in ("paused", "cancelled"):
-                logger.info(f"Review task #{task_id} 被手动{task.status}，中断处理")
+            if task.status in ("paused", "cancelled", "completed"):
+                logger.info(f"Review task #{task_id} 状态为{task.status}，中断处理")
                 break
             t_start = time.time()
 

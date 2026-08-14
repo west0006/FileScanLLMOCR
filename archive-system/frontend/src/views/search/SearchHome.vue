@@ -410,7 +410,8 @@ async function onIngestFile(e: any) {
   if (!file) return
   const fd = new FormData()
   fd.append('file', file)
-  const baseName = file.name.replace(/\.[^.]+$/, '')
+  // 清洗文件名：仅保留字母/数字/下划线/中文/连字符（与后端白名单一致）
+  const baseName = file.name.replace(/\.[^.]+$/, '').replace(/[^\w\u4e00-\u9fa5-]/g, '_')
   fd.append('archive_id', `INGEST-${Date.now()}-${baseName}`)
   fd.append('title', file.name)
   try {
