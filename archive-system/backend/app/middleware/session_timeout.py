@@ -38,6 +38,37 @@ def _cleanup_expired():
             del _session_store[k]
 
 
+def _log_session_timeout(token: str):
+    """会话闲置超时退出时，写入一条 logout 日志（补齐 LG-002「超时自动退出」记录）"""
+    try:
+        from app.core.security import decode_access_token
+        from app.core.database import SessionLocal
+        from app.core.log_chain import append_chain_log
+
+        payload = decode_access_token(token)
+        if not payload:
+            return
+        user_id = int(payload.get("sub", 0))
+        username = payload.get("username", "")
+        db = SessionLocal()
+        try:
+            append_chain_log(
+                db,
+                user_id=user_id,
+                username=username,
+                operation_type="logout",
+                module="auth",
+                description=f"会话闲置超时自动退出（超过 {settings.SESSION_IDLE_TIMEOUT} 分钟未操作）",
+                target_id="",
+                ip_address="",
+                result="success",
+            )
+        finally:
+            db.close()
+    except Exception:
+        pass
+
+
 class SessionTimeoutMiddleware(BaseHTTPMiddleware):
     """
     检查会话闲置时间，超时返回 401。
@@ -78,6 +109,7 @@ class SessionTimeoutMiddleware(BaseHTTPMiddleware):
                 if now - last_activity > idle_sec:
                     del _session_store[key]
                     _log.warn(f"会话闲置超时: {request.url.path}")
+                    _log_session_timeout(token)
                     from fastapi.responses import JSONResponse
                     return JSONResponse(
                         status_code=401,

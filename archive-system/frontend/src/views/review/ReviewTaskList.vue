@@ -4,7 +4,7 @@
     <div class="process-banner"><IconSvg name="pin" size="14" /> 系统对每批审核任务自动完成 AI 智能预审，生成风险评分、敏感信息标注、开放建议。<strong>审核人员无需在系统中进行人工复核</strong>，可通过导出按钮获取预审数据。</div>
     <div class="card">
       <table class="data-table">
-        <thead><tr><th>任务名称</th><th>批次</th><th>截止日期</th><th style="width:200px">进度</th><th>风险分布</th><th>通过率</th><th>状态</th><th style="width:180px">操作</th></tr></thead>
+        <thead><tr><th>任务名称</th><th>批次</th><th>截止日期</th><th style="width:200px">进度</th><th>风险分布</th><th>通过率</th><th>高风险</th><th>状态</th><th style="width:200px">操作</th></tr></thead>
         <tbody>
           <tr v-for="t in tasks" :key="t.id">
             <td>{{ t.task_name }}</td><td>{{ t.batch_name }}</td>
@@ -12,11 +12,14 @@
             <td><div class="mini-bar"><div class="mini-bar-fill mini-bar--low" :style="{width:(t.completed_count/t.total_count*100||0)+'%'}"></div><span class="mini-bar-num">{{ t.completed_count }}/{{ t.total_count }}</span></div></td>
             <td><span class="text-xs"><span style="color:var(--c-danger)">高{{ t.risk_dist?.high||0 }}</span> / <span style="color:var(--c-warning)">中{{ t.risk_dist?.medium||0 }}</span> / <span style="color:var(--c-success)">低{{ t.risk_dist?.low||0 }}</span></span></td>
             <td class="text-sm">{{ passRate(t) }}</td>
+            <td class="text-sm"><span style="color:var(--c-danger);font-weight:var(--fw-semibold)">{{ t.risk_dist?.high || 0 }}</span></td>
             <td><span class="risk-tag" :class="'risk-tag--'+statusClass(t.status)">{{ statusLabel(t.status) }}</span></td>
             <td>
               <button v-if="t.status==='pending'" class="btn-sm" @click="handleTaskAction(t, 'start')">启动</button>
-              <button v-else-if="t.status==='running'" class="btn-sm" @click="handleTaskAction(t, 'pause')">暂停</button>
-              <button v-else class="btn-sm" @click="handleTaskAction(t, 'view')">查看</button>
+              <button v-if="t.status==='running'" class="btn-sm" @click="handleTaskAction(t, 'pause')">暂停</button>
+              <button v-if="t.status==='paused'" class="btn-sm" @click="handleTaskAction(t, 'resume')">恢复</button>
+              <button v-if="t.status==='running'||t.status==='paused'" class="btn-sm" @click="handleTaskAction(t, 'mark_completed')">标记完成</button>
+              <button v-if="t.status==='completed'||t.status==='cancelled'||t.status==='failed'" class="btn-sm" @click="handleTaskAction(t, 'view')">查看</button>
             </td>
           </tr>
         </tbody>
@@ -115,7 +118,11 @@ async function handleTaskAction(t: any, action: string) {
   }
   try {
     await reviewApi.updateTask(t.id, action)
-    ElMessage.success(action === 'start' ? '任务已启动' : '任务已暂停')
+    const msg: Record<string, string> = {
+      start: '任务已启动', pause: '任务已暂停', resume: '任务已恢复',
+      cancel: '任务已取消', mark_completed: '任务已标记完成',
+    }
+    ElMessage.success(msg[action] || '操作成功')
     fetchTasks()
   } catch { ElMessage.error('操作失败') }
 }

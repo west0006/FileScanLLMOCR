@@ -183,6 +183,10 @@ def update_review_task(task_id: int, action: str, user: dict = Depends(get_curre
             try: process_review_task.delay(task_id)
             except: pass
         elif action == "cancel": t.status = "cancelled"
+        elif action == "mark_completed":
+            t.status = "completed"
+            from datetime import datetime as _dt
+            t.finished_at = _dt.utcnow()
         db.commit()
         return {"task_id": task_id, "action": action, "status": t.status}
     finally:
