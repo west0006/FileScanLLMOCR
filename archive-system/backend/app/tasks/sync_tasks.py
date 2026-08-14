@@ -12,7 +12,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.tasks.celery_app import celery_app
 from app.core.database import SessionLocal
-from app.models.models import SyncLog, Archive, OperationLog
+from app.models.models import SyncLog, Archive
 
 logger = get_task_logger(__name__)
 
@@ -316,23 +316,16 @@ def _upsert_archive(db, data: dict):
 
 def _log_sync_op(db, sync_type: str, mode: str, new_count: int, updated_count: int, failed_count: int):
     """写入操作日志 — 以"系统"用户记录同步操作，含哈希链"""
-    import hashlib
+    from app.core.log_chain import append_chain_log
     try:
         type_label = '文件同步' if sync_type == 'file' else '数据库同步'
         desc = f'{type_label}（{"增量" if mode == "incremental" else "全量"}）完成：新增{new_count}，更新{updated_count}'
         if failed_count: desc += f'，失败{failed_count}'
 
-        # 取上一条日志的哈希
-        prev = db.query(OperationLog).order_by(OperationLog.id.desc()).first()
-        prev_hash = prev.chain_hash if prev and prev.chain_hash else "0" * 64
-        content = f"系统|sync|sync|{desc}||{'success' if failed_count==0 else 'failure'}"
-        chain_hash = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
-
-        log = OperationLog(
+        append_chain_log(
+            db,
             user_id=0, username='系统', operation_type='sync', module='sync',
-            description=desc, result='success' if failed_count==0 else 'failure',
-            chain_hash=chain_hash,
+            description=desc, result='success' if failed_count == 0 else 'failure',
         )
-        db.add(log); db.commit()
     except Exception as e:
         logger.warning(f"同步操作日志写入失败: {e}")

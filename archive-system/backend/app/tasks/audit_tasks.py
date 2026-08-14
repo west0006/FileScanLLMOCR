@@ -8,6 +8,7 @@ from celery.utils.log import get_task_logger
 from app.tasks.celery_app import celery_app
 from app.core.database import SessionLocal
 from app.models.models import OperationLog, User
+from app.core.log_chain import append_chain_log, build_log_content, compute_chain_hash
 
 logger = get_task_logger(__name__)
 
@@ -59,13 +60,12 @@ def generate_monthly_audit_report(self):
         )
 
         # 审计链校验
-        import hashlib
         logs = db.query(OperationLog).order_by(OperationLog.id.asc()).all()
         prev_hash = "0" * 64
         tampered_count = 0
         for log in logs:
-            content = f"{log.username}|{log.operation_type}|{log.module}|{log.description or ''}|{log.target_id or ''}|{log.result}"
-            expected = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
+            content = build_log_content(log.username, log.operation_type, log.module, log.description, log.target_id, log.result)
+            expected = compute_chain_hash(prev_hash, content)
             if expected != (log.chain_hash or ""):
                 tampered_count += 1
             prev_hash = log.chain_hash or expected
@@ -78,18 +78,11 @@ def generate_monthly_audit_report(self):
             f"暴力破解风险{brute_force}个, "
             f"链校验异常{tampered_count}条"
         )
-        import hashlib as hl
-        prev = db.query(OperationLog).order_by(OperationLog.id.desc()).first()
-        prev_hash_val = prev.chain_hash if prev and prev.chain_hash else "0" * 64
-        content = f"系统|audit|audit|{desc}||success"
-        chain_hash = hl.sha256(f"{prev_hash_val}{content}".encode()).hexdigest()
-
-        report_log = OperationLog(
+        append_chain_log(
+            db,
             user_id=0, username="系统", operation_type="audit", module="audit",
-            description=desc, result="success", chain_hash=chain_hash,
+            description=desc, result="success",
         )
-        db.add(report_log)
-        db.commit()
 
         logger.info(f"月度审计报告已生成: {month_start.strftime('%Y-%m')} "
                      f"total={month_total} failed={month_failed} tampered={tampered_count}")
@@ -137,17 +130,12 @@ def deactivate_idle_users(self):
         if deactivated > 0:
             db.commit()
             # 写入操作日志
-            import hashlib as hl
             desc = f"[自动停用] {deactivated} 个用户超过 90 天未登录，已自动停用"
-            prev = db.query(OperationLog).order_by(OperationLog.id.desc()).first()
-            prev_hash_val = prev.chain_hash if prev and prev.chain_hash else "0" * 64
-            content = f"系统|admin|user|{desc}||success"
-            chain_hash = hl.sha256(f"{prev_hash_val}{content}".encode()).hexdigest()
-            db.add(OperationLog(
+            append_chain_log(
+                db,
                 user_id=0, username="系统", operation_type="admin", module="user",
-                description=desc, result="success", chain_hash=chain_hash,
-            ))
-            db.commit()
+                description=desc, result="success",
+            )
 
         logger.info(f"闲置用户清理: 停用 {deactivated} 个用户")
         return {"deactivated": deactivated}

@@ -7,6 +7,7 @@ from typing import Optional
 from app.core.security import get_current_user, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
 from app.core.database import SessionLocal
 from app.models.models import OperationLog
+from app.core.log_chain import build_log_content, compute_chain_hash
 from datetime import datetime
 
 router = APIRouter()
@@ -356,7 +357,6 @@ def audit_report(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHI
 @router.get("/audit/chain-verify")
 def verify_chain(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """哈希链完整性校验 — 检测日志是否被篡改"""
-    import hashlib
     db = SessionLocal()
     try:
         logs = db.query(OperationLog).order_by(OperationLog.id.asc()).all()
@@ -366,8 +366,8 @@ def verify_chain(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHI
         prev_hash = "0" * 64
         tampered = []
         for log in logs:
-            content = f"{log.username}|{log.operation_type}|{log.module}|{log.description or ''}|{log.target_id or ''}|{log.result}"
-            expected = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
+            content = build_log_content(log.username, log.operation_type, log.module, log.description, log.target_id, log.result)
+            expected = compute_chain_hash(prev_hash, content)
             if expected != (log.chain_hash or ""):
                 tampered.append({"id": log.id, "expected": expected[:16], "actual": (log.chain_hash or "")[:16]})
             prev_hash = log.chain_hash or expected

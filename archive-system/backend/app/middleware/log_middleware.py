@@ -14,8 +14,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
 from app.core.database import SessionLocal
-from app.models.models import OperationLog
 from app.core.logging import get_logger
+from app.core.log_chain import append_chain_log
 
 _mw_log = get_logger("middleware")
 
@@ -48,10 +48,6 @@ _OP_DETAIL_MAP = {
 }
 
 
-# 哈希链写入锁：串行化「读 prev → 写 → commit」，避免并发线程分叉导致链校验误报
-_chain_lock = threading.Lock()
-
-
 def _write_log_sync(
     user_id: int, username: str, op_type: str, module: str,
     description: str, target_id: str, ip: str, result: str,
@@ -60,31 +56,19 @@ def _write_log_sync(
     """同步写日志（在独立线程中执行）— 含哈希链校验"""
     db = SessionLocal()
     try:
-        # 取上一条日志的哈希
-        import hashlib
-        with _chain_lock:
-            prev = db.query(OperationLog).order_by(OperationLog.id.desc()).first()
-            prev_hash = prev.chain_hash if prev and prev.chain_hash else "0" * 64
-
-            # 计算本日志的内容哈希链
-            content = f"{username}|{op_type}|{module}|{description}|{target_id}|{result}"
-            chain_hash = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
-
-            log = OperationLog(
-                user_id=user_id,
-                username=username,
-                operation_type=op_type,
-                module=module,
-                description=description,
-                target_id=target_id,
-                ip_address=ip,
-                result=result,
-                user_agent=user_agent,
-                session_id=session_id,
-                chain_hash=chain_hash,
-            )
-            db.add(log)
-            db.commit()
+        append_chain_log(
+            db,
+            user_id=user_id,
+            username=username,
+            operation_type=op_type,
+            module=module,
+            description=description,
+            target_id=target_id,
+            ip_address=ip,
+            result=result,
+            user_agent=user_agent,
+            session_id=session_id,
+        )
     except Exception:
         _mw_log.warn(f"操作日志写入失败: {username} {op_type} {module}")
     finally:

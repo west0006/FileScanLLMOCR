@@ -26,15 +26,25 @@ def init_db():
 
 
 def _add_missing_columns():
-    """SQLite create_all 不会为已存在的表新增列，这里补齐新增列"""
+    """SQLite create_all 不会为已存在的表新增列，这里补齐所有新增列
+
+    遍历模型元数据，对每个已存在的表比对缺列，按 SQLAlchemy 方言编译出的
+    类型生成 ALTER TABLE ADD COLUMN。仅对 SQLite 生效（MySQL 走 Alembic）。
+    """
     from sqlalchemy import inspect, text
     try:
         insp = inspect(engine)
         with engine.begin() as conn:
-            if insp.has_table("review_tasks"):
-                cols = {c["name"] for c in insp.get_columns("review_tasks")}
-                if "deadline" not in cols:
-                    conn.execute(text("ALTER TABLE review_tasks ADD COLUMN deadline DATETIME"))
+            for table in Base.metadata.tables.values():
+                if not insp.has_table(table.name):
+                    continue
+                existing = {c["name"] for c in insp.get_columns(table.name)}
+                for col in table.columns:
+                    if col.name in existing:
+                        continue
+                    col_type = col.type.compile(dialect=engine.dialect)
+                    ddl = f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {col_type}'
+                    conn.execute(text(ddl))
     except Exception:
         pass
 
