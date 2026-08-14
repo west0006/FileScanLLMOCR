@@ -152,10 +152,15 @@ def serve_sync_file(file_path: str):
     - PDF → 暂不支持，返回提示
     """
     sync_root = os.path.normpath(settings.SYNC_DATA_DIR)
+    real_root = os.path.realpath(sync_root)
     full_path = os.path.normpath(os.path.join(sync_root, file_path))
+    real_path = os.path.realpath(full_path)
 
-    # 安全检查：确保路径在 SYNC_DATA_DIR 内（等值或子路径，防止 /app/sync_data_evil 之类前缀绕过）
-    if full_path != sync_root and not full_path.startswith(sync_root + os.sep):
+    # 安全检查：
+    # 1. 词法路径必须在 SYNC_DATA_DIR 内（等值或子路径，防 /app/sync_data_evil 前缀绕过）
+    # 2. 真实路径（跟随符号链接）也不能逃出目录，防链接指向目录外文件
+    if (full_path != sync_root and not full_path.startswith(sync_root + os.sep)) or \
+       (real_path != real_root and not real_path.startswith(real_root + os.sep)):
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=403, content={"error": "forbidden"})
 

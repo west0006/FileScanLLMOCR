@@ -10,6 +10,9 @@ from app.models.models import User, Role
 
 router = APIRouter()
 
+# 系统内置角色（不可删除，前端据此置灰删除按钮）
+_BUILTIN_ROLES = {"system_admin", "archive_admin", "reviewer"}
+
 
 class CreateUserRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
@@ -137,7 +140,12 @@ def toggle_user_status(user_id: int, is_active: bool, user: dict = Depends(requi
 
 @router.get("/online")
 def list_online_users(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
-    """在线用户列表 — 最近2小时内有活动的用户"""
+    """在线用户列表 — 最近2小时内有登录/活动的用户
+
+    注：last_login_at 在登录时更新（无按请求的活动刷新中间件），
+    因此本过滤是「最近2小时登录过」的近似，长时间持续在线的用户
+    会随窗口滑出，属已知语义边界。
+    """
     from datetime import datetime, timedelta
     db = SessionLocal()
     try:
@@ -173,7 +181,8 @@ def list_roles(user: dict = Depends(get_current_user)):
             for r in roles:
                 cnt = db.query(User).filter(User.role == r.name).count()
                 items.append({"id": r.id, "name": r.name, "description": r.description or "", "user_count": cnt,
-                            "permissions": r.permissions or {}, "data_permissions": r.data_permissions or {}})
+                            "permissions": r.permissions or {}, "data_permissions": r.data_permissions or {},
+                            "builtin": r.name in _BUILTIN_ROLES})
             return {"items": items}
         # 回退：种子数据
         return {"items": [
@@ -228,7 +237,7 @@ def delete_role(role_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMI
         if not role:
             return {"error": "role_not_found"}
         # 内置角色不可删除
-        if role.name in {"system_admin", "archive_admin", "reviewer"}:
+        if role.name in _BUILTIN_ROLES:
             return {"error": "系统内置角色不可删除"}
         # 检查是否有用户使用此角色
         user_count = db.query(User).filter(User.role == role.name).count()

@@ -5,6 +5,12 @@ import axios from 'axios'
 
 const api = axios.create({ baseURL: '/api', timeout: 30000 })
 
+// 会话失效统一处理：清除本地 token 并回到登录页
+function clearSessionAndRedirect() {
+  localStorage.removeItem('access_token')
+  window.location.href = '/login'
+}
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
   if (token) {
@@ -24,14 +30,12 @@ api.interceptors.response.use(
   (error) => {
     if (error?.__skip) return Promise.reject(error)  // 静默取消
     if (error.response?.status === 401) {
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
+      clearSessionAndRedirect()
     }
     // 账户停用：Token 仍有效但请求被拒 → 清除本地会话并回到登录页
     // 仅处理「停用」类 403，权限不足等其他 403 保持原样，避免误伤
     if (error.response?.status === 403 && String(error.response.data?.detail || '').includes('停用')) {
-      localStorage.removeItem('access_token')
-      window.location.href = '/login'
+      clearSessionAndRedirect()
     }
     return Promise.reject(error)
   }

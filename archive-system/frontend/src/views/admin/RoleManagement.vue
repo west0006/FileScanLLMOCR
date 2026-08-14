@@ -134,11 +134,8 @@ onMounted(fetchRoles)
 async function fetchRoles() {
   try {
     const res = await userApi.listRoles()
-    roles.value = (res.data.items || []).map((r: any) => ({
-      ...r,
-      name: roleLabel(r.name),
-      builtin: ['system_admin', 'archive_admin', 'reviewer'].includes(r.name),
-    }))
+    // builtin 由后端返回（与 delete_role 保护集合同源），前端不再硬编码
+    roles.value = (res.data.items || []).map((r: any) => ({ ...r, name: roleLabel(r.name) }))
   } catch {
     roles.value = [
       { id: 1, name: '系统管理员', description: '全部权限', user_count: 1, permissions: { all: true }, builtin: true },

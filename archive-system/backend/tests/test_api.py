@@ -115,6 +115,34 @@ class TestUsers:
         resp = client.get("/api/user/roles", headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
 
+    def test_online_users_last_login_filter(self):
+        """在线用户仅返回最近2小时内登录过的启用用户（last_login_at 过滤）"""
+        from app.core.database import SessionLocal
+        from app.models.models import User
+        from app.core.security import hash_password
+
+        # 构造一个启用但从未登录的用户
+        db = SessionLocal()
+        try:
+            u = db.query(User).filter(User.username == "never_login").first()
+            if not u:
+                u = User(username="never_login", name="从未登录",
+                         password_hash=hash_password("Test123456!"),
+                         role="reviewer", is_active=True)
+                db.add(u)
+            u.last_login_at = None
+            db.commit()
+        finally:
+            db.close()
+
+        # admin（system_admin）登录，last_login_at 被更新
+        token = client.post("/api/auth/login", json={"username": "admin", "password": "x"}).json()["access_token"]
+        resp = client.get("/api/user/online", headers={"Authorization": f"Bearer {token}"})
+        assert resp.status_code == 200
+        usernames = [i["username"] for i in resp.json()["items"]]
+        assert "never_login" not in usernames, "从未登录的用户不应出现在在线列表"
+        assert "admin" in usernames, "刚登录的 admin 应出现在在线列表"
+
 
 class TestLogs:
     def get_token(self):
