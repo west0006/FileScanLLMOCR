@@ -40,7 +40,7 @@
       </div>
       <table class="data-table">
         <thead><tr>
-          <th>排名</th><th>用户</th><th>角色</th><th>检索</th><th>浏览</th><th>下载</th><th>打印</th><th>合计</th>
+          <th>排名</th><th>用户</th><th>角色</th><th>检索</th><th>条目浏览</th><th>文件浏览</th><th>下载</th><th>打印</th><th>合计</th>
         </tr></thead>
         <tbody>
           <tr v-for="(u, i) in userRanking" :key="u.username">
@@ -48,12 +48,13 @@
             <td class="font-medium">{{ u.name || u.username }}</td>
             <td><span class="role-tag" :class="'role--'+u.role">{{ roleLabel(u.role) }}</span></td>
             <td>{{ u.search || 0 }}</td>
-            <td>{{ u.view || 0 }}</td>
+            <td>{{ u.view_entry || 0 }}</td>
+            <td>{{ u.view_file || 0 }}</td>
             <td>{{ u.download || 0 }}</td>
             <td>{{ u.print || 0 }}</td>
-            <td><strong class="text-accent">{{ (u.search||0)+(u.view||0)+(u.download||0)+(u.print||0) }}</strong></td>
+            <td><strong class="text-accent">{{ (u.search||0)+(u.view_entry||0)+(u.view_file||0)+(u.download||0)+(u.print||0) }}</strong></td>
           </tr>
-          <tr v-if="!userRanking.length"><td colspan="8" class="table-empty">暂无数据</td></tr>
+          <tr v-if="!userRanking.length"><td colspan="9" class="table-empty">暂无数据</td></tr>
         </tbody>
       </table>
     </div>
@@ -119,7 +120,7 @@ const timeHasData = ref(true)
 
 function roleLabel(r: string) { return ROLE_LABELS[r] || r }
 function typeLabel(t: string) { return OP_TYPE_LABELS[t] || t }
-function userTotal(u: any) { return (u.search||0)+(u.view||0)+(u.download||0)+(u.print||0) }
+function userTotal(u: any) { return (u.search||0)+(u.view_entry||0)+(u.view_file||0)+(u.download||0)+(u.print||0) }
 
 onMounted(async () => {
   try {
@@ -148,7 +149,7 @@ async function fetchUserRanking() {
     const res = await statsApi.byUser({top_n:20,role:userFilter.role||undefined,period:userFilter.period})
     const ranking = (res.data.items||[]).map((u:any)=>({...u,name:u.name||u.username,role:u.role||'reviewer'}))
     userRanking.value = ranking
-    const types = ['search','view','download','print']
+    const types = ['search','view_entry','view_file','download','print']
     const total = ranking.reduce((s,u)=>{types.forEach(t=>{u[t]=u[t]||0}); return s+userTotal(u)},0)
     // 当月数据
     methodDetail.value = types.map(t=>{
@@ -175,15 +176,15 @@ async function fetchUserRanking() {
   }
 }
 
-const TREND_COLORS: Record<string, string> = { search: '#10B981', view: '#6366F1', download: '#F59E0B', print: '#06B6D4' }
-const TREND_NAMES: Record<string, string> = { search: '检索', view: '浏览', download: '下载', print: '打印' }
+const TREND_COLORS: Record<string, string> = { search: '#10B981', view_entry: '#6366F1', view_file: '#8B5CF6', download: '#F59E0B', print: '#06B6D4' }
+const TREND_NAMES: Record<string, string> = { search: '检索', view_entry: '条目浏览', view_file: '文件浏览', download: '下载', print: '打印' }
 
 async function loadTimeChart() {
   if(!timeChartRef.value) return
   let timeData:any[]=[]
   try{const res=await statsApi.byTime({granularity:timeGranularity.value,days:timeGranularity.value==='year'?365:timeGranularity.value==='quarter'?90:30});timeData=res.data.items||[]}catch{timeData=[]}
   timeHasData.value = timeData.length > 0
-  const types = ['search','view','download','print']
+  const types = ['search','view_entry','view_file','download','print']
   _initChart(timeChartRef, {
     tooltip:{trigger:'axis'},
     legend:{bottom:0, data: types.map(t => TREND_NAMES[t]), textStyle:{fontSize:10}},
@@ -220,7 +221,8 @@ const exportFields = reactive([
   { key: 'name', label: '用户名', selected: true },
   { key: 'role', label: '角色', selected: true },
   { key: 'search', label: '检索次数', selected: true },
-  { key: 'view', label: '浏览次数', selected: true },
+  { key: 'view_entry', label: '条目浏览', selected: true },
+  { key: 'view_file', label: '文件浏览', selected: true },
   { key: 'download', label: '下载次数', selected: true },
   { key: 'print', label: '打印次数', selected: true },
 ])

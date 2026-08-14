@@ -181,6 +181,14 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
                 op_type = "print"
                 module = "search"
                 description = "打印档案"
+            elif "/archives/" in path and (path.endswith("/image") or path.endswith("/ocr")):
+                op_type = "view_file"
+                module = "search"
+                description = "浏览档案原文"
+            elif "/archives/" in path:
+                op_type = "view_entry"
+                module = "search"
+                description = "浏览档案详情"
             else:
                 # GET 请求 → 功能访问
                 for prefix, (ot, desc) in _GET_PAGE_MAP.items():

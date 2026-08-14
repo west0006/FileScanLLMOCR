@@ -114,7 +114,7 @@ export const MOCK_METHOD_DETAIL = [
 export const OP_TYPE_LABELS: Record<string, string> = {
   search: '检索', view: '浏览', review: '审核', download: '下载',
   print: '打印', admin: '管理', login: '登录', logout: '退出',
-  ocr: 'OCR', sync: '同步',
+  ocr: 'OCR', sync: '同步', view_entry: '条目浏览', view_file: '文件浏览', export: '导出',
 }
 
 // ============================================================

@@ -66,9 +66,9 @@ def stats_by_user(
             uname = r[0]
             if uname not in users:
                 users[uname] = {"username": uname, "name": uname, "role": "reviewer",
-                                "search": 0, "view": 0, "download": 0, "print": 0}
+                                "search": 0, "view_entry": 0, "view_file": 0, "download": 0, "print": 0}
             op_type = r[1]
-            if op_type in ("search", "view", "download", "print"):
+            if op_type in ("search", "view_entry", "view_file", "download", "print"):
                 users[uname][op_type] = (users[uname].get(op_type, 0) or 0) + r[2]
 
         # 补全用户姓名和角色
@@ -80,7 +80,7 @@ def stats_by_user(
                     users[u.username]["name"] = u.name or u.username
                     users[u.username]["role"] = u.role or "reviewer"
 
-        items = sorted(users.values(), key=lambda x: -(x["search"]+x["view"]+x["download"]+x["print"]))[:top_n]
+        items = sorted(users.values(), key=lambda x: -(x["search"]+x["view_entry"]+x["view_file"]+x["download"]+x["print"]))[:top_n]
         return {"items": items}
     finally:
         db.close()
@@ -123,9 +123,9 @@ def stats_by_time(
             else:  # year
                 key = dt.strftime("%Y")
             if key not in buckets:
-                buckets[key] = {"search": 0, "view": 0, "download": 0, "print": 0}
+                buckets[key] = {"search": 0, "view_entry": 0, "view_file": 0, "download": 0, "print": 0}
             op = log.operation_type or "other"
-            if op in ("search", "view", "download", "print"):
+            if op in ("search", "view_entry", "view_file", "download", "print"):
                 buckets[key][op] += 1
 
         items = [{"period": k, **v} for k, v in sorted(buckets.items())]

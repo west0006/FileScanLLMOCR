@@ -162,8 +162,8 @@ class TestStats:
         assert "items" in data
         for item in data["items"]:
             assert "period" in item
-            # 验证每个 period 包含四种类型
-            for t in ("search", "view", "download", "print"):
+            # 验证每个 period 包含五种类型
+            for t in ("search", "view_entry", "view_file", "download", "print"):
                 assert t in item, f"missing key '{t}' in period {item['period']}"
                 assert isinstance(item[t], int)
 
