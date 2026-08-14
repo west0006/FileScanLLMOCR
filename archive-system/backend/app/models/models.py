@@ -82,6 +82,7 @@ class ReviewTask(Base):
     filter_criteria = Column(JSON)                   # 筛选条件
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)  # 任务开始处理时间（用于计算速率/剩余）
     finished_at = Column(DateTime)
     deadline = Column(DateTime, nullable=True)   # 截止日期
 
@@ -118,6 +119,7 @@ class OcrTask(Base):
     filter_criteria = Column(JSON)
     created_by = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, nullable=True)  # 任务开始处理时间（用于计算速率/剩余）
     finished_at = Column(DateTime)
 
 

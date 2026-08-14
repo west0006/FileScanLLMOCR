@@ -137,9 +137,11 @@ def list_review_tasks(user: dict = Depends(get_current_user), page: int = 1, pag
         # 聚合指标
         metrics = _compute_review_metrics(db)
         return {"total": total, "page": page, "page_size": page_size,
-                "items": [{"id": t.id, "task_name": t.task_name, "batch_name": t.batch_name,
+                "items": [{**_task_rate(t),
+                            "id": t.id, "task_name": t.task_name, "batch_name": t.batch_name,
                             "total_count": t.total_count, "completed_count": t.completed_count,
                             "status": t.status, "created_at": str(t.created_at),
+                            "started_at": str(t.started_at) if t.started_at else None,
                             "deadline": str(t.deadline) if t.deadline else None,
                             "risk_dist": _task_risk_dist(db, t.id)} for t in items],
                 "metrics": metrics}
@@ -392,6 +394,21 @@ def _task_risk_dist(db, task_id: int) -> dict:
         key = level_map.get(r.risk_level, "low")
         dist[key] += 1
     return dist
+
+
+def _task_rate(task) -> dict:
+    """计算预审任务处理速率（件/分钟）与预计剩余时间（秒）"""
+    from datetime import datetime as _dt
+    if not task.started_at or task.status != "running":
+        return {"speed": 0, "eta_seconds": None}
+    elapsed = (_dt.utcnow() - task.started_at).total_seconds()
+    done = task.completed_count or 0
+    if elapsed <= 0 or done <= 0:
+        return {"speed": 0, "eta_seconds": None}
+    speed_per_min = done / (elapsed / 60.0)
+    remaining = max(0, (task.total_count or 0) - done)
+    eta = int(remaining / speed_per_min * 60) if speed_per_min > 0 else None
+    return {"speed": round(speed_per_min, 1), "eta_seconds": eta}
 
 
 def _derive_volume_id(archive_id: str) -> str:

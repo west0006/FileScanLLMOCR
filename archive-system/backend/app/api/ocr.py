@@ -97,13 +97,29 @@ def list_ocr_tasks(user: dict = Depends(get_current_user), page: int = 1, page_s
         total = q.count()
         items = q.order_by(OcrTask.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
         return {"total": total, "page": page, "page_size": page_size,
-                "items": [{"id": t.id, "task_name": t.task_name, "total_pages": t.total_pages,
+                "items": [{**_task_rate(t),
+                            "id": t.id, "task_name": t.task_name, "total_pages": t.total_pages,
                             "processed_pages": t.processed_pages, "failed_pages": t.failed_pages or 0,
                             "status": t.status,
                             "priority": t.priority or 0,
                             "created_at": str(t.created_at)} for t in items]}
     finally:
         db.close()
+
+
+def _task_rate(task) -> dict:
+    """计算 OCR 任务处理速率（页/分钟）与预计剩余时间（秒）"""
+    from datetime import datetime as _dt
+    if not task.started_at or task.status != "running":
+        return {"speed": 0, "eta_seconds": None}
+    elapsed = (_dt.utcnow() - task.started_at).total_seconds()
+    done = task.processed_pages or 0
+    if elapsed <= 0 or done <= 0:
+        return {"speed": 0, "eta_seconds": None}
+    speed_per_min = done / (elapsed / 60.0)
+    remaining = max(0, (task.total_pages or 0) - done)
+    eta = int(remaining / speed_per_min * 60) if speed_per_min > 0 else None
+    return {"speed": round(speed_per_min, 1), "eta_seconds": eta}
 
 
 @router.get("/tasks/{task_id}")

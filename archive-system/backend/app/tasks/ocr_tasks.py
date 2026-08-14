@@ -13,6 +13,7 @@ Mock 模式 (OCR_MODE=mock):
 import logging
 import os
 import time
+from datetime import datetime
 
 from celery.utils.log import get_task_logger
 
@@ -76,6 +77,7 @@ def process_ocr_task(self, task_id: int):
         task.status = "running"
         task.total_pages = estimated_pages
         task.processed_pages = 0
+        task.started_at = datetime.utcnow()
         db.commit()
 
         logger.info(

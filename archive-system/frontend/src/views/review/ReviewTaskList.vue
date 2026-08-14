@@ -9,7 +9,7 @@
           <tr v-for="t in tasks" :key="t.id">
             <td>{{ t.task_name }}</td><td>{{ t.batch_name }}</td>
             <td class="text-sm">{{ t.deadline?.substring(0,10) || '—' }}</td>
-            <td><div class="mini-bar"><div class="mini-bar-fill mini-bar--low" :style="{width:(t.completed_count/t.total_count*100||0)+'%'}"></div><span class="mini-bar-num">{{ t.completed_count }}/{{ t.total_count }}</span></div></td>
+            <td><div class="mini-bar"><div class="mini-bar-fill mini-bar--low" :style="{width:(t.completed_count/t.total_count*100||0)+'%'}"></div><span class="mini-bar-num">{{ t.completed_count }}/{{ t.total_count }}</span></div><div v-if="t.status==='running' && t.speed" class="text-xs" style="color:var(--c-text-muted);margin-top:2px">{{ t.speed }} 件/分 · 约 {{ etaText(t) }} 剩余</div></td>
             <td><span class="text-xs"><span style="color:var(--c-danger)">高{{ t.risk_dist?.high||0 }}</span> / <span style="color:var(--c-warning)">中{{ t.risk_dist?.medium||0 }}</span> / <span style="color:var(--c-success)">低{{ t.risk_dist?.low||0 }}</span></span></td>
             <td class="text-sm">{{ passRate(t) }}</td>
             <td class="text-sm"><span style="color:var(--c-danger);font-weight:var(--fw-semibold)">{{ t.risk_dist?.high || 0 }}</span></td>
@@ -97,6 +97,14 @@ function passRate(t: any) {
   const l = t.risk_dist?.low || 0
   const total = h + m + l
   return total > 0 ? Math.round(l / total * 100) + '%' : '—'
+}
+// 预计剩余时间人性化展示
+function etaText(t: any) {
+  const s = t.eta_seconds
+  if (s == null) return '—'
+  if (s < 60) return `${s} 秒`
+  if (s < 3600) return `${Math.round(s / 60)} 分钟`
+  return `${(s / 3600).toFixed(1)} 小时`
 }
 async function handleExport() {
   try {

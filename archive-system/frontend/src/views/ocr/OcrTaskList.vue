@@ -40,6 +40,7 @@
                 <div class="mini-bar-fill" :class="'mini-bar--'+barClass(t.status)" :style="{width:(t.processed_pages/t.total_pages*100||0)+'%'}"></div>
                 <span class="mini-bar-num">{{ t.processed_pages }}/{{ t.total_pages }} ({{ t.total_pages ? Math.round(t.processed_pages/t.total_pages*100) : 0 }}%)</span>
               </div>
+              <div v-if="t.status==='running' && t.speed" class="text-xs" style="color:var(--c-text-muted);margin-top:2px">{{ t.speed }} 页/分 · 约 {{ etaText(t) }} 剩余</div>
             </td>
             <td><span style="color:var(--c-danger)">{{ t.failed_pages || 0 }}</span></td>
             <td>
@@ -159,6 +160,14 @@ async function handleCreateTask() {
 function barClass(s: string) { return { pending:'low',running:'mid',paused:'mid',completed:'low',failed:'high',cancelled:'high' }[s]||'low' }
 function statusLabel(s: string) { return { pending:'待处理',running:'处理中',paused:'已暂停',completed:'已完成',failed:'失败',cancelled:'已取消' }[s]||s }
 function priLabel(p: number) { return {0:'普通',1:'高',2:'紧急'}[p]||'普通' }
+// 预计剩余时间人性化展示
+function etaText(t: any) {
+  const s = t.eta_seconds
+  if (s == null) return '—'
+  if (s < 60) return `${s} 秒`
+  if (s < 3600) return `${Math.round(s / 60)} 分钟`
+  return `${(s / 3600).toFixed(1)} 小时`
+}
 async function openDetail(t: any) {
   try {
     const res = await ocrApi.getTask(t.id)

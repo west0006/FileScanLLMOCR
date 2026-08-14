@@ -1,6 +1,7 @@
 """AI 预审核异步任务 — 批量处理 + 结果入库"""
 
 import time
+from datetime import datetime
 from celery.utils.log import get_task_logger
 
 from app.tasks.celery_app import celery_app
@@ -58,6 +59,7 @@ def process_review_task(self, task_id: int):
         task.status = "running"
         task.total_count = total
         task.completed_count = 0
+        task.started_at = datetime.utcnow()
         db.commit()
 
         model_name = "deepseek-r1-32b-lora-v1"
