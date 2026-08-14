@@ -327,7 +327,7 @@ def audit_report(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHI
 
         # 合规评估
         compliance = {
-            "log_retention": True,    # 180天自动清理
+            "log_retention": True,    # 1095天(3年)自动清理
             "chain_protection": True, # 哈希链完整性
             "access_control": True,   # RBAC 权限
             "audit_trail": True,      # 操作日志全量记录

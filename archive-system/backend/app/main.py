@@ -48,7 +48,7 @@ def _cleanup_old_logs():
         db.commit()
         if deleted:
             import logging
-            logging.getLogger("main").info(f"日志清理: 删除 {deleted} 条超过 180 天的旧日志")
+            logging.getLogger("main").info(f"日志清理: 删除 {deleted} 条超过 1095 天（3 年）的旧日志")
     except Exception:
         db.rollback()
     finally:
