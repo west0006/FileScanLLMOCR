@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from app.core.security import get_current_user, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN, hash_password
+from app.core.security import get_current_user, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN, hash_password, verify_password
 from app.core.database import SessionLocal
 from app.models.models import User, Role
 
@@ -99,18 +99,9 @@ def update_user(user_id: int, req: UpdateUserRequest, user: dict = Depends(get_c
 @router.put("/{user_id}/password")
 def reset_password(user_id: int, new_password: str, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """重置密码"""
-    if len(new_password) < 12:
-        return {"error": "密码不少于12个字符"}
-    # 复杂度校验：大小写+数字+特殊字符
-    import re
-    if not re.search(r'[A-Z]', new_password):
-        return {"error": "密码需包含大写字母"}
-    if not re.search(r'[a-z]', new_password):
-        return {"error": "密码需包含小写字母"}
-    if not re.search(r'[0-9]', new_password):
-        return {"error": "密码需包含数字"}
-    if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;\/]', new_password):
-        return {"error": "密码需包含特殊字符"}
+    err = _password_complexity_error(new_password)
+    if err:
+        return {"error": err}
     db = SessionLocal()
     try:
         u = db.query(User).filter(User.id == user_id).first()
@@ -124,6 +115,34 @@ def reset_password(user_id: int, new_password: str, user: dict = Depends(require
         db.close()
 
 
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+
+@router.put("/me/password")
+def change_my_password(req: ChangePasswordRequest, user: dict = Depends(get_current_user)):
+    """用户自助修改密码（校验原密码 + 12 位四类复杂度，UM-003）"""
+    err = _password_complexity_error(req.new_password)
+    if err:
+        return {"error": err}
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user["user_id"]).first()
+        if not u:
+            return {"error": "用户不存在"}
+        # 校验原密码（开发模式自动创建的用户密码即登录密码）
+        if not verify_password(req.old_password, u.password_hash):
+            return {"error": "原密码错误"}
+        from datetime import datetime
+        u.password_hash = hash_password(req.new_password)
+        u.password_updated_at = datetime.utcnow()
+        db.commit()
+        return {"status": "password_changed"}
+    finally:
+        db.close()
+
+
 @router.put("/{user_id}/status")
 def toggle_user_status(user_id: int, is_active: bool, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """启用/停用用户"""
@@ -132,6 +151,27 @@ def toggle_user_status(user_id: int, is_active: bool, user: dict = Depends(requi
         u = db.query(User).filter(User.id == user_id).first()
         if u: u.is_active = is_active; db.commit()
         return {"user_id": user_id, "is_active": is_active}
+    finally:
+        db.close()
+
+
+class BatchStatusRequest(BaseModel):
+    user_ids: list[int]
+    is_active: bool
+
+
+@router.post("/batch-status")
+def batch_toggle_status(req: BatchStatusRequest, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
+    """批量启用/停用用户（UM-004，排除当前管理员自身）"""
+    db = SessionLocal()
+    try:
+        ids = [i for i in req.user_ids if i != user["user_id"]]
+        if not ids:
+            return {"error": "无有效用户"}
+        db.query(User).filter(User.id.in_(ids)).update(
+            {User.is_active: req.is_active}, synchronize_session=False)
+        db.commit()
+        return {"status": "updated", "count": len(ids)}
     finally:
         db.close()
 
@@ -301,6 +341,21 @@ def update_tree_auth(user_id: int, req: TreeAuthRequest, user: dict = Depends(re
 
 
 # ==================== 辅助函数 ====================
+
+def _password_complexity_error(password: str) -> str | None:
+    """密码复杂度校验：不少于12位 + 大小写/数字/特殊字符。返回错误信息或 None"""
+    import re
+    if len(password) < 12:
+        return "密码不少于12个字符"
+    if not re.search(r'[A-Z]', password):
+        return "密码需包含大写字母"
+    if not re.search(r'[a-z]', password):
+        return "密码需包含小写字母"
+    if not re.search(r'[0-9]', password):
+        return "密码需包含数字"
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;\/]', password):
+        return "密码需包含特殊字符"
+    return None
 
 # 档案目录树结构：大类 → 年份 → 部门
 _TREE_HIERARCHY: dict[str, list[str]] = {

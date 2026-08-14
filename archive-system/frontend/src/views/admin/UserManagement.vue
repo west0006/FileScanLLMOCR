@@ -2,7 +2,12 @@
   <div class="page">
     <div class="page-head">
       <h2>用户管理 <span class="user-count">共 {{ total }} 人</span></h2>
-      <button class="btn-primary" @click="openCreate">新建用户</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span v-if="selectedIds.length" class="selected-badge">已选 {{ selectedIds.length }} 人</span>
+        <button v-if="selectedIds.length" class="btn-sm" @click="batchStatus(true)">批量启用</button>
+        <button v-if="selectedIds.length" class="btn-sm" @click="batchStatus(false)">批量停用</button>
+        <button class="btn-primary" @click="openCreate">新建用户</button>
+      </div>
     </div>
     <div class="filter-bar">
       <select v-model="roleFilter" class="filter-select"><option value="">全部角色</option><option value="system_admin">系统管理员</option><option value="archive_admin">档案管理员</option><option value="reviewer">审核员</option></select>
@@ -12,9 +17,10 @@
     </div>
     <div class="card">
       <table class="data-table">
-        <thead><tr><th>姓名</th><th>用户名</th><th>所属部门</th><th>角色</th><th>最后登录</th><th style="width:80px">状态</th><th style="width:210px">操作</th></tr></thead>
+        <thead><tr><th style="width:36px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th><th>姓名</th><th>用户名</th><th>所属部门</th><th>角色</th><th>最后登录</th><th style="width:80px">状态</th><th style="width:210px">操作</th></tr></thead>
         <tbody>
           <tr v-for="u in users" :key="u.id">
+            <td><input type="checkbox" :checked="selectedIds.includes(u.id)" @change="toggleSelect(u.id)" /></td>
             <td><span class="online-dot" :class="u.is_active?'dot--on':'dot--off'"></span>{{ u.name }}</td>
             <td class="mono">{{ u.username }}</td><td>{{ u.department || '—' }}</td><td>{{ roleLabel(u.role) }}</td>
             <td class="text-sm">{{ u.last_login_at?.substring(0,19) || u.created_at?.substring(0,19) || '—' }}</td>
@@ -25,7 +31,7 @@
               <button class="btn-sm" style="margin-left:4px" @click="toggleUser(u)">{{ u.is_active ? '停用' : '启用' }}</button>
             </td>
           </tr>
-          <tr v-if="users.length === 0"><td colspan="6" style="text-align:center;padding:40px;color:var(--c-text-muted)">暂无用户</td></tr>
+          <tr v-if="users.length === 0"><td colspan="8" style="text-align:center;padding:40px;color:var(--c-text-muted)">暂无用户</td></tr>
         </tbody>
       </table>
     </div>
@@ -83,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { userApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -93,6 +99,7 @@ const creating = ref(false)
 const errorMsg = ref('')
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
 const roleFilter = ref(''); const statusFilter = ref(''); const searchKeyword = ref('')
+const selectedIds = ref<number[]>([])
 
 const form = reactive({ username: '', name: '', department: '', role: 'reviewer', password: '' })
 
@@ -174,6 +181,33 @@ async function toggleUser(u: any) {
     if (e !== 'cancel' && e?.action !== 'cancel') ElMessage.error('操作失败')
   }
 }
+
+// 批量选择与批量启用/停用（UM-004）
+const allSelected = computed(() => users.value.length > 0 && users.value.every(u => selectedIds.value.includes(u.id)))
+function toggleSelect(id: number) {
+  const i = selectedIds.value.indexOf(id)
+  if (i >= 0) selectedIds.value.splice(i, 1)
+  else selectedIds.value.push(id)
+}
+function toggleAll() {
+  if (allSelected.value) selectedIds.value = []
+  else selectedIds.value = users.value.map(u => u.id)
+}
+async function batchStatus(active: boolean) {
+  try {
+    await ElMessageBox.confirm(
+      `确认批量${active ? '启用' : '停用'} ${selectedIds.value.length} 个用户？`,
+      '批量操作确认',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    await userApi.batchStatus(selectedIds.value, active)
+    ElMessage.success(`已批量${active ? '启用' : '停用'}`)
+    selectedIds.value = []
+    fetchUsers()
+  } catch (e: any) {
+    if (e !== 'cancel' && e?.action !== 'cancel') ElMessage.error('操作失败')
+  }
+}
 </script>
 
 <style scoped>
@@ -186,4 +220,5 @@ async function toggleUser(u: any) {
 .btn-accent-sm{height:32px;padding:0 14px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-xs);cursor:pointer}.btn-accent-sm:hover{background:var(--c-accent-hover)}
 .online-dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;vertical-align:middle}.dot--on{background:var(--c-success)}.dot--off{background:var(--c-text-muted)}
 .text-sm{font-size:var(--fs-xs);color:var(--c-text-secondary)}
+.selected-badge{padding:2px 12px;border-radius:var(--r-full);font-size:var(--fs-xs);background:var(--c-accent-light);color:var(--c-accent);font-weight:var(--fw-semibold)}
 </style>

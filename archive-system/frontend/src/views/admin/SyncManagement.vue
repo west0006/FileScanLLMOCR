@@ -22,8 +22,12 @@
     <div class="card" v-if="tab === 'file'">
       <div class="card-body">
         <div class="form-group">
-          <label>共享目录路径</label>
-          <input class="field-input" v-model="fileConfig.share_path" placeholder="如: /mnt/archive_share 或 \\\\192.168.1.10\\archives" />
+          <label>共享目录路径（可配置多个）</label>
+          <div v-for="(p, i) in fileConfig.share_paths" :key="i" class="dir-row">
+            <input class="field-input" v-model="fileConfig.share_paths[i]" placeholder="如: /mnt/archive_share" />
+            <button class="btn-sm" @click="fileConfig.share_paths.splice(i, 1)" title="删除该目录">删除</button>
+          </div>
+          <button class="btn-sm" style="margin-top:6px" @click="fileConfig.share_paths.push('')">+ 添加目录</button>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -155,7 +159,7 @@ const history = ref<any[]>([])
 const syncStats = reactive({ files: 0, records: 0, running: '—', nextSync: '—' })
 
 const fileConfig = reactive({
-  share_path: '',
+  share_paths: [] as string[],
   sync_frequency: 'daily',
   sync_mode: 'incremental',
   sync_window_start: '02:00',
@@ -177,7 +181,17 @@ async function loadConfig() {
   try {
     const res = await syncApi.getConfigs()
     const cfg = res.data
-    if (cfg.file_sync) Object.assign(fileConfig, cfg.file_sync)
+    if (cfg.file_sync) {
+      Object.assign(fileConfig, cfg.file_sync)
+      // 归一化：兼容旧 share_path 单值 → share_paths 列表
+      if (!Array.isArray(fileConfig.share_paths)) {
+        fileConfig.share_paths = (cfg.file_sync.share_paths && Array.isArray(cfg.file_sync.share_paths)) ? [...cfg.file_sync.share_paths] : []
+      }
+      if (!fileConfig.share_paths.length && cfg.file_sync.share_path) {
+        fileConfig.share_paths = [cfg.file_sync.share_path]
+      }
+      if (!fileConfig.share_paths.length) fileConfig.share_paths = ['']
+    }
     if (cfg.database_sync) Object.assign(dbConfig, cfg.database_sync)
   } catch { /* keep defaults */ }
 }
@@ -203,7 +217,9 @@ async function fetchHistory() {
 
 async function saveFileConfig() {
   try {
-    await syncApi.setFileConfig(fileConfig)
+    // 过滤空目录，仅提交有效路径
+    const payload = { ...fileConfig, share_paths: fileConfig.share_paths.map((p: string) => p.trim()).filter(Boolean) }
+    await syncApi.setFileConfig(payload)
     fileMsg.value = { type: 'success', text: '文件同步配置已保存' }
     ElMessage.success('文件同步配置已保存')
     setTimeout(() => fileMsg.value = null, 3000)
@@ -329,6 +345,8 @@ async function pollProgress(syncId: number) {
   letter-spacing: 0.5px; margin-bottom: 6px;
 }
 .form-row { display: flex; gap: 16px; }
+.dir-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.dir-row .field-input { flex: 1; }
 .field-input {
   height: 40px; padding: 0 12px; border: 1px solid var(--c-border);
   border-radius: var(--r-sm); font-size: var(--fs-base);

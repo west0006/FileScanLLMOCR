@@ -31,7 +31,8 @@ def _save_config(config: dict):
 
 
 class FileSyncConfigRequest(BaseModel):
-    share_path: str
+    share_paths: list[str] = []
+    share_path: str = ""  # 向后兼容：旧单值配置
     sync_frequency: str = "daily"
     sync_mode: str = "incremental"
     sync_window_start: str = "02:00"
@@ -52,9 +53,16 @@ class DatabaseSyncConfigRequest(BaseModel):
 
 @router.post("/config/file")
 def set_file_sync_config(req: FileSyncConfigRequest, user: dict = Depends(get_current_user)):
-    """配置文件同步 — 持久化到 JSON"""
+    """配置文件同步 — 持久化到 JSON（share_paths 多目录，兼容旧 share_path）"""
     cfg = _load_config()
-    cfg["file_sync"] = req.model_dump()
+    data = req.model_dump()
+    # 归一化：兼容旧 share_path 单值，统一为 share_paths 列表
+    paths = list(data.get("share_paths") or [])
+    if data.get("share_path") and data["share_path"] not in paths:
+        paths.append(data["share_path"])
+    data["share_paths"] = [p for p in paths if p]
+    data.pop("share_path", None)
+    cfg["file_sync"] = data
     _save_config(cfg)
     return {"status": "saved", "config": cfg["file_sync"]}
 

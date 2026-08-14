@@ -47,6 +47,62 @@ def _compute_file_hash(filepath: str, sample_bytes: int = 4096) -> str:
 
 # ==================== 文件同步 ====================
 
+def _sync_single_directory(share_path: str, mode: str) -> tuple[int, int, int, list[str]]:
+    """同步单个共享目录，返回 (new_count, updated_count, failed_count, errors)"""
+    ARCHIVE_EXTENSIONS = {".tiff", ".tif", ".jpg", ".jpeg", ".png", ".pdf", ".doc", ".docx"}
+    new_count = 0
+    updated_count = 0
+    failed_count = 0
+    errors = []
+
+    for root, dirs, files in os.walk(share_path):
+        for filename in files:
+            if not any(filename.lower().endswith(ext) for ext in ARCHIVE_EXTENSIONS):
+                continue
+
+            src_path = os.path.join(root, filename)
+            rel_path = os.path.relpath(src_path, share_path)
+
+            try:
+                src_stat = os.stat(src_path)
+                src_mtime = src_stat.st_mtime
+                src_size = src_stat.st_size
+
+                local_path = _local_file_path(rel_path)
+                if os.path.exists(local_path):
+                    local_stat = os.stat(local_path)
+                    if mode == "incremental":
+                        if (abs(src_mtime - local_stat.st_mtime) < 2 and
+                            src_size == local_stat.st_size):
+                            continue
+
+                    src_hash = _compute_file_hash(src_path)
+                    local_hash = _compute_file_hash(local_path)
+                    if src_hash == local_hash:
+                        continue
+
+                    updated_count += 1
+                else:
+                    new_count += 1
+
+                os.makedirs(os.path.dirname(local_path), exist_ok=True)
+                with open(src_path, "rb") as sf, open(local_path, "wb") as df:
+                    while True:
+                        chunk = sf.read(1024 * 1024)
+                        if not chunk:
+                            break
+                        df.write(chunk)
+
+                os.utime(local_path, (src_mtime, src_mtime))
+
+            except Exception as e:
+                failed_count += 1
+                errors.append(f"{rel_path}: {str(e)[:100]}")
+                logger.error(f"Sync failed: {rel_path}: {e}")
+
+    return new_count, updated_count, failed_count, errors
+
+
 @celery_app.task(bind=True, max_retries=3)
 def sync_files_task(self, sync_log_id: int, mode: str = "incremental"):
     """文件增量同步 — 比对时间戳+哈希，仅同步新增/变更文件"""
@@ -57,72 +113,34 @@ def sync_files_task(self, sync_log_id: int, mode: str = "incremental"):
             return {"error": "sync_log_not_found"}
 
         config = _load_config().get("file_sync", {})
-        share_path = config.get("share_path", "")
-        if not share_path or not os.path.isdir(share_path):
+        # 兼容：share_paths 列表（SY-001 多目录）与旧 share_path 单值
+        share_paths = list(config.get("share_paths") or [])
+        if config.get("share_path"):
+            share_paths.append(config["share_path"])
+        share_paths = [p for p in share_paths if p]
+        if not share_paths:
             sync_log.status = "failed"
-            sync_log.log_detail = f"共享目录不存在: {share_path}"
+            sync_log.log_detail = "未配置共享目录"
             sync_log.finished_at = datetime.utcnow()
             db.commit()
-            return {"error": "share_path_not_found", "path": share_path}
-
-        # 支持的档案文件扩展名
-        ARCHIVE_EXTENSIONS = {".tiff", ".tif", ".jpg", ".jpeg", ".png", ".pdf", ".doc", ".docx"}
+            return {"error": "share_path_not_found", "path": ""}
 
         new_count = 0
         updated_count = 0
         failed_count = 0
         errors = []
 
-        # 遍历共享目录
-        for root, dirs, files in os.walk(share_path):
-            for filename in files:
-                if not any(filename.lower().endswith(ext) for ext in ARCHIVE_EXTENSIONS):
-                    continue
-
-                src_path = os.path.join(root, filename)
-                rel_path = os.path.relpath(src_path, share_path)
-
-                try:
-                    src_stat = os.stat(src_path)
-                    src_mtime = src_stat.st_mtime
-                    src_size = src_stat.st_size
-
-                    # 检查本地是否已存在
-                    local_path = _local_file_path(rel_path)
-                    if os.path.exists(local_path):
-                        local_stat = os.stat(local_path)
-                        # 增量模式: 比对时间戳和大小，变化了才算更新
-                        if mode == "incremental":
-                            if (abs(src_mtime - local_stat.st_mtime) < 2 and
-                                src_size == local_stat.st_size):
-                                continue  # 未变化，跳过
-
-                        # 验证哈希确认变更
-                        src_hash = _compute_file_hash(src_path)
-                        local_hash = _compute_file_hash(local_path)
-                        if src_hash == local_hash:
-                            continue
-
-                        updated_count += 1
-                    else:
-                        new_count += 1
-
-                    # 复制文件
-                    os.makedirs(os.path.dirname(local_path), exist_ok=True)
-                    with open(src_path, "rb") as sf, open(local_path, "wb") as df:
-                        while True:
-                            chunk = sf.read(1024 * 1024)  # 1MB chunks
-                            if not chunk:
-                                break
-                            df.write(chunk)
-
-                    # 保留原始时间戳
-                    os.utime(local_path, (src_mtime, src_mtime))
-
-                except Exception as e:
-                    failed_count += 1
-                    errors.append(f"{rel_path}: {str(e)[:100]}")
-                    logger.error(f"Sync failed: {rel_path}: {e}")
+        # 遍历多个共享目录
+        for share_path in share_paths:
+            if not os.path.isdir(share_path):
+                errors.append(f"{share_path}: 目录不存在")
+                failed_count += 1
+                continue
+            n, u, f, errs = _sync_single_directory(share_path, mode)
+            new_count += n
+            updated_count += u
+            failed_count += f
+            errors.extend(errs)
 
         # 更新日志
         sync_log.new_files = new_count
