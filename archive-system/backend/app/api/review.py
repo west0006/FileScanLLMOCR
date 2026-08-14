@@ -186,6 +186,8 @@ def update_review_task(task_id: int, action: str, user: dict = Depends(get_curre
             except: pass
         elif action == "cancel": t.status = "cancelled"
         elif action == "mark_completed":
+            if t.status not in ("running", "paused"):
+                return {"error": "仅运行中/已暂停的任务可标记完成"}
             t.status = "completed"
             from datetime import datetime as _dt
             t.finished_at = _dt.utcnow()
@@ -359,8 +361,9 @@ def export_archive_bundle(req: ExportArchiveRequest, user: dict = Depends(requir
     try:
         q = apply_data_scope(user, db.query(Archive), Archive)
         archives = q.filter(Archive.archive_id.in_(req.archive_ids)).all() if req.archive_ids else []
+        from fastapi import HTTPException
         if not archives:
-            return {"error": "无有效档案"}
+            raise HTTPException(status_code=400, detail="无有效档案")
 
         out_dir = settings.UPLOAD_DIR or "/tmp"
         os.makedirs(out_dir, exist_ok=True)
@@ -370,17 +373,27 @@ def export_archive_bundle(req: ExportArchiveRequest, user: dict = Depends(requir
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
             for a in archives:
                 year_dir = str(a.year) if a.year else "unknown"
-                fonds_dir = a.fonds_id or "XX"
-                pattern = os.path.join(settings.SYNC_DATA_DIR, year_dir, fonds_dir, f"{a.archive_id}*.*")
+                # basename 防路径穿越（archive_id/fonds_id 可能含 ../ 等）
+                fonds_dir = os.path.basename(a.fonds_id or "XX")
+                safe_aid = os.path.basename(a.archive_id)
+                pattern = os.path.join(settings.SYNC_DATA_DIR, year_dir, fonds_dir, f"{safe_aid}*.*")
                 for fp in sorted(glob.glob(pattern)):
-                    zf.write(fp, arcname=os.path.join(a.archive_id, os.path.basename(fp)))
+                    zf.write(fp, arcname=os.path.join(safe_aid, os.path.basename(fp)))
                     packaged += 1
 
         if packaged == 0:
             os.remove(zip_path)
-            return {"error": "所选档案无原文文件，无法打包"}
+            raise HTTPException(status_code=400, detail="所选档案无原文文件，无法打包")
 
-        return FileResponse(zip_path, filename=os.path.basename(zip_path), media_type="application/zip")
+        from starlette.background import BackgroundTask
+
+        def _cleanup_zip():
+            try:
+                os.remove(zip_path)
+            except OSError:
+                pass
+
+        return FileResponse(zip_path, filename=os.path.basename(zip_path), media_type="application/zip", background=BackgroundTask(_cleanup_zip))
     finally:
         db.close()
 

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request, File, UploadFile, Form
 from pydantic import BaseModel
 from typing import Optional
 
-from app.core.security import get_current_user, apply_data_scope, require_permission, has_data_permission
+from app.core.security import get_current_user, apply_data_scope, require_permission, has_data_permission, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
 from app.core.database import SessionLocal
 from app.core.config import settings
 from app.models.models import Archive, OperationLog
@@ -447,17 +447,36 @@ async def ingest_document(
     year: int = Form(None),
     category: str = Form(""),
     department: str = Form(""),
-    user: dict = Depends(get_current_user),
+    user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN)),
 ):
-    """异质文档摄取（SE-008）— 上传 PDF/Word/TXT，提取全文写入档案，立即可检索"""
+    """异质文档摄取（SE-008）— 上传 PDF/Word/TXT，提取全文写入档案，立即可检索
+
+    权限：仅系统管理员/档案管理员（防止 reviewer 覆盖他人档案文本）。
+    安全：archive_id 白名单校验防路径注入；上传大小上限 50MB 防内存 DoS。
+    """
+    import re
     import tempfile
     from app.services.ingest_service import extract_text
+
+    # archive_id 白名单：仅允许字母/数字/下划线/连字符/中文（防路径注入）
+    if not re.match(r'^[\w\-\u4e00-\u9fa5]+$', archive_id):
+        return {"error": "档案编号含非法字符"}
+
+    # 上传大小上限 50MB
+    MAX_SIZE = 50 * 1024 * 1024
+    if file.size and file.size > MAX_SIZE:
+        return {"error": "文件超过 50MB 上限"}
 
     suffix = os.path.splitext(file.filename or "")[1] or ".txt"
     fd, tmp_path = tempfile.mkstemp(suffix=suffix)
     try:
+        # 分块写入，避免整文件读入内存
         with os.fdopen(fd, "wb") as f:
-            f.write(await file.read())
+            while True:
+                chunk = await file.read(1024 * 1024)
+                if not chunk:
+                    break
+                f.write(chunk)
         text = extract_text(tmp_path)
     finally:
         try:

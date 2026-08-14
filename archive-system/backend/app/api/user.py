@@ -96,25 +96,6 @@ def update_user(user_id: int, req: UpdateUserRequest, user: dict = Depends(get_c
         db.close()
 
 
-@router.put("/{user_id}/password")
-def reset_password(user_id: int, new_password: str, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
-    """重置密码"""
-    err = _password_complexity_error(new_password)
-    if err:
-        return {"error": err}
-    db = SessionLocal()
-    try:
-        u = db.query(User).filter(User.id == user_id).first()
-        if not u: return {"error": "not_found"}
-        from datetime import datetime
-        u.password_hash = hash_password(new_password)
-        u.password_updated_at = datetime.utcnow()
-        db.commit()
-        return {"user_id": user_id, "status": "password_reset"}
-    finally:
-        db.close()
-
-
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
@@ -122,7 +103,10 @@ class ChangePasswordRequest(BaseModel):
 
 @router.put("/me/password")
 def change_my_password(req: ChangePasswordRequest, user: dict = Depends(get_current_user)):
-    """用户自助修改密码（校验原密码 + 12 位四类复杂度，UM-003）"""
+    """用户自助修改密码（校验原密码 + 12 位四类复杂度，UM-003）
+
+    注意：必须注册在 /{user_id}/password 之前，否则 /me/password 会被动态路由遮蔽。
+    """
     err = _password_complexity_error(req.new_password)
     if err:
         return {"error": err}
@@ -139,6 +123,25 @@ def change_my_password(req: ChangePasswordRequest, user: dict = Depends(get_curr
         u.password_updated_at = datetime.utcnow()
         db.commit()
         return {"status": "password_changed"}
+    finally:
+        db.close()
+
+
+@router.put("/{user_id}/password")
+def reset_password(user_id: int, new_password: str, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
+    """重置密码"""
+    err = _password_complexity_error(new_password)
+    if err:
+        return {"error": err}
+    db = SessionLocal()
+    try:
+        u = db.query(User).filter(User.id == user_id).first()
+        if not u: return {"error": "not_found"}
+        from datetime import datetime
+        u.password_hash = hash_password(new_password)
+        u.password_updated_at = datetime.utcnow()
+        db.commit()
+        return {"user_id": user_id, "status": "password_reset"}
     finally:
         db.close()
 
