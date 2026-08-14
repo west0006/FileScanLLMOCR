@@ -369,7 +369,7 @@ def _generate_seed_logs() -> list[OperationLog]:
     from datetime import timedelta
     import random
     rng = random.Random(42)
-    import hashlib
+    from app.core.log_chain import build_log_content, compute_chain_hash
 
     user_ops = [
         ("admin", "系统管理员"),
@@ -417,8 +417,8 @@ def _generate_seed_logs() -> list[OperationLog]:
         _m = _re.search(r'\d{4}-[A-Z]{2,3}-\d{3}', desc)
         target_id = _m.group(0) if _m else ""
 
-        content = f"{uname}|{op_type}|{module}|{desc}|{target_id}|{result}"
-        chain_hash = hashlib.sha256(f"{prev_hash}{content}".encode()).hexdigest()
+        content = build_log_content(uname, op_type, module, desc, target_id, result)
+        chain_hash = compute_chain_hash(prev_hash, content)
 
         logs.append(OperationLog(
             user_id=1, username=uname,
