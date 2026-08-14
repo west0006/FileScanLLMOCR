@@ -7,4 +7,5 @@ export const ocrApi = {
   updateTask: (id: number, action: string, priority?: number) => api.put(`/ocr/tasks/${id}`, null, { params: { action, priority } }),
   getResult: (archiveId: string) => api.get(`/ocr/results/${archiveId}`),
   qualityReport: (params: any) => api.get('/ocr/quality-report', { params }),
+  models: () => api.get('/ocr/models'),
 }

@@ -58,7 +58,7 @@
           <transition name="fade-slide">
             <div v-if="!sidebarCollapsed" class="user-info">
               <span class="user-name">{{ auth.user?.username || '管理员' }}</span>
-              <span class="user-role">系统管理员</span>
+              <span class="user-role">{{ userRoleLabel || '—' }}</span>
             </div>
           </transition>
         </div>
@@ -91,11 +91,15 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { ROLE_LABELS } from '@/constants'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const sidebarCollapsed = ref(false)
+
+// 底部用户角色：按当前用户真实角色显示（回退为原始角色标识）
+const userRoleLabel = computed(() => ROLE_LABELS[auth.user?.role] || auth.user?.role || '')
 
 onMounted(() => { auth.fetchPermissions() })
 

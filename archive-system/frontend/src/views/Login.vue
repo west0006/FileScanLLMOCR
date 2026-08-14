@@ -40,6 +40,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { ElMessage } from 'element-plus'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -69,9 +70,15 @@ async function handleLogin() {
     if (captchaInput.value !== expected) { genCaptcha(); return }
   }
   loading.value = true
-  try { await auth.login(form.username, form.password); router.push('/') }
-  catch { router.push('/') }
-  finally { loading.value = false }
+  try {
+    await auth.login(form.username, form.password)
+    router.push('/')
+  } catch (e: any) {
+    // 生产模式：密码错误/账户锁定/密码过期等均带 detail 说明；开发模式登录失败同样提示
+    const detail = e?.response?.data?.detail
+    if (detail) ElMessage.error(detail)
+    else ElMessage.error('登录失败，请检查用户名和密码')
+  } finally { loading.value = false }
 }
 </script>
 

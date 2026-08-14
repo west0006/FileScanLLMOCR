@@ -132,9 +132,10 @@ async function fetchTasks() {
   try { const res = await ocrApi.listTasks({ page:page.value, page_size:pageSize.value, status: statusFilter.value||undefined }); tasks.value = res.data.items || []; total.value = res.data.total || 0 } catch { /* */ }
 }
 async function fetchEngineInfo() {
-  try { const res = await ocrApi.listTasks({ page:1, page_size:1 }) /* use models endpoint */; 
-    const m = await (await fetch('/api/ocr/models', {headers:{Authorization:'Bearer '+localStorage.getItem('access_token')}})).json()
-    engineInfo.value = { mode: m.mode||'mock', label: m.gpu ? 'PaddleOCR GPU' : m.available ? 'PaddleOCR CPU' : 'Mock 模式' }
+  try {
+    const res = await ocrApi.models()
+    const m = res.data
+    engineInfo.value = { mode: m.mode || 'mock', label: m.gpu ? 'PaddleOCR GPU' : m.available ? 'PaddleOCR CPU' : 'Mock 模式' }
   } catch { engineInfo.value = { mode:'mock', label:'Mock 模式' } }
 }
 async function fetchQuality() {

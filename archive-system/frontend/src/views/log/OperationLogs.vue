@@ -44,7 +44,7 @@
             <td class="mono" style="font-size:10px">{{ row.session_id || '—' }}</td>
             <td><span class="risk-tag" :class="row.result==='success'?'risk-tag--low':'risk-tag--high'">{{ row.result==='success'?'成功':'失败' }}</span></td>
           </tr>
-          <tr v-if="items.length===0"><td colspan="8" class="table-empty">暂无日志</td></tr>
+          <tr v-if="items.length===0"><td colspan="8" class="table-empty">暂无数据</td></tr>
         </tbody>
       </table>
     </div>

@@ -142,7 +142,10 @@ def list_online_users(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_
     db = SessionLocal()
     try:
         cutoff = datetime.utcnow() - timedelta(hours=2)
-        recent = db.query(User).filter(User.is_active == True).all()
+        recent = db.query(User).filter(
+            User.is_active == True,
+            User.last_login_at >= cutoff,
+        ).all()
         items = []
         for u in recent:
             items.append({

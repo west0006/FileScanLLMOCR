@@ -151,10 +151,11 @@ def serve_sync_file(file_path: str):
     - TIFF/TIF → 转码为 PNG 后返回（结果缓存）
     - PDF → 暂不支持，返回提示
     """
-    full_path = os.path.normpath(os.path.join(settings.SYNC_DATA_DIR, file_path))
+    sync_root = os.path.normpath(settings.SYNC_DATA_DIR)
+    full_path = os.path.normpath(os.path.join(sync_root, file_path))
 
-    # 安全检查：确保路径在 SYNC_DATA_DIR 内
-    if not full_path.startswith(os.path.normpath(settings.SYNC_DATA_DIR)):
+    # 安全检查：确保路径在 SYNC_DATA_DIR 内（等值或子路径，防止 /app/sync_data_evil 之类前缀绕过）
+    if full_path != sync_root and not full_path.startswith(sync_root + os.sep):
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=403, content={"error": "forbidden"})
 

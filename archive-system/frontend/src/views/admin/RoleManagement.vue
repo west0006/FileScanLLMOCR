@@ -9,7 +9,7 @@
             <td class="font-medium">{{ r.name }}</td><td>{{ r.description }}</td><td>{{ r.user_count }}</td>
             <td>
               <button class="btn-sm" @click="editRole(r)">权限配置</button>
-              <button class="btn-sm btn-sm--danger" style="margin-left:4px" @click="deleteRole(r)" :disabled="r.user_count > 0" :title="r.user_count > 0 ? '该角色下有用户，无法删除' : '删除角色'">删除</button>
+              <button class="btn-sm btn-sm--danger" style="margin-left:4px" @click="deleteRole(r)" :disabled="r.builtin || r.user_count > 0" :title="r.builtin ? '系统内置角色不可删除' : r.user_count > 0 ? '该角色下有用户，无法删除' : '删除角色'">删除</button>
             </td>
           </tr>
           <tr v-if="roles.length === 0"><td colspan="4" class="table-empty">暂无角色数据</td></tr>
@@ -134,12 +134,16 @@ onMounted(fetchRoles)
 async function fetchRoles() {
   try {
     const res = await userApi.listRoles()
-    roles.value = (res.data.items || []).map((r: any) => ({ ...r, name: roleLabel(r.name) }))
+    roles.value = (res.data.items || []).map((r: any) => ({
+      ...r,
+      name: roleLabel(r.name),
+      builtin: ['system_admin', 'archive_admin', 'reviewer'].includes(r.name),
+    }))
   } catch {
     roles.value = [
-      { id: 1, name: '系统管理员', description: '全部权限', user_count: 1, permissions: { all: true } },
-      { id: 2, name: '档案管理员', description: '档案管理与检索', user_count: 2 },
-      { id: 3, name: '审核员', description: '开放审核', user_count: 5 },
+      { id: 1, name: '系统管理员', description: '全部权限', user_count: 1, permissions: { all: true }, builtin: true },
+      { id: 2, name: '档案管理员', description: '档案管理与检索', user_count: 2, builtin: true },
+      { id: 3, name: '审核员', description: '开放审核', user_count: 5, builtin: true },
     ]
   }
 }
@@ -230,7 +234,7 @@ async function createRole() {
 </script>
 
 <style scoped>
-.page{max-width:var(--page-max);margin:0 auto}.page-head{margin-bottom:20px}.page-head h2{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin:0}.card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);overflow:hidden}.data-table{width:100%;border-collapse:collapse}.data-table th{padding:12px 16px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--c-bg);border-bottom:1px solid var(--c-border)}.data-table td{padding:12px 16px;font-size:var(--fs-sm);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}.btn-sm{height:30px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-xs);cursor:pointer}.btn-sm:hover{border-color:var(--c-accent);color:var(--c-accent)}.btn-primary{height:32px;padding:0 20px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-sm);cursor:pointer}.btn-primary:hover{background:var(--c-accent-hover)}.font-medium{font-weight:var(--fw-medium)}.table-empty{padding:48px;text-align:center;color:var(--c-text-muted)}
+.page{max-width:var(--page-max);margin:0 auto}.page-head{margin-bottom:20px}.page-head h2{font-size:var(--fs-xl);font-weight:var(--fw-semibold);margin:0}.card{background:var(--c-surface);border-radius:var(--r-lg);border:1px solid var(--c-border);overflow:hidden}.data-table{width:100%;border-collapse:collapse}.data-table th{padding:12px 16px;text-align:left;font-size:var(--fs-xs);font-weight:var(--fw-semibold);color:var(--c-text-muted);text-transform:uppercase;letter-spacing:0.5px;background:var(--c-bg);border-bottom:1px solid var(--c-border)}.data-table td{padding:12px 16px;font-size:var(--fs-sm);color:var(--c-text);border-bottom:1px solid var(--c-border-light)}.btn-sm{height:30px;padding:0 14px;border-radius:var(--r-sm);border:1px solid var(--c-border);background:var(--c-surface);color:var(--c-text-secondary);font-size:var(--fs-xs);cursor:pointer}.btn-sm:hover{border-color:var(--c-accent);color:var(--c-accent)}.btn-sm:disabled{opacity:0.4;cursor:not-allowed}.btn-sm--danger:hover{border-color:var(--c-danger);color:var(--c-danger)}.btn-primary{height:32px;padding:0 20px;border-radius:var(--r-sm);border:none;background:var(--c-accent);color:#fff;font-size:var(--fs-sm);cursor:pointer}.btn-primary:hover{background:var(--c-accent-hover)}.font-medium{font-weight:var(--fw-medium)}.table-empty{padding:48px;text-align:center;color:var(--c-text-muted)}
 .perm-grid{display:flex;flex-direction:column;gap:10px}.perm-item{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--c-bg);border-radius:var(--r-sm);cursor:pointer;transition:background var(--t-fast)}.perm-item:hover{background:var(--c-border-light)}.perm-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--c-accent);cursor:pointer}.perm-label{font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--c-text);min-width:80px}.perm-desc{font-size:var(--fs-xs);color:var(--c-text-muted)}
 .perm-group{margin-bottom:4px;padding:8px 10px;background:var(--c-bg);border-radius:var(--r-sm)}
 .perm-group-label{font-size:var(--fs-sm);font-weight:var(--fw-semibold);color:var(--c-text);margin-bottom:4px}
