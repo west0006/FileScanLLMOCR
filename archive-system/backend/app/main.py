@@ -56,24 +56,28 @@ def _cleanup_old_logs():
 
 
 def _check_security_config():
-    """启动时安全检查：防止生产环境使用默认密钥"""
+    """启动时安全检查：生产环境使用默认密钥直接拒绝启动（非仅告警）"""
     import logging
     log = logging.getLogger("main")
     issues = []
 
     if settings.JWT_SECRET == "dev-secret-change-in-production":
-        issues.append("JWT_SECRET 仍为默认值 'dev-secret-change-in-production' — 生产环境必须修改！")
+        issues.append("JWT_SECRET 仍为默认值 'dev-secret-change-in-production'")
 
     if settings.DB_PASSWORD == "archive123":
-        issues.append("DB_PASSWORD 仍为默认值 'archive123' — 生产环境必须修改！")
+        issues.append("DB_PASSWORD 仍为默认值 'archive123'")
 
-    if issues:
-        log.warning("=" * 60)
-        log.warning("  ⚠️  安全检查：发现以下配置使用默认值：")
-        for i in issues:
-            log.warning(f"     • {i}")
-        log.warning("  请在 .env 文件中修改后再启动生产环境。")
-        log.warning("=" * 60)
+    if not issues:
+        return
+
+    msg = "发现以下配置使用默认值：" + "; ".join(issues)
+    if settings.APP_ENV != "development":
+        raise RuntimeError(f"安全检查失败 — {msg} 请在 .env 中修改后再启动。")
+
+    log.warning("=" * 60)
+    log.warning("  ⚠️  安全检查：" + msg)
+    log.warning("  请在 .env 文件中修改后再启动生产环境。")
+    log.warning("=" * 60)
 
 
 app = FastAPI(
@@ -85,6 +89,10 @@ app = FastAPI(
 )
 
 # ===================== 中间件 =====================
+# 注意：Starlette 后添加的中间件最外层。CORS 必须最外层，否则跨域请求读不到
+# SessionTimeout/OperationLog 中间件产生的错误响应体（缺 CORS 头）。
+app.add_middleware(SessionTimeoutMiddleware)
+app.add_middleware(OperationLogMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173"],
@@ -92,8 +100,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(SessionTimeoutMiddleware)
-app.add_middleware(OperationLogMiddleware)
 
 # ===================== 全局异常处理 =====================
 

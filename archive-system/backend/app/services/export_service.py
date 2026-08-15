@@ -151,6 +151,14 @@ def export_to_pdf(title: str, rows: list[dict], columns: list[str], output_dir: 
     return filepath
 
 
+def _sanitize_csv_cell(val) -> str:
+    """CSV 公式注入防护：以 = + - @ 或制表/回车开头的单元格前置单引号，防止 Excel 执行公式"""
+    s = str(val)
+    if s.startswith(("=", "+", "-", "@", "\t", "\r")):
+        return "'" + s
+    return s
+
+
 def export_to_csv(title: str, rows: list[dict], columns: list[str], output_dir: str = "/tmp") -> str:
     """生成 CSV 文件（UTF-8 BOM，Excel 可直接打开），返回文件路径"""
     import csv as _csv
@@ -162,7 +170,7 @@ def export_to_csv(title: str, rows: list[dict], columns: list[str], output_dir: 
         writer.writerow(columns)
         for row in rows:
             writer.writerow([
-                ", ".join(str(v) for v in row.get(col, [])) if isinstance(row.get(col, ""), list) else row.get(col, "")
+                _sanitize_csv_cell(", ".join(str(v) for v in row.get(col, [])) if isinstance(row.get(col, ""), list) else row.get(col, ""))
                 for col in columns
             ])
     return filepath

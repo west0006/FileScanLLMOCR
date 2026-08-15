@@ -14,14 +14,20 @@ from app.core.config import settings
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def _truncate_72(password: str) -> str:
+    """bcrypt 限制 72 字节，按字节截断（避免多字节字符截断在中间）"""
+    data = password.encode("utf-8")
+    if len(data) > 72:
+        return data[:72].decode("utf-8", errors="ignore")
+    return password
+
+
 def hash_password(password: str) -> str:
-    # bcrypt 限制 72 字节，截断超长密码
-    pwd = password[:72] if len(password.encode()) > 72 else password
-    return pwd_context.hash(pwd)
+    return pwd_context.hash(_truncate_72(password))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    return pwd_context.verify(_truncate_72(plain), hashed)
 
 
 # ===================== JWT =====================

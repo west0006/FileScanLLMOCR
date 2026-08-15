@@ -98,6 +98,10 @@ class SessionTimeoutMiddleware(BaseHTTPMiddleware):
         auth_header = request.headers.get("Authorization", "")
         if auth_header.startswith("Bearer "):
             token = auth_header[7:]
+            # 仅追踪有效 token，避免伪造/随机 token 撑爆内存 store（DoS）
+            from app.core.security import decode_access_token
+            if decode_access_token(token) is None:
+                return await call_next(request)
             key = _token_key(token)
 
             now = time.time()
