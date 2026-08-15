@@ -83,8 +83,10 @@ def _check_security_config():
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
+    # 生产环境关闭 API 文档与 OpenAPI schema（避免暴露 API 结构）
+    docs_url=None if settings.APP_ENV == "production" else "/docs",
+    redoc_url=None if settings.APP_ENV == "production" else "/redoc",
+    openapi_url=None if settings.APP_ENV == "production" else "/openapi.json",
     lifespan=lifespan,
 )
 
@@ -128,31 +130,9 @@ app.include_router(stats.router, prefix="/api/stats", tags=["查询统计"])
 
 @app.get("/api/health")
 def health_check():
-    from app.core.config import settings
-    es_ok = False
-    es_info = {}
-    try:
-        from app.core.database import get_es
-        es = get_es()
-        if es is not None:
-            es_info_resp = es.info()
-            es_ok = True
-            es_info = {
-                "version": es_info_resp.get("version", {}).get("number", ""),
-                "cluster": es_info_resp.get("cluster_name", ""),
-            }
-            idx = f"{settings.ES_INDEX_PREFIX}_fulltext"
-            es_info["index_exists"] = es.indices.exists(index=idx)
-    except Exception:
-        pass
-
+    # 仅返回存活状态与版本，不泄露 db_mode/llm_mode/ocr_mode/ES 集群等配置信息
     return {
         "status": "ok",
         "app": settings.APP_NAME,
         "version": settings.APP_VERSION,
-        "db_mode": settings.DB_MODE,
-        "llm_mode": settings.LLM_MODE,
-        "ocr_mode": settings.OCR_MODE,
-        "es_available": es_ok,
-        "es_info": es_info,
     }

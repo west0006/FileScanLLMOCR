@@ -122,7 +122,7 @@ def trigger_database_sync(mode: str = "incremental", user: dict = Depends(requir
 
 
 @router.get("/progress/{sync_id}")
-def get_sync_progress(sync_id: int, user: dict = Depends(get_current_user)):
+def get_sync_progress(sync_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """同步进度"""
     db = SessionLocal()
     try:
@@ -133,7 +133,7 @@ def get_sync_progress(sync_id: int, user: dict = Depends(get_current_user)):
 
 
 @router.get("/history")
-def sync_history(user: dict = Depends(get_current_user), page: int = 1, page_size: int = 20, sync_type: Optional[str] = None):
+def sync_history(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN)), page: int = 1, page_size: int = 20, sync_type: Optional[str] = None):
     """同步历史记录"""
     db = SessionLocal()
     try:

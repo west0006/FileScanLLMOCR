@@ -186,7 +186,7 @@ class TestOcrEndpoints:
         from app.main import app
 
         client = TestClient(app)
-        resp = client.post("/api/auth/login", json={"username": "test", "password": "x"})
+        resp = client.post("/api/auth/login", json={"username": "admin", "password": "x"})
         return resp.json()["access_token"], client
 
     def test_ocr_models_endpoint(self):
@@ -214,9 +214,7 @@ class TestOcrEndpoints:
 
     def test_debug_test(self):
         """POST /api/ocr/debug/test 端点（仅系统管理员）"""
-        _, client = self.get_token()
-        admin_resp = client.post("/api/auth/login", json={"username": "admin", "password": "x"})
-        token = admin_resp.json()["access_token"]
+        token, client = self.get_token()
         resp = client.post("/api/ocr/debug/test", json={"text": "测试文本"}, headers={"Authorization": f"Bearer {token}"})
         assert resp.status_code == 200
         assert "result" in resp.json()

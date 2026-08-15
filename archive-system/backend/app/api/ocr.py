@@ -114,7 +114,7 @@ def update_ocr_task(task_id: int, action: str, priority: Optional[int] = None, u
 
 
 @router.get("/tasks")
-def list_ocr_tasks(user: dict = Depends(get_current_user), page: int = 1, page_size: int = 20, status: Optional[str] = None):
+def list_ocr_tasks(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN)), page: int = 1, page_size: int = 20, status: Optional[str] = None):
     """OCR 任务列表"""
     db = SessionLocal()
     try:
@@ -140,7 +140,7 @@ def _task_rate(task) -> dict:
 
 
 @router.get("/tasks/{task_id}")
-def get_ocr_task(task_id: int, user: dict = Depends(get_current_user)):
+def get_ocr_task(task_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """OCR 任务详情 + 进度"""
     db = SessionLocal()
     try:

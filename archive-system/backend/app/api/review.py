@@ -143,8 +143,8 @@ def list_review_tasks(user: dict = Depends(get_current_user), page: int = 1, pag
         if status: q = q.filter(ReviewTask.status == status)
         total = q.count()
         items = q.order_by(ReviewTask.created_at.desc()).offset((page-1)*page_size).limit(page_size).all()
-        # 聚合指标
-        metrics = _compute_review_metrics(db)
+        # 聚合指标（非管理员返回空，避免跨部门全库汇总泄露）
+        metrics = _compute_review_metrics(db) if user["role"] in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN) else {}
         return {"total": total, "page": page, "page_size": page_size,
                 "items": [{**_task_rate(t),
                             "id": t.id, "task_name": t.task_name, "batch_name": t.batch_name,
@@ -159,7 +159,7 @@ def list_review_tasks(user: dict = Depends(get_current_user), page: int = 1, pag
 
 
 @router.get("/tasks/{task_id}")
-def get_review_task(task_id: int, user: dict = Depends(get_current_user)):
+def get_review_task(task_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """预审任务进度"""
     db = SessionLocal()
     try:
