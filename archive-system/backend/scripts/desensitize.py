@@ -50,9 +50,9 @@ def desensitize_name(text: str) -> str:
 
 
 def desensitize_id_card(text: str) -> str:
-    """身份证号脱敏"""
+    """身份证号脱敏（(?<!\d)(?!\d) 替代 \b，因汉字属 \w 使 \b 在中文语境失效）"""
     return re.sub(
-        r'\b\d{6}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dxX]\b',
+        r'(?<!\d)\d{6}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dxX](?!\d)',
         lambda m: m.group(0)[:6] + '********' + m.group(0)[-4:],
         text,
     )
@@ -60,8 +60,8 @@ def desensitize_id_card(text: str) -> str:
 
 def desensitize_phone(text: str) -> str:
     """电话号码脱敏"""
-    text = re.sub(r'\b1[3-9]\d{9}\b', '1**********', text)
-    text = re.sub(r'\b0\d{2,3}-\d{7,8}\b', '0***-*******', text)
+    text = re.sub(r'(?<!\d)1[3-9]\d{9}(?!\d)', '1**********', text)
+    text = re.sub(r'(?<!\d)0\d{2,3}-\d{7,8}(?!\d)', '0***-*******', text)
     return text
 
 

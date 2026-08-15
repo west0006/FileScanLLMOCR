@@ -62,35 +62,31 @@ def _init_paddle():
             paddle.set_device("cpu")
             logger.info("PaddlePaddle CPU 模式")
 
-        # PP-OCRv5 中文识别
+        # PP-OCRv5 中文识别（PaddleOCR 3.x API：device 替代 use_gpu，predict 替代 ocr(cls=)）
         from paddleocr import PaddleOCR
 
         _paddle_ocr = PaddleOCR(
-            lang="ch",               # 中文识别
-            use_angle_cls=True,      # 方向分类（自动纠正旋转）
-            use_gpu=_paddle_gpu_available,
-            show_log=False,
-            det_db_thresh=0.3,       # 检测阈值（适当降低以提高召回）
-            rec_batch_num=6 if _paddle_gpu_available else 1,  # GPU 批量推理
+            lang="ch",
+            ocr_version="PP-OCRv5",
+            use_doc_orientation_classify=False,
+            use_doc_unwarping=False,
+            use_textline_orientation=False,
+            device="gpu" if _paddle_gpu_available else "cpu",
         )
         logger.info("PaddleOCR PP-OCRv5 初始化完成")
 
-        # PP-StructureV2 版面分析
+        # PP-StructureV3 版面分析（PaddleOCR 3.x）
         try:
-            from paddleocr import PPStructure
+            from paddleocr import PPStructureV3
 
-            _paddle_structure = PPStructure(
-                show_log=False,
-                use_gpu=_paddle_gpu_available,
-                image_orientation=True,   # 自动方向检测
-                layout=True,              # 版面区域检测
-                table=True,               # 表格识别
+            _paddle_structure = PPStructureV3(
+                device="gpu" if _paddle_gpu_available else "cpu",
             )
-            logger.info("PP-StructureV2 版面分析初始化完成")
+            logger.info("PP-StructureV3 版面分析初始化完成")
         except ImportError:
-            logger.info("PP-StructureV2 不可用（版面分析功能跳过）")
+            logger.info("PP-StructureV3 不可用（版面分析功能跳过）")
         except Exception as e:
-            logger.warning(f"PP-StructureV2 初始化失败: {e}")
+            logger.warning(f"PP-StructureV3 初始化失败: {e}")
 
         _paddle_available = True
 
@@ -270,11 +266,11 @@ class OCRClient:
         t0 = time.time()
 
         try:
-            # PaddleOCR 识别
-            result = _paddle_ocr.ocr(image_path, cls=True)
+            # PaddleOCR 3.x predict 返回 list[Result]，取第一个图像的结果
+            result = _paddle_ocr.predict(image_path)
             elapsed_ms = round((time.time() - t0) * 1000)
 
-            if not result or not result[0]:
+            if not result:
                 return {
                     "text": "",
                     "confidence": 0.0,
@@ -285,31 +281,43 @@ class OCRClient:
                     "blocks": [],
                 }
 
-            # 提取文本行
-            lines = result[0]
+            res = result[0]
+            rec_texts = res.get("rec_texts", []) or []
+            rec_scores = res.get("rec_scores", []) or []
+            rec_polys = res.get("rec_polys", []) or []
+
+            if not rec_texts:
+                return {
+                    "text": "",
+                    "confidence": 0.0,
+                    "pages": 1,
+                    "engine": "paddleocr",
+                    "gpu_used": _paddle_gpu_available,
+                    "processing_time_ms": elapsed_ms,
+                    "blocks": [],
+                }
+
             full_text = ""
             blocks = []
             confidences = []
 
-            for line in lines:
-                bbox = line[0]          # [[x1,y1],[x2,y2],[x3,y3],[x4,y4]]
-                text_info = line[1]     # (text, confidence)
-                text = text_info[0]
-                conf = text_info[1]
+            for i, text in enumerate(rec_texts):
+                conf = float(rec_scores[i]) if i < len(rec_scores) else 0.0
+                poly = rec_polys[i] if i < len(rec_polys) else []
 
                 full_text += text + "\n"
                 confidences.append(conf)
                 blocks.append({
                     "text": text,
                     "confidence": round(conf, 4),
-                    "bbox": [[int(p[0]), int(p[1])] for p in bbox],
+                    "bbox": [[int(p[0]), int(p[1])] for p in poly] if poly else [],
                 })
 
             avg_conf = round(sum(confidences) / len(confidences), 4) if confidences else 0.0
 
             logger.info(
                 f"OCR 完成: {os.path.basename(image_path)} "
-                f"— {len(lines)} 行, 置信度 {avg_conf:.3f}, {elapsed_ms}ms"
+                f"— {len(rec_texts)} 行, 置信度 {avg_conf:.3f}, {elapsed_ms}ms"
             )
 
             return {
@@ -337,39 +345,40 @@ class OCRClient:
             }
 
     def _real_structure(self, image_path: str) -> dict:
-        """真实版面分析 — PP-StructureV2"""
+        """真实版面分析 — PP-StructureV3"""
         self._ensure_ready()
 
         if _paddle_structure is None:
             return {"regions": [], "tables": [], "engine": "paddleocr",
-                    "error": "PP-StructureV2 不可用"}
+                    "error": "PP-StructureV3 不可用"}
 
         if not os.path.isfile(image_path):
             return {"regions": [], "tables": [], "engine": "paddleocr",
                     "error": f"文件不存在: {image_path}"}
 
         try:
-            result = _paddle_structure(image_path)
+            result = _paddle_structure.predict(image_path)
 
             regions = []
             tables = []
 
             for item in result:
-                item_type = getattr(item, "type", "unknown")
-                bbox = getattr(item, "bbox", [])
+                item = item if isinstance(item, dict) else {}
+                item_type = item.get("type", "unknown")
+                bbox = item.get("bbox") or []
                 if bbox:
                     bbox = [[int(p[0]), int(p[1])] for p in bbox]
 
                 if item_type == "table":
                     tables.append({
                         "bbox": bbox,
-                        "html": getattr(item, "res", {}).get("html", ""),
+                        "html": item.get("html", ""),
                     })
                 else:
                     regions.append({
                         "type": item_type,
                         "bbox": bbox,
-                        "text": getattr(item, "res", ""),
+                        "text": item.get("text", "") or item.get("res", ""),
                     })
 
             return {

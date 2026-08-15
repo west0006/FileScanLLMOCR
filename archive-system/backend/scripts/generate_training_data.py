@@ -274,6 +274,20 @@ SYSTEM_PROMPT = """你是中南财经政法大学档案馆的档案开放审核�
 - confidence: 0.0-1.0 置信度"""
 
 
+# 建议 → (risk_score, risk_level, reason) 一致性映射，避免人工标签与规则评分冲突
+_LABEL_MAP = {
+    "建议开放": (10, "低", "未检测到敏感信息，档案内容为常规管理文件，建议开放。"),
+    "建议部分开放": (35, "中", "档案包含部分敏感信息，建议对相关段落脱敏后部分开放。"),
+    "建议延期开放": (55, "中", "档案涉及上级来文或未结论事项，建议延期开放。"),
+    "建议不开放": (85, "高", "档案涉及国家秘密或个人隐私，建议不开放。"),
+}
+
+
+def _label_consistent(suggestion: str):
+    """返回与 suggestion 一致的 (risk_score, risk_level, reason)"""
+    return _LABEL_MAP.get(suggestion, (10, "低", "未检测到敏感信息，档案内容为常规管理文件，建议开放。"))
+
+
 def main():
     # 1. 种子数据 → 规则引擎标注
     print("=" * 60)
@@ -295,15 +309,16 @@ def main():
             "department": item["department"],
         })
 
-        # 用人工标签覆盖规则引擎建议（以人工为准）
+        # 用人工标签覆盖规则引擎建议（以人工为准）—— 同步校正 score/level/reason，避免样本自相矛盾
         suggestion = item.get("human_label", result["suggestion"])
+        score, level, reason = _label_consistent(suggestion)
 
         assistant_output = {
-            "risk_score": result["risk_score"],
-            "risk_level": result["risk_level"],
+            "risk_score": score,
+            "risk_level": level,
             "sensitive_items": result["sensitive_items"],
             "suggestion": suggestion,
-            "reason": result["reason"],
+            "reason": reason,
             "confidence": 0.85,
         }
 
