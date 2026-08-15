@@ -159,11 +159,13 @@ def get_review_task(task_id: int, user: dict = Depends(get_current_user)):
         t = db.query(ReviewTask).filter(ReviewTask.id == task_id).first()
         if not t: return {"error": "not_found"}
         records = db.query(ReviewRecord).filter(ReviewRecord.task_id == task_id).all()
-        dist = {"高": 0, "中": 0, "低": 0}
+        dist = {"high": 0, "medium": 0, "low": 0}
+        level_map = {"高": "high", "中": "medium", "低": "low"}
         for r in records:
-            if r.risk_level in dist: dist[r.risk_level] += 1
+            key = level_map.get(r.risk_level)
+            if key: dist[key] += 1
         return {"task_id": t.id, "status": t.status, "total_count": t.total_count,
-                "completed_count": t.completed_count, "risk_distribution": dist}
+                "completed_count": t.completed_count, "risk_dist": dist}
     finally:
         db.close()
 

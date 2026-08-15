@@ -55,7 +55,7 @@ def create_ocr_task(req: CreateOcrTaskRequest, request: Request, user: dict = De
             process_ocr_task.delay(task.id)
         except Exception:
             pass
-        return {"task_id": task.id, "task_name": task.task_name, "status": "queued"}
+        return {"id": task.id, "task_id": task.id, "task_name": task.task_name, "status": "queued"}
     finally:
         db.close()
 

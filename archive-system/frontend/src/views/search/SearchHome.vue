@@ -289,7 +289,7 @@
             <div class="result-card-top">
               <h3 class="result-title" v-html="highlightText(item.title)"></h3>
               <div class="result-badges">
-                <span class="badge" :class="'badge--' + (item.risk_level || 'low')">{{ item.risk_level || '低' }}风险</span>
+                <span class="badge" :class="'badge--' + (item.risk_level || 'low')">{{ item.risk_level === '未审核' ? '未审核' : (item.risk_level || '低') + '风险' }}</span>
                 <span class="badge badge--plain">{{ item.category || '文书档案' }}</span>
               </div>
             </div>

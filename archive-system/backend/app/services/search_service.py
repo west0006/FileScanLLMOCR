@@ -367,7 +367,7 @@ def _execute_es_search(es, query: dict, page: int, page_size: int, t0: float, so
                 "department": src.get("department", ""),
                 "summary": " ".join(hl.get("full_text", [src.get("full_text", "")[:200]])),
                 "relevance": round(hit.get("_score", 0) * 100 / 10, 1) if hit.get("_score") else 0,
-                "risk_level": src.get("open_status", "低"),
+                "risk_level": "未审核",
             })
 
         return {
@@ -458,7 +458,7 @@ def _fallback_search(keywords: str, page: int, page_size: int, t0: float, sort: 
             "department": r.department or "",
             "summary": (r.ocr_text or "")[:200],
             "relevance": 85.0,
-            "risk_level": "低",
+            "risk_level": "未审核",
         } for r in rows]
         return {
             "total": total,
