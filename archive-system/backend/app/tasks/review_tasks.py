@@ -62,7 +62,9 @@ def process_review_task(self, task_id: int):
 
         task.status = "running"
         task.total_count = total
-        task.completed_count = 0
+        # 幂等：retry 时已处理的记录不再重算，completed_count 从已有记录数初始化
+        done_count = db.query(ReviewRecord).filter(ReviewRecord.task_id == task.id).count()
+        task.completed_count = done_count
         task.started_at = datetime.utcnow()
         db.commit()
 
@@ -74,6 +76,14 @@ def process_review_task(self, task_id: int):
             if task.status in ("paused", "cancelled", "completed"):
                 logger.info(f"Review task #{task_id} 状态为{task.status}，中断处理")
                 break
+
+            # 幂等：同任务下该档案已审过则跳过（Celery retry 不重复落库）
+            if db.query(ReviewRecord).filter(
+                ReviewRecord.task_id == task.id,
+                ReviewRecord.archive_id == archive.archive_id,
+            ).first():
+                continue
+
             t_start = time.time()
 
             metadata = {
