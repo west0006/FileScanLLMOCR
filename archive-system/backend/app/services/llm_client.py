@@ -52,9 +52,6 @@ SYSTEM_QUERY = "你是档案检索意图分析助手。用户输入查询，你�
 # LLaMA-Factory 地址（可通过 .env 配置）
 LLAMAFACTORY_URL = settings.LLAMAFACTORY_URL
 
-# 模拟敏感词
-_MOCK_SENSITIVE = ["个人隐私","身份证号","家庭出身","健康信息","上级来文","外收文","内部文件","知识产权","专利","版权"]
-
 _MOCK_REASONS = {
     "low": "该档案为常规行政管理文件，不涉及国家秘密、商业秘密或个人隐私，建议开放。",
     "medium": "档案包含部分内部管理信息，建议人工复核后决定。",
@@ -88,11 +85,15 @@ class LLMClient:
     def _mock_review(self, full_text: str, metadata: Optional[dict] = None) -> dict:
         seed = int(hashlib.md5(full_text.encode()).hexdigest()[:8], 16)
         rng = random.Random(seed)
-        hits = []
-        for word in _MOCK_SENSITIVE:
-            if word in full_text:
-                hits.append({"type": word, "content": f"[MOCK] 检测到疑似{word}相关内容",
-                             "start_char": full_text.find(word), "end_char": full_text.find(word)+len(word)})
+        # 复用规则引擎的敏感词扫描（400+ 词按 9 类组织），
+        # 保证 mock 与规则引擎口径一致，消除双引擎词库不一致
+        from app.services.review_service import scan_sensitive
+        rule_hits = scan_sensitive(full_text)
+        hits = [
+            {"type": h["type"], "content": f"[MOCK] {h['type']}: {h['word']}",
+             "start_char": h["start_char"], "end_char": h["end_char"]}
+            for h in rule_hits
+        ]
         if not hits:
             risk_score = rng.randint(0, 15); risk_level = "低"; suggestion = "建议开放"
         elif len(hits) <= 1:

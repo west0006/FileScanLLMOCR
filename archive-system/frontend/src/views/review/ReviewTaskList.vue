@@ -25,7 +25,7 @@
         </tbody>
       </table>
     </div>
-    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchTasks()}" @size-change="s=>{pageSize=s;fetchTasks()}" />
+    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="(p: number)=>{page=p;fetchTasks()}" @size-change="(s: number)=>{pageSize=s;fetchTasks()}" />
 
     <div class="export-row" v-if="canExport">
       <button class="btn-primary" @click="handleExport"><IconSvg name="chart" size="15" /> 导出AI预审结果表格</button>

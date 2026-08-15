@@ -1,8 +1,12 @@
 """
-解析 1996 年审核工作用表 (.xls) → 提取训练数据结构
+解析档案审核原始数据 (.xls) → 提取训练数据结构
+
+真实审核结论数据源为「系统原始数据」案卷级 xls（含「开放标识」列：延期开放/开放；
+「分类号」列：DQ→党群档案 / XZ→行政档案 等）。旧版指向的「中南财经大学1996（分类及统计结果）」
+目录是工作任务表，无审核结论列，解析产物字段全脏，已弃用。
 
 用法（在 L3 昇腾机或内网环境执行）：
-  python scripts/parse_review_xls.py --input "z.about/相关文档/开放审核相关数据及模板/按卷整理原始数据样例及分类结果/中南财经大学1996（分类及统计结果）/" --output train/data/review_raw.json
+  python scripts/parse_review_xls.py --input "z.about/相关文档/开放审核相关数据及模板/按卷整理原始数据样例及分类结果/系统原始数据（按卷整理的档案，系统导出表格版本）/" --output train/data/review_raw.json
 
 输出 JSON 格式：
 [
@@ -12,9 +16,9 @@
     "year": 1996,
     "department": "保卫部",
     "category": "行政档案",
-    "review_conclusion": "建议开放",  // 或 "建议不开放" "建议部分开放"
-    "sensitive_notes": "...",         // 审核员备注
-    "source_file": "1996中南财经大学档案开放审核工作用表（表2一表3）保卫部.xls"
+    "review_conclusion": "建议开放",  // 由「开放标识」列映射而来（开放/延期开放/不开放/部分开放）
+    "sensitive_notes": "...",         // 备注列
+    "source_file": "1财大文书档案-传统案卷级.xls"
   }
 ]
 """
@@ -30,6 +34,51 @@ try:
 except ImportError:
     print("请安装 xlrd: pip install xlrd")
     sys.exit(1)
+
+
+# 分类号前 2 位 → 中文门类（与 seed.py _CAT_FONDS 反向映射一致）
+_CATEGORY_CODE_MAP = {
+    "DQ": "党群档案",
+    "XZ": "行政档案",
+    "JX": "教学档案",
+    "KY": "科研档案",
+    "RS": "人事档案",
+    "CW": "财务档案",
+    "JJ": "基建档案",
+    "SX": "声像档案",
+}
+
+# 开放标识 → 建议枚举（对齐清单 RV-003 四档）
+_CONCLUSION_MAP = {
+    "开放": "建议开放",
+    "延期开放": "建议延期开放",
+    "不开放": "建议不开放",
+    "部分开放": "建议部分开放",
+    "建议开放": "建议开放",
+    "建议部分开放": "建议部分开放",
+    "建议延期开放": "建议延期开放",
+    "建议不开放": "建议不开放",
+}
+
+
+def _map_category(raw) -> str:
+    """分类号（如 DQ12 / XZ11）→ 中文门类；非编码值原样返回"""
+    raw = str(raw).strip()
+    code = raw[:2].upper()
+    return _CATEGORY_CODE_MAP.get(code, raw)
+
+
+def _map_conclusion(raw) -> str:
+    """开放标识 → 建议枚举；非标准值原样返回"""
+    raw = str(raw).strip()
+    return _CONCLUSION_MAP.get(raw, raw)
+
+
+def _to_int(v):
+    """year 列可能是 float（1997.0）→ 转 int；非数值原样返回"""
+    if isinstance(v, float) and v == int(v):
+        return int(v)
+    return v
 
 
 def parse_xls_file(filepath: str, department: str = "") -> list[dict]:
@@ -52,6 +101,10 @@ def parse_xls_file(filepath: str, department: str = "") -> list[dict]:
         # 映射列名到字段
         col_map = _map_columns(headers)
 
+        # 无「档号」或「题名」列的表（如纯汇总表）无法产出记录，跳过
+        if "archive_id" not in col_map and "title" not in col_map:
+            continue
+
         for row_idx in range(header_row + 1, sheet.nrows):
             row_vals = [sheet.cell_value(row_idx, c) for c in range(sheet.ncols)]
 
@@ -59,14 +112,23 @@ def parse_xls_file(filepath: str, department: str = "") -> list[dict]:
             if all(v == "" or v is None for v in row_vals):
                 continue
 
+            archive_id = str(_get_col(row_vals, col_map, "archive_id", "")).strip()
+            title = str(_get_col(row_vals, col_map, "title", "")).strip()
+            # 档号与题名均空 → 表头残留行，跳过
+            if not archive_id and not title:
+                continue
+
+            raw_cat = _get_col(row_vals, col_map, "category", "")
+            raw_conclusion = _get_col(row_vals, col_map, "conclusion", "")
+
             record = {
-                "archive_id": _get_col(row_vals, col_map, "archive_id", ""),
-                "title": _get_col(row_vals, col_map, "title", ""),
-                "year": _get_col(row_vals, col_map, "year", 1996),
-                "department": department or _get_col(row_vals, col_map, "department", ""),
-                "category": _get_col(row_vals, col_map, "category", ""),
-                "review_conclusion": _get_col(row_vals, col_map, "conclusion", ""),
-                "sensitive_notes": _get_col(row_vals, col_map, "notes", ""),
+                "archive_id": archive_id,
+                "title": title,
+                "year": _to_int(_get_col(row_vals, col_map, "year", "")),
+                "department": department or str(_get_col(row_vals, col_map, "department", "")).strip(),
+                "category": _map_category(raw_cat),
+                "review_conclusion": _map_conclusion(raw_conclusion),
+                "sensitive_notes": str(_get_col(row_vals, col_map, "notes", "")).strip(),
                 "source_file": os.path.basename(filepath),
                 "source_sheet": sheet.name,
             }
@@ -76,33 +138,37 @@ def parse_xls_file(filepath: str, department: str = "") -> list[dict]:
 
 
 def _find_header_row(sheet) -> int | None:
-    """自动检测表头行——包含'序号'或'题名'或'档号'的列为表头"""
+    """自动检测表头行——含真实列名的行。找不到返回 None（不再 fallback 到标题行，
+    避免把「表1：...年度...」这类标题误当表头、把标题里的「年度」误判为列名）。"""
+    header_keywords = ["档号", "题名", "标题", "开放标识", "分类号", "责任者", "序号", "案卷号", "文件编号"]
     for r in range(min(10, sheet.nrows)):
         row_text = " ".join(str(sheet.cell_value(r, c)) for c in range(sheet.ncols))
-        if any(kw in row_text for kw in ["序号", "题名", "档号", "档案编号", "案卷号"]):
+        if any(kw in row_text for kw in header_keywords):
             return r
-    # 回退：第一行
-    return 0
+    return None
 
 
 def _map_columns(headers: list[str]) -> dict:
-    """将列名映射到标准字段"""
+    """将列名映射到标准字段。
+
+    注意「档号」才是 archive_id，「序号」是行号不是档号，二者必须区分；
+    「开放标识」才是审核结论，「分类号」是门类编码。"""
     mapping = {}
     for i, h in enumerate(headers):
         h_lower = h.lower().replace(" ", "")
-        if any(kw in h_lower for kw in ["序号", "档号", "编号", "案卷号", "archive_id"]):
+        if any(kw in h_lower for kw in ["档号", "档案编号", "archive_id"]):
             mapping["archive_id"] = i
         elif any(kw in h_lower for kw in ["题名", "标题", "名称", "title"]):
             mapping["title"] = i
         elif any(kw in h_lower for kw in ["年度", "年份", "归档年度", "year"]):
             mapping["year"] = i
-        elif any(kw in h_lower for kw in ["单位", "归口", "部门", "department"]):
+        elif any(kw in h_lower for kw in ["责任者", "归口", "单位", "部门", "department"]):
             mapping["department"] = i
-        elif any(kw in h_lower for kw in ["门类", "类别", "category"]):
+        elif any(kw in h_lower for kw in ["分类号", "门类", "类别", "category"]):
             mapping["category"] = i
-        elif any(kw in h_lower for kw in ["审核结论", "开放建议", "审核意见", "conclusion", "建议"]):
+        elif any(kw in h_lower for kw in ["开放标识", "审核结论", "开放建议", "审核意见", "conclusion"]):
             mapping["conclusion"] = i
-        elif any(kw in h_lower for kw in ["备注", "说明", "敏感", "notes"]):
+        elif any(kw in h_lower for kw in ["备注", "说明", "notes"]):
             mapping["notes"] = i
     return mapping
 

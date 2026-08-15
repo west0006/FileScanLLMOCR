@@ -16,7 +16,7 @@
         </tbody>
       </table>
     </div>
-    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next" :total="total" :page-size="pageSize" :current-page="page" @current-change="p=>{page=p;fetchRoles()}" />
+    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next" :total="total" :page-size="pageSize" :current-page="page" @current-change="(p: number)=>{page=p;fetchRoles()}" />
 
     <!-- 权限配置弹窗 -->
     <AppModal :visible="showPerm" :title="'权限配置 - ' + editingRole?.name" @close="showPerm=false" width="480px">

@@ -79,7 +79,7 @@
         </div>
         <table class="data-table">
           <thead><tr>
-            <th style="width:36px"><input type="checkbox" :checked="group.allSelected" @change="toggleGroup(group)" :ref="el => { if(el) el.indeterminate = group.someSelected && !group.allSelected }" /></th>
+            <th style="width:36px"><input type="checkbox" :checked="group.allSelected" @change="toggleGroup(group)" :ref="el => { if(el) (el as HTMLInputElement).indeterminate = group.someSelected && !group.allSelected }" /></th>
             <th>档案编号</th><th>题名</th><th style="width:100px">所属案卷</th>
             <th style="width:60px">年度</th><th style="width:140px">风险评分</th>
             <th style="width:60px">等级</th><th style="width:120px">AI 建议</th>
@@ -136,7 +136,7 @@
       </table>
     </div>
 
-    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchRecords()}" @size-change="s=>{pageSize=s;fetchRecords()}" />
+    <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="(p: number)=>{page=p;fetchRecords()}" @size-change="(s: number)=>{pageSize=s;fetchRecords()}" />
 
     <div class="export-cards">
       <div class="export-card">

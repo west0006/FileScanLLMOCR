@@ -154,10 +154,10 @@ async function fetchUserRanking() {
     const ranking = (res.data.items||[]).map((u:any)=>({...u,name:u.name||u.username,role:u.role||'reviewer'}))
     userRanking.value = ranking
     const types = ['search','view_entry','view_file','download','print']
-    const total = ranking.reduce((s,u)=>{types.forEach(t=>{u[t]=u[t]||0}); return s+userTotal(u)},0)
+    const total = ranking.reduce((s: number, u: any)=>{types.forEach(t=>{u[t]=u[t]||0}); return s+userTotal(u)},0)
     // 当月数据
     methodDetail.value = types.map(t=>{
-      const month = ranking.reduce((s,u)=>s+(u[t]||0),0)
+      const month = ranking.reduce((s: number, u: any)=>s+(u[t]||0),0)
       return {type:t, month_count:month, pct:total?+(month/total*100).toFixed(1):0, year_count:0, trend:'flat'}
     })
     // 异步获取本年累计（by-user period=year）
@@ -165,8 +165,8 @@ async function fetchUserRanking() {
       if (seq !== rankSeq) return  // 旧请求的异步回调丢弃
       const yrRanking = yr.data.items || []
       methodDetail.value = types.map(t => {
-        const month = ranking.reduce((s,u)=>s+(u[t]||0),0)
-        const year = yrRanking.reduce((s,u)=>s+(u[t]||0),0)
+        const month = ranking.reduce((s: number, u: any)=>s+(u[t]||0),0)
+        const year = yrRanking.reduce((s: number, u: any)=>s+(u[t]||0),0)
         const pct = total ? +(month/total*100).toFixed(1) : 0
         const trend = year > 0 && month > year/12*1.1 ? 'up' : month < year/12*0.9 ? 'down' : 'flat'
         return {type:t, month_count:month, pct, year_count:year, trend}

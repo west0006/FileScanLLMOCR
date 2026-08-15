@@ -211,7 +211,8 @@ const form = reactive({
 
 const riskColorClass = computed(() => {
   if (!result.value) return ''
-  return { '低': 'low', '中': 'mid', '高': 'high' }[result.value.risk_level] || ''
+  const map: Record<string, string> = { '低': 'low', '中': 'mid', '高': 'high' }
+  return map[result.value.risk_level] || ''
 })
 
 const riskStrokeColor = computed(() => {

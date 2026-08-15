@@ -85,7 +85,7 @@
             v-model="keyword"
             placeholder="输入关键词搜索档案..."
             class="search-input"
-            @keyup.enter="doSearch"
+            @keyup.enter="doSearch()"
             @focus="showAutoComplete = true"
             @blur="showAutoComplete = false"
             @input="showAutoComplete = true"
@@ -94,7 +94,7 @@
           <datalist id="search-autocomplete">
             <option v-for="h in searchAutoList" :key="h" :value="h" />
           </datalist>
-          <button class="search-btn" @click="doSearch">检索</button>
+          <button class="search-btn" @click="doSearch()">检索</button>
           <label class="exact-toggle" title="精确匹配：完整字段值严格匹配"><input type="checkbox" v-model="exactMatch" /> 精确</label>
           <button class="history-btn" @click.stop="showHistory = !showHistory" title="检索历史">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -121,9 +121,9 @@
             v-model="semanticQuery"
             placeholder="用自然语言描述查找内容，如：1996年招生工作相关文件..."
             class="search-input"
-            @keyup.enter="doSearch"
+            @keyup.enter="doSearch()"
           />
-          <button class="search-btn search-btn--ai" @click="doSearch">AI 检索</button>
+          <button class="search-btn search-btn--ai" @click="doSearch()">AI 检索</button>
         </div>
       </div>
 
@@ -193,7 +193,7 @@
               <option v-for="s in openStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
             </select>
           </div>
-          <button class="search-btn" style="align-self:flex-end" @click="doSearch">高级检索</button>
+          <button class="search-btn" style="align-self:flex-end" @click="doSearch()">高级检索</button>
         </div>
       </div>
 
@@ -310,7 +310,7 @@
         </div>
       </div>
 
-      <el-pagination v-if="total > pageSize" class="results-pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;doSearch(false)}" @size-change="s=>{pageSize=s;page=1;doSearch()}" />
+      <el-pagination v-if="total > pageSize" class="results-pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="(p: number)=>{page=p;doSearch(false)}" @size-change="(s: number)=>{pageSize=s;page=1;doSearch()}" />
     </div>
     </div><!-- /search-main -->
   </div>
@@ -569,7 +569,7 @@ async function doSearch(resetPage = true) {
 watch([activeCat, yearFrom, yearTo, activeOpenStatus, activeDepartment], () => {
   if (activeCat.value && activeCat.value.includes('/')) {
     const parentKey = activeCat.value.split('/')[0]
-    const parent = categoryTree.value.find(c => c.key === parentKey)
+    const parent = categoryTree.value.find((c: any) => c.key === parentKey)
     if (parent) parent.expanded = true
   }
   if (searched.value) doSearch()

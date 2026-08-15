@@ -58,7 +58,7 @@
         </div>
         <div style="display:flex;gap:8px;margin-top:12px">
           <button class="btn-primary" @click="saveFileConfig">保存配置</button>
-          <button class="btn-sm" @click="triggerFileSync" :disabled="syncing">
+          <button class="btn-sm" @click="triggerFileSync" :disabled="!!syncing">
             {{ syncing === 'file' ? '同步中...' : '手动同步' }}
           </button>
         </div>
