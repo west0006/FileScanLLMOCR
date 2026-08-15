@@ -71,6 +71,27 @@ def update_ocr_task(task_id: int, action: str, priority: Optional[int] = None, u
         from app.core.security import ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
         if t.created_by and t.created_by != user["user_id"] and user["role"] not in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
             return {"error": "无权操作该任务"}
+        # set_priority 是属性修改，任意状态可执行，不参与状态机
+        if action == "set_priority":
+            if priority is None:
+                return {"error": "缺少 priority"}
+            t.priority = priority
+            db.commit()
+            return {"task_id": task_id, "action": action, "status": t.status, "priority": t.priority}
+
+        # 状态机校验：防状态回退 + 防重复派发双 worker
+        valid_transitions = {
+            "start": ("pending",),
+            "pause": ("running",),
+            "resume": ("paused",),
+            "cancel": ("pending", "running", "paused"),
+        }
+        allowed = valid_transitions.get(action)
+        if allowed is None:
+            return {"error": f"未知操作: {action}"}
+        if t.status not in allowed:
+            return {"error": f"当前状态 {t.status} 不允许执行 {action}"}
+
         if action == "start":
             t.status = "running"
             from app.tasks.ocr_tasks import process_ocr_task
@@ -83,8 +104,6 @@ def update_ocr_task(task_id: int, action: str, priority: Optional[int] = None, u
             try: process_ocr_task.delay(task_id)
             except: pass
         elif action == "cancel": t.status = "cancelled"
-        elif action == "set_priority" and priority is not None:
-            t.priority = priority
         db.commit()
         return {"task_id": task_id, "action": action, "status": t.status, "priority": t.priority}
     finally:

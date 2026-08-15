@@ -182,6 +182,20 @@ def update_review_task(task_id: int, action: str, user: dict = Depends(get_curre
         from app.core.security import ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
         if t.created_by and t.created_by != user["user_id"] and user["role"] not in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
             return {"error": "无权操作该任务"}
+        # 状态机校验：防状态回退 + 防重复派发双 worker
+        valid_transitions = {
+            "start": ("pending",),
+            "pause": ("running",),
+            "resume": ("paused",),
+            "cancel": ("pending", "running", "paused"),
+            "mark_completed": ("running", "paused"),
+        }
+        allowed = valid_transitions.get(action)
+        if allowed is None:
+            return {"error": f"未知操作: {action}"}
+        if t.status not in allowed:
+            return {"error": f"当前状态 {t.status} 不允许执行 {action}"}
+
         if action == "start":
             t.status = "running"
             from app.tasks.review_tasks import process_review_task
@@ -195,8 +209,6 @@ def update_review_task(task_id: int, action: str, user: dict = Depends(get_curre
             except: pass
         elif action == "cancel": t.status = "cancelled"
         elif action == "mark_completed":
-            if t.status not in ("running", "paused"):
-                return {"error": "仅运行中/已暂停的任务可标记完成"}
             t.status = "completed"
             from datetime import datetime as _dt
             t.finished_at = _dt.utcnow()
