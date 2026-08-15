@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS users (
     login_attempts INT DEFAULT 0,
     locked_until DATETIME NULL,
     password_updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    last_login_at DATETIME NULL,
+    tree_auth JSON,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -23,6 +25,7 @@ CREATE TABLE IF NOT EXISTS roles (
     description VARCHAR(200),
     permissions JSON,
     data_scope JSON,
+    data_permissions JSON,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -30,16 +33,25 @@ CREATE TABLE IF NOT EXISTS archives (
     id INT AUTO_INCREMENT PRIMARY KEY,
     archive_id VARCHAR(100) UNIQUE NOT NULL,
     title VARCHAR(500) NOT NULL,
+    author VARCHAR(200),
+    file_code VARCHAR(100),
+    subject VARCHAR(300),
     year INT,
     category VARCHAR(100),
     department VARCHAR(200),
     fonds_id VARCHAR(50),
     retention_period VARCHAR(50),
     security_level VARCHAR(50),
+    level VARCHAR(20) DEFAULT 'file',
+    open_status VARCHAR(20) DEFAULT '未审核',
     file_count INT DEFAULT 0,
     ocr_text LONGTEXT,
     ocr_status VARCHAR(20) DEFAULT 'pending',
     ocr_confidence DOUBLE,
+    ocr_engine VARCHAR(50),
+    ocr_model_version VARCHAR(50),
+    ocr_duration_ms INT,
+    entities JSON,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_year (year),
@@ -57,7 +69,9 @@ CREATE TABLE IF NOT EXISTS review_tasks (
     filter_criteria JSON,
     created_by INT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    finished_at DATETIME NULL
+    started_at DATETIME NULL,
+    finished_at DATETIME NULL,
+    deadline DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS review_records (
@@ -82,10 +96,13 @@ CREATE TABLE IF NOT EXISTS ocr_tasks (
     task_name VARCHAR(200) NOT NULL,
     total_pages INT DEFAULT 0,
     processed_pages INT DEFAULT 0,
+    failed_pages INT DEFAULT 0,
     status VARCHAR(20) DEFAULT 'pending',
+    priority INT DEFAULT 0,
     filter_criteria JSON,
     created_by INT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    started_at DATETIME NULL,
     finished_at DATETIME NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -98,6 +115,9 @@ CREATE TABLE IF NOT EXISTS operation_logs (
     description TEXT,
     target_id VARCHAR(200),
     ip_address VARCHAR(50),
+    user_agent VARCHAR(300),
+    session_id VARCHAR(64) NULL,
+    chain_hash VARCHAR(64),
     result VARCHAR(20),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_user (user_id),

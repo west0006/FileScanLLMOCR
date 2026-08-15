@@ -19,21 +19,21 @@ Base = declarative_base()
 
 
 def init_db():
-    """创建所有表（SQLite 模式下自动调用）"""
+    """创建所有表并补齐模型新增列（SQLite / MySQL 通用）"""
     Base.metadata.create_all(bind=engine)
-    if settings.DB_MODE == "sqlite":
-        _add_missing_columns()
+    _add_missing_columns()
 
 
 def _add_missing_columns():
-    """SQLite create_all 不会为已存在的表新增列，这里补齐所有新增列
+    """为已存在的表补齐模型新增列（SQLite / MySQL 通用）
 
-    遍历模型元数据，对每个已存在的表比对缺列，按 SQLAlchemy 方言编译出的
-    类型生成 ALTER TABLE ADD COLUMN。仅对 SQLite 生效（MySQL 走 Alembic）。
+    create_all 不会为已存在的表新增列，这里遍历模型元数据，对每个已存在的表
+    比对缺列，按 SQLAlchemy 方言编译出的类型 + 方言引号生成 ALTER TABLE ADD COLUMN。
     """
     from sqlalchemy import inspect, text
     try:
         insp = inspect(engine)
+        preparer = engine.dialect.identifier_preparer
         with engine.begin() as conn:
             for table in Base.metadata.tables.values():
                 if not insp.has_table(table.name):
@@ -43,10 +43,11 @@ def _add_missing_columns():
                     if col.name in existing:
                         continue
                     col_type = col.type.compile(dialect=engine.dialect)
-                    ddl = f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {col_type}'
+                    ddl = f'ALTER TABLE {preparer.quote(table.name)} ADD COLUMN {preparer.quote(col.name)} {col_type}'
                     conn.execute(text(ddl))
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger("database").warning(f"补齐缺失列失败: {e}")
 
 
 def get_db():

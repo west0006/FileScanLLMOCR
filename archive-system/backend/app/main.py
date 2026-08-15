@@ -15,9 +15,9 @@ from app.middleware.session_timeout import SessionTimeoutMiddleware
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期"""
-    # 启动时 — SQLite 模式自动建表 + 种子数据 + 日志清理
+    # 启动时 — 建表 + 补齐缺失列（SQLite/MySQL 通用）；SQLite 模式另加种子数据 + 日志清理
+    init_db()
     if settings.DB_MODE == "sqlite":
-        init_db()
         try:
             from app.core.seed import seed
             seed()
