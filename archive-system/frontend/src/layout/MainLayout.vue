@@ -146,7 +146,10 @@ const allNavSections: NavSection[] = [
 // 按权限过滤菜单
 const navSections = computed(() => {
   if (!auth.permissions || Object.keys(auth.permissions).length === 0) {
-    return allNavSections // 尚未加载权限时显示全部（避免闪烁）
+    // 权限为空（加载中或接口失败）：仅显示无需模块权限的首页，避免泄露全量菜单
+    return allNavSections
+      .map(section => ({ ...section, items: section.items.filter(item => !item.module) }))
+      .filter(section => section.items.length > 0)
   }
   return allNavSections
     .map(section => ({

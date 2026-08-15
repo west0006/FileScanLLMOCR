@@ -131,7 +131,6 @@
 <script setup lang="ts">
 import { reactive, ref, onMounted, nextTick } from 'vue'
 import { searchApi, statsApi, logApi, reviewApi, ocrApi } from '@/api'
-import { MOCK_ACTIVITIES } from '@/constants'
 import * as echarts from 'echarts'
 
 const digitizeChartRef = ref<HTMLElement>()
@@ -150,15 +149,18 @@ const stats = reactive({
 const recentActivities = ref<{type:string;desc:string;time:string}[]>([])
 const ocrOverview = ref<{name:string;pct:number;status:string}[]>([])
 const reviewTimeline = ref<{title:string;desc:string;status:string}[]>([])
+const trendData = ref<number[]>([])
 
 onMounted(async () => {
   // 并行加载首页数据
   try {
-    const [facetsR, typeR, reviewR, ocrR] = await Promise.allSettled([
+    const [facetsR, typeR, reviewR, ocrR, qualityR, timeR] = await Promise.allSettled([
       searchApi.facets(),
       statsApi.byType({}),
       reviewApi.listTasks({ page: 1, page_size: 5 }),
       ocrApi.listTasks({ page: 1, page_size: 5 }),
+      ocrApi.qualityReport({}),
+      statsApi.byTime({ granularity: 'day', days: 7 }),
     ])
 
     // 馆藏总数 = facets 各门类计数之和
@@ -196,9 +198,17 @@ onMounted(async () => {
       }))
     }
 
-    // 准确率回退
-    stats.ocrAccuracy = 94.6
+    // OCR 准确率来自质量报告；数字化覆盖率按实际数据计算
+    if (qualityR.status === 'fulfilled') {
+      stats.ocrAccuracy = Math.round((qualityR.value.data.overall_accuracy || 0) * 100)
+    }
     stats.digitizeRate = stats.totalArchives ? Math.round(stats.digitized / stats.totalArchives * 100) : 0
+
+    // 检索趋势来自 by-time 统计（近 7 日）
+    if (timeR.status === 'fulfilled') {
+      const items = timeR.value.data.items || []
+      trendData.value = items.slice(-7).map((it: any) => it.search || 0)
+    }
   } catch { /* keep defaults */ }
   stats.loading = false
 
@@ -213,9 +223,8 @@ onMounted(async () => {
       }))
     }
   } catch {
-    recentActivities.value = MOCK_ACTIVITIES
+    recentActivities.value = []
   }
-  if (!recentActivities.value.length) recentActivities.value = MOCK_ACTIVITIES
 
   await nextTick()
   // 数字化进度饼图
@@ -237,7 +246,7 @@ onMounted(async () => {
       grid: { left: 10, right: 10, top: 10, bottom: 20 },
       xAxis: { type: 'category', data: days, axisLabel: { fontSize: 9, rotate: 30 }, axisTick: { show: false }, axisLine: { show: false } },
       yAxis: { type: 'value', axisLabel: { fontSize: 9 }, splitLine: { lineStyle: { color: '#F1F5F9' } } },
-      series: [{ type: 'bar', data: [42, 56, 38, 65, 48, 72, 58], barWidth: 12, itemStyle: { borderRadius: [4, 4, 0, 0], color: '#10B981' } }]
+      series: [{ type: 'bar', data: trendData.value.length ? trendData.value : [0, 0, 0, 0, 0, 0, 0], barWidth: 12, itemStyle: { borderRadius: [4, 4, 0, 0], color: '#10B981' } }]
     })
   }
 })

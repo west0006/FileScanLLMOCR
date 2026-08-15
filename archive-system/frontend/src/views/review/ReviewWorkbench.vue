@@ -168,7 +168,6 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { reviewApi, searchApi } from '@/api'
 import { ElMessage } from 'element-plus'
-import { MOCK_REVIEW_FALLBACK } from '@/constants'
 
 const route = useRoute()
 
@@ -275,7 +274,8 @@ async function doPreview() {
     })
     result.value = res.data
   } catch {
-    result.value = MOCK_REVIEW_FALLBACK
+    result.value = null
+    ElMessage.error('预审失败，请稍后重试')
   } finally {
     reviewing.value = false
   }

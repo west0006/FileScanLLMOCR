@@ -6,6 +6,7 @@ export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('access_token') || '')
   const user = ref<any>(null)
   const permissions = ref<Record<string, any>>({})
+  const permissionsLoaded = ref(false)
 
   function can(module: string, action?: string): boolean {
     const p = permissions.value
@@ -46,6 +47,8 @@ export const useAuthStore = defineStore('auth', () => {
       permissions.value = res.data.permissions || {}
     } catch {
       permissions.value = {}
+    } finally {
+      permissionsLoaded.value = true
     }
   }
 
@@ -56,5 +59,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem('access_token')
   }
 
-  return { token, user, permissions, can, login, fetchUser, fetchPermissions, logout }
+  return { token, user, permissions, permissionsLoaded, can, login, fetchUser, fetchPermissions, logout }
 })

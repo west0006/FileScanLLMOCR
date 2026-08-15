@@ -146,7 +146,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { syncApi } from '@/api'
 import { ElMessage } from 'element-plus'
 
@@ -315,6 +315,7 @@ async function pollProgress(syncId: number) {
   _pollTimer = setInterval(poll, 3000)
   poll()
 }
+onUnmounted(() => { if (_pollTimer) clearInterval(_pollTimer) })
 </script>
 
 <style scoped>

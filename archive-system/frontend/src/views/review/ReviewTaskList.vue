@@ -27,7 +27,7 @@
     </div>
     <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="p=>{page=p;fetchTasks()}" @size-change="s=>{pageSize=s;fetchTasks()}" />
 
-    <div class="export-row">
+    <div class="export-row" v-if="canExport">
       <button class="btn-primary" @click="handleExport"><IconSvg name="chart" size="15" /> 导出AI预审结果表格</button>
       <button class="btn-sm" @click="handleExportArchive"><IconSvg name="pkg" size="15" /> 导出对应档案原文压缩包</button>
     </div>
@@ -79,6 +79,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { reviewApi } from '@/api'
 import { ElMessage } from 'element-plus'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
 
 const tasks = ref<any[]>([])
 const metrics = ref<any>({})
@@ -87,6 +90,8 @@ const yearOpts = Array.from({ length: 56 }, (_, i) => 1970 + i)
 const categories = ['行政档案', '党群档案', '教学档案', '科研档案', '人事档案', '财务档案', '基建档案', '声像档案']
 const createForm = ref({ task_name: '', batch_name: '', year_from: undefined as number | undefined, year_to: undefined as number | undefined, category: '', department: '', due_only: false, deadline: '' })
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
+// 导出按钮门控：仅有 review.export 权限的用户可见（与 ReviewRecordList 一致）
+const canExport = computed(() => auth.can('all') || auth.can('review', 'export'))
 
 onMounted(fetchTasks)
 async function fetchTasks() {

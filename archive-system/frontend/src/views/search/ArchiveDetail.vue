@@ -335,8 +335,9 @@ async function loadDetail(id: string) {
     }
   } catch {
     if (seq !== loadSeq) return
-    archive.value = { archive_id: id, title: '示例档案', year: 1996, category: '行政档案', department: '学校办公室', retention_period: '永久', security_level: '内部', file_count: 3 }
-    ocrContent.value = 'OCR 文本加载中...'
+    archive.value = { archive_id: id, title: '档案加载失败', year: null, category: '', department: '', retention_period: '', security_level: '', file_count: 0 }
+    ocrContent.value = '档案详情加载失败'
+    ElMessage.error('档案详情加载失败')
   }
 }
 
