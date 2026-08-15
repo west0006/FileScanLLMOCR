@@ -29,7 +29,8 @@ api.interceptors.response.use(
   (res) => res,
   (error) => {
     if (error?.__skip) return Promise.reject(error)  // 静默取消
-    if (error.response?.status === 401) {
+    // 登录失败（密码错误也是 401）不触发跳转，避免把登录页用户原地踢回登录页、丢失错误提示
+    if (error.response?.status === 401 && !String(error.config?.url || '').includes('/auth/login')) {
       clearSessionAndRedirect()
     }
     // 账户停用：Token 仍有效但请求被拒 → 清除本地会话并回到登录页
