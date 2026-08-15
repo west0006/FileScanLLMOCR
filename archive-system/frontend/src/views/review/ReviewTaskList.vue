@@ -50,6 +50,7 @@
       <div class="form-row"><div class="form-group" style="flex:1"><label>起始年度</label><select v-model="createForm.year_from" class="field-input"><option :value="undefined">不限</option><option v-for="y in yearOpts" :key="'rf'+y" :value="y">{{ y }}</option></select></div><div class="form-group" style="flex:1"><label>截止年度</label><select v-model="createForm.year_to" class="field-input"><option :value="undefined">不限</option><option v-for="y in yearOpts" :key="'rt'+y" :value="y">{{ y }}</option></select></div></div>
       <div class="form-row"><div class="form-group" style="flex:1"><label>档案门类</label><select v-model="createForm.category" class="field-input"><option value="">全部</option><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></div><div class="form-group" style="flex:1"><label>归口单位</label><input class="field-input" v-model="createForm.department" placeholder="可选，如: 教务处" /></div></div>
       <div class="form-group"><label>批次名称</label><input class="field-input" v-model="createForm.batch_name" placeholder="如: 第一批开放审核" /></div>
+      <label style="display:flex;align-items:center;gap:8px;font-size:var(--fs-sm);color:var(--c-text);cursor:pointer"><input type="checkbox" v-model="createForm.due_only" style="width:16px;height:16px" /><span>仅到期档案（满 25 年）</span></label>
       <div class="form-group"><label>截止日期</label><input class="field-input" type="date" v-model="createForm.deadline" /></div>
       <div class="scope-hint">📋 任务将对符合筛选条件的已 OCR 档案进行 AI 预审，结果可在「预审记录」页查看。</div>
       <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px"><button class="btn-sm" @click="showCreate=false">取消</button><button class="btn-primary" @click="handleCreateTask">创建任务</button></div></div></div></div>
@@ -84,7 +85,7 @@ const metrics = ref<any>({})
 const showCreate = ref(false)
 const yearOpts = Array.from({ length: 56 }, (_, i) => 1970 + i)
 const categories = ['行政档案', '党群档案', '教学档案', '科研档案', '人事档案', '财务档案', '基建档案', '声像档案']
-const createForm = ref({ task_name: '', batch_name: '', year_from: undefined as number | undefined, year_to: undefined as number | undefined, category: '', department: '', deadline: '' })
+const createForm = ref({ task_name: '', batch_name: '', year_from: undefined as number | undefined, year_to: undefined as number | undefined, category: '', department: '', due_only: false, deadline: '' })
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
 
 onMounted(fetchTasks)
@@ -99,10 +100,10 @@ async function fetchTasks() {
 async function handleCreateTask() {
   if (!createForm.value.task_name) { ElMessage.warning('请输入任务名称'); return }
   try {
-    await reviewApi.createTask({ task_name: createForm.value.task_name, batch_name: createForm.value.batch_name || undefined, year_from: createForm.value.year_from, year_to: createForm.value.year_to, category: createForm.value.category || undefined, department: createForm.value.department || undefined, deadline: createForm.value.deadline || undefined })
+    await reviewApi.createTask({ task_name: createForm.value.task_name, batch_name: createForm.value.batch_name || undefined, year_from: createForm.value.year_from, year_to: createForm.value.year_to, category: createForm.value.category || undefined, department: createForm.value.department || undefined, due_only: createForm.value.due_only, deadline: createForm.value.deadline || undefined })
     ElMessage.success('任务已创建')
     showCreate.value = false
-    createForm.value = { task_name: '', batch_name: '', year_from: undefined, year_to: undefined, category: '', department: '' }
+    createForm.value = { task_name: '', batch_name: '', year_from: undefined, year_to: undefined, category: '', department: '', due_only: false, deadline: '' }
     fetchTasks()
   } catch { ElMessage.error('创建失败') }
 }

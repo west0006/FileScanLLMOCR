@@ -10,7 +10,7 @@
 
 export const ROLE_LABELS: Record<string, string> = {
   system_admin: '系统管理员',
-  archive_admin: '档案管理员',
+  archive_admin: '档案馆员',
   reviewer: '审核员',
   searcher: '查档人员',
 }

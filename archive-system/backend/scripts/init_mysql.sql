@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS sync_logs (
 -- 种子数据：预设角色
 INSERT INTO roles (name, description, permissions, data_scope) VALUES
 ('system_admin', '系统管理员', '{"all": true}', '{"all": true}'),
-('archive_admin', '档案管理员', '{"search": true, "ocr": true, "sync": true, "stats": true, "review": false}', '{"all": true}'),
+('archive_admin', '档案馆员', '{"search": true, "ocr": true, "sync": true, "stats": true, "review": false}', '{"all": true}'),
 ('reviewer', '审核员', '{"search": true, "review": true}', '{"departments": []}')
 ON DUPLICATE KEY UPDATE name=name;
 

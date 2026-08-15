@@ -451,7 +451,7 @@ async def ingest_document(
 ):
     """异质文档摄取（SE-008）— 上传 PDF/Word/TXT，提取全文写入档案，立即可检索
 
-    权限：仅系统管理员/档案管理员（防止 reviewer 覆盖他人档案文本）。
+    权限：仅系统管理员/档案馆员（防止 reviewer 覆盖他人档案文本）。
     安全：archive_id 白名单校验防路径注入；上传大小上限 50MB 防内存 DoS。
     """
     import re

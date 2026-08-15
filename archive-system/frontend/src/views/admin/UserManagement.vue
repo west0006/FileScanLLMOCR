@@ -10,7 +10,7 @@
       </div>
     </div>
     <div class="filter-bar">
-      <select v-model="roleFilter" class="filter-select"><option value="">全部角色</option><option value="system_admin">系统管理员</option><option value="archive_admin">档案管理员</option><option value="reviewer">审核员</option></select>
+      <select v-model="roleFilter" class="filter-select"><option value="">全部角色</option><option value="system_admin">系统管理员</option><option value="archive_admin">档案馆员</option><option value="reviewer">审核员</option></select>
       <select v-model="statusFilter" class="filter-select"><option value="">全部状态</option><option value="1">正常</option><option value="0">停用</option></select>
       <input v-model="searchKeyword" placeholder="搜索用户名/姓名" class="filter-input" @keyup.enter="fetchUsers()" />
       <button class="btn-accent-sm" @click="fetchUsers()">查询</button>
@@ -45,7 +45,7 @@
           <div class="form-group"><label>用户名</label><input v-model="form.username" class="field-input" placeholder="3-50字符" /></div>
           <div class="form-group"><label>姓名</label><input v-model="form.name" class="field-input" /></div>
           <div class="form-group"><label>所属部门</label><input v-model="form.department" class="field-input" placeholder="如: 档案馆" /></div>
-          <div class="form-group"><label>角色</label><select v-model="form.role" class="field-input"><option value="reviewer">审核员</option><option value="archive_admin">档案管理员</option><option value="system_admin">系统管理员</option></select></div>
+          <div class="form-group"><label>角色</label><select v-model="form.role" class="field-input"><option value="reviewer">审核员</option><option value="archive_admin">档案馆员</option><option value="system_admin">系统管理员</option></select></div>
           <div class="form-group"><label>初始密码</label><input v-model="form.password" class="field-input" type="password" placeholder="不少于12个字符" /></div>
           <div v-if="errorMsg" class="error-msg">{{ errorMsg }}</div>
           <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
@@ -63,7 +63,7 @@
         <div class="modal-body">
           <div class="form-group"><label>姓名</label><input v-model="editForm.name" class="field-input" /></div>
           <div class="form-group"><label>部门</label><input v-model="editForm.department" class="field-input" /></div>
-          <div class="form-group"><label>角色</label><select v-model="editForm.role" class="field-input"><option value="reviewer">审核员</option><option value="archive_admin">档案管理员</option><option value="system_admin">系统管理员</option></select></div>
+          <div class="form-group"><label>角色</label><select v-model="editForm.role" class="field-input"><option value="reviewer">审核员</option><option value="archive_admin">档案馆员</option><option value="system_admin">系统管理员</option></select></div>
           <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
             <button class="btn-sm" @click="showEdit=false">取消</button>
             <button class="btn-primary" @click="doEdit">保存</button>
@@ -133,7 +133,7 @@ async function doResetPassword() {
   } catch { ElMessage.error('重置失败') }
 }
 
-function roleLabel(r: string) { return { system_admin:'系统管理员',archive_admin:'档案管理员',reviewer:'审核员' }[r]||r }
+function roleLabel(r: string) { return { system_admin:'系统管理员',archive_admin:'档案馆员',reviewer:'审核员' }[r]||r }
 
 onMounted(() => fetchUsers())
 

@@ -126,7 +126,7 @@ function actionLabel(a: string): string {
 }
 
 function roleLabel(name: string) {
-  return { system_admin: '系统管理员', archive_admin: '档案管理员', reviewer: '审核员', searcher: '查档人员' }[name] || name
+  return { system_admin: '系统管理员', archive_admin: '档案馆员', reviewer: '审核员', searcher: '查档人员' }[name] || name
 }
 
 onMounted(fetchRoles)
@@ -139,7 +139,7 @@ async function fetchRoles() {
   } catch {
     roles.value = [
       { id: 1, name: '系统管理员', description: '全部权限', user_count: 1, permissions: { all: true }, builtin: true },
-      { id: 2, name: '档案管理员', description: '档案管理与检索', user_count: 2, builtin: true },
+      { id: 2, name: '档案馆员', description: '档案管理与检索', user_count: 2, builtin: true },
       { id: 3, name: '审核员', description: '开放审核', user_count: 5, builtin: true },
     ]
   }

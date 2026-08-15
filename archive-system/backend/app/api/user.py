@@ -230,7 +230,7 @@ def list_roles(user: dict = Depends(get_current_user)):
         # 回退：种子数据
         return {"items": [
             {"id": 1, "name": "system_admin", "description": "系统管理员", "user_count": 1},
-            {"id": 2, "name": "archive_admin", "description": "档案管理员", "user_count": 2},
+            {"id": 2, "name": "archive_admin", "description": "档案馆员", "user_count": 2},
             {"id": 3, "name": "reviewer", "description": "审核员", "user_count": 5},
         ]}
     finally:

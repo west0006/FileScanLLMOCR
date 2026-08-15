@@ -20,6 +20,7 @@ class CreateReviewTaskRequest(BaseModel):
     year_to: Optional[int] = None
     category: Optional[str] = None
     department: Optional[str] = None
+    due_only: bool = False  # 仅到期档案（档案法满 25 年）
     deadline: Optional[str] = None
 
 
@@ -107,6 +108,7 @@ def create_review_task(req: CreateReviewTaskRequest, request: Request, user: dic
             filter_criteria={
                 "year_from": req.year_from, "year_to": req.year_to,
                 "category": req.category, "department": req.department,
+                "due_only": req.due_only,
             },
             created_by=user["user_id"],
             deadline=deadline,

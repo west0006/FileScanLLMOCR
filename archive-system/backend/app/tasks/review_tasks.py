@@ -52,6 +52,10 @@ def process_review_task(self, task_id: int):
             q = q.filter(Archive.category == criteria["category"])
         if criteria.get("department"):
             q = q.filter(Archive.department == criteria["department"])
+        if criteria.get("due_only"):
+            # 到期档案：档案法第 27 条，自形成之日起满 25 年
+            due_year = datetime.utcnow().year - 25
+            q = q.filter(Archive.year <= due_year)
 
         archives = q.all()
         total = len(archives)

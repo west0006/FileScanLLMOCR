@@ -31,7 +31,7 @@ def seed(force: bool = False):
             db.add_all([
                 Role(name="system_admin", description="系统管理员",
                      permissions={"all": True}, data_scope={"all": True}),
-                Role(name="archive_admin", description="档案管理员",
+                Role(name="archive_admin", description="档案馆员",
                      permissions={
                          "search": {"view": True, "download": True, "print": True},
                          "ocr": True, "sync": True, "stats": True,
