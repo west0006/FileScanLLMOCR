@@ -85,6 +85,7 @@ const auth = useAuthStore()
 
 const tasks = ref<any[]>([])
 const metrics = ref<any>({})
+let fetchSeq = 0  // 请求序号，防快速切换分页时旧响应覆盖新数据
 const showCreate = ref(false)
 const yearOpts = Array.from({ length: 56 }, (_, i) => 1970 + i)
 const categories = ['行政档案', '党群档案', '教学档案', '科研档案', '人事档案', '财务档案', '基建档案', '声像档案']
@@ -95,8 +96,10 @@ const canExport = computed(() => auth.can('all') || auth.can('review', 'export')
 
 onMounted(fetchTasks)
 async function fetchTasks() {
+  const seq = ++fetchSeq
   try {
     const res = await reviewApi.listTasks({ page: page.value, page_size: pageSize.value })
+    if (seq !== fetchSeq) return
     tasks.value = res.data.items || []
     total.value = res.data.total || 0
     metrics.value = res.data.metrics || {}

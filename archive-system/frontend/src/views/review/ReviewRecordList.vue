@@ -193,6 +193,7 @@ const canExport = computed(() => auth.can('all') || auth.can('review', 'export')
 
 const records = ref<any[]>([])
 const selected = ref<any>(null)
+let fetchSeq = 0  // 请求序号，防快速切换筛选/视图时旧响应覆盖新数据
 const selectedIds = ref<number[]>([])
 const selectedVolumes = ref<string[]>([])
 const reviewView = ref('item')
@@ -293,6 +294,7 @@ function resetFilters() {
   fetchRecords()
 }
 async function fetchRecords() {
+  const seq = ++fetchSeq
   try {
     const res = await reviewApi.listRecords({
       page: page.value, page_size: pageSize.value,
@@ -303,6 +305,7 @@ async function fetchRecords() {
       date_from: filters.value.date_from || undefined,
       date_to: filters.value.date_to || undefined,
     })
+    if (seq !== fetchSeq) return
     records.value = res.data.items || []
     total.value = res.data.total || 0
     // 按卷聚合（卷级建议：任一件建议不开放则整卷建议不开放）

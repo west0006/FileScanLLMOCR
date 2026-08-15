@@ -119,6 +119,7 @@ import { ElMessage } from 'element-plus'
 
 const tasks = ref<any[]>([])
 const showCreate = ref(false)
+let fetchSeq = 0  // 请求序号，防快速切换筛选时旧响应覆盖新数据
 const showDetail = ref(false)
 const detailTask = ref<any>(null)
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
@@ -130,7 +131,12 @@ const statusFilter = ref('')
 onMounted(() => { fetchTasks(); fetchEngineInfo(); fetchQuality() })
 
 async function fetchTasks() {
-  try { const res = await ocrApi.listTasks({ page:page.value, page_size:pageSize.value, status: statusFilter.value||undefined }); tasks.value = res.data.items || []; total.value = res.data.total || 0 } catch { /* */ }
+  const seq = ++fetchSeq
+  try {
+    const res = await ocrApi.listTasks({ page:page.value, page_size:pageSize.value, status: statusFilter.value||undefined })
+    if (seq !== fetchSeq) return
+    tasks.value = res.data.items || []; total.value = res.data.total || 0
+  } catch { /* */ }
 }
 async function fetchEngineInfo() {
   try {

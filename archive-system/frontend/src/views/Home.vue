@@ -129,12 +129,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, onMounted, nextTick } from 'vue'
+import { reactive, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { searchApi, statsApi, logApi, reviewApi, ocrApi } from '@/api'
 import * as echarts from 'echarts'
 
 const digitizeChartRef = ref<HTMLElement>()
 const trendChartRef = ref<HTMLElement>()
+const charts: any[] = []
 
 const stats = reactive({
   totalArchives: 0,
@@ -230,6 +231,7 @@ onMounted(async () => {
   // 数字化进度饼图
   if (digitizeChartRef.value) {
     const c = echarts.init(digitizeChartRef.value)
+    charts.push(c)
     c.setOption({
       tooltip: { trigger: 'item' },
       series: [{ type: 'pie', radius: ['50%', '75%'], center: ['50%', '50%'], itemStyle: { borderRadius: 2, borderColor: '#fff', borderWidth: 2 }, label: { show: false },
@@ -240,6 +242,7 @@ onMounted(async () => {
   // 检索趋势柱状图
   if (trendChartRef.value) {
     const c = echarts.init(trendChartRef.value)
+    charts.push(c)
     const days = ['6天前','5天前','4天前','3天前','前天','昨天','今天']
     c.setOption({
       tooltip: { trigger: 'axis' },
@@ -249,6 +252,10 @@ onMounted(async () => {
       series: [{ type: 'bar', data: trendData.value.length ? trendData.value : [0, 0, 0, 0, 0, 0, 0], barWidth: 12, itemStyle: { borderRadius: [4, 4, 0, 0], color: '#10B981' } }]
     })
   }
+})
+
+onUnmounted(() => {
+  charts.forEach(c => { try { c.dispose() } catch {} })
 })
 
 function formatNum(n: number): string {

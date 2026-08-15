@@ -60,6 +60,7 @@ import { OP_TYPE_LABELS } from '@/constants'
 
 const items = ref<any[]>([])
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
+let fetchSeq = 0  // 请求序号，防快速切换筛选/翻页时旧响应覆盖新数据
 const filters = ref({ username: '', type: '', date_from: '', date_to: '' })
 const logTab = ref('all')
 const logTabs = ref([
@@ -73,6 +74,7 @@ const logStats = ref({ total: 0, failed: 0, retention: 1095, allCount: 0, loginC
 onMounted(() => fetchLogs())
 
 async function fetchLogs() {
+  const seq = ++fetchSeq
   try {
     const params: any = { page: page.value, page_size: pageSize.value,
       user_account: filters.value.username || undefined,
@@ -81,6 +83,7 @@ async function fetchLogs() {
       date_to: filters.value.date_to || undefined,
     }
     const res = await logApi.list(params)
+    if (seq !== fetchSeq) return
     items.value = res.data.items || []
     total.value = res.data.total || 0
     // 更新统计卡和 tab 计数

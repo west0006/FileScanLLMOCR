@@ -95,6 +95,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 
 const users = ref<any[]>([])
 const showCreate = ref(false)
+let fetchSeq = 0  // 请求序号，防快速切换筛选/翻页时旧响应覆盖新数据
 const creating = ref(false)
 const errorMsg = ref('')
 const page = ref(1); const pageSize = ref(20); const total = ref(0)
@@ -138,6 +139,7 @@ function roleLabel(r: string) { return { system_admin:'系统管理员',archive_
 onMounted(() => fetchUsers())
 
 async function fetchUsers() {
+  const seq = ++fetchSeq
   try {
     const res = await userApi.list({
       page: page.value, page_size: pageSize.value,
@@ -145,6 +147,7 @@ async function fetchUsers() {
       is_active: statusFilter.value ? statusFilter.value === '1' : undefined,
       keyword: searchKeyword.value || undefined,
     })
+    if (seq !== fetchSeq) return
     users.value = res.data.items || []
     total.value = res.data.total || 0
   } catch { /* ignore */ }
