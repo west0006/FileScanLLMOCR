@@ -123,7 +123,7 @@ class LLMClient:
         try: return json.loads(result)
         except json.JSONDecodeError:
             return {"risk_score": 50, "risk_level": "中", "sensitive_items": [],
-                    "suggestion": "建议人工复核", "reason": f"LLM 返回非 JSON: {result[:200]}", "confidence": 0.5}
+                    "suggestion": "建议人工复核", "reason": f"LLM 返回非 JSON: {result[:200]}", "confidence": 0.5, "llm_available": False}
 
     # ============================================================
     # Query 理解（语义检索）
@@ -215,9 +215,9 @@ class LLMClient:
                 return data.get("choices",[{}])[0].get("message",{}).get("content","") or data.get("response","") or str(data)
             return f"HTTP {resp.status_code}: {resp.text[:300]}"
         except requests.ConnectionError:
-            return '{"risk_score":50,"risk_level":"中","suggestion":"建议人工复核","reason":"LLM 服务不可达","confidence":0.3}'
+            return '{"risk_score":50,"risk_level":"中","suggestion":"建议人工复核","reason":"LLM 服务不可达","confidence":0.3,"llm_available":false}'
         except Exception as e:
-            return f'{{"risk_score":50,"risk_level":"中","suggestion":"建议人工复核","reason":"{str(e)[:80]}","confidence":0.3}}'
+            return f'{{"risk_score":50,"risk_level":"中","suggestion":"建议人工复核","reason":"{str(e)[:80]}","confidence":0.3,"llm_available":false}}'
 
     # ============================================================
     # 工具方法
@@ -252,6 +252,7 @@ class LLMClient:
             "suggestion": "建议人工复核",
             "reason": reason,
             "confidence": 0.5,
+            "llm_available": False,
         }
 
 

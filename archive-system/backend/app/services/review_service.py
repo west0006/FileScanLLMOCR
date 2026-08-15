@@ -16,12 +16,14 @@ SENSITIVE_RULES = {
         "军备合同", "军事情报", "军事组织", "军委", "军宣队",
         "总参", "总后", "总政", "驻青部队", "战略防御",
         "研发机密", "合作机密", "窃密", "窃取", "刺探",
+        "安全机制", "涉密事项", "涉外合作",
     ],
     # (二) 涉及党和国家重大问题、重大事件尚未作出结论的
     "未结论重大事项": [
         "尚未结论", "审定中", "审理情况", "审查", "封闭审查",
         "组织调查", "政审", "人事调查", "事故调查",
         "待调查", "调查中", "未公开",
+        "监察工作", "司法调查",
     ],
     # (三) 涉及学校不对外公开事项的
     "内部事项": [
@@ -38,6 +40,7 @@ SENSITIVE_RULES = {
         "生活历程", "成份谈话记录", "家庭出身",
         "人事调查", "纪检处理", "纪检审查", "纪律审查",
         "处分", "作风问题", "检讨", "坦白材料",
+        "抚恤费", "任免", "自杀", "形象损害",
     ],
     # (六) 档案形成者要求限制利用范围的
     "限制利用": [
@@ -72,6 +75,10 @@ SENSITIVE_RULES = {
         "西藏问题", "领土安全", "领土争端", "民族纠纷", "民族矛盾",
         "示威", "游行", "抗议", "绝食", "罢工", "罢课", "暴动", "暴乱", "动乱",
         "武装冲突", "戒严", "倾覆", "策反",
+        "89年风波", "帮派", "暴力冲突", "朝鲜战争", "敌对", "打砸抢", "分裂", "历史问题",
+        "平反", "三钢", "三令五申", "镇压", "整顿",
+        "政治被动", "政治迫害", "政治异议", "政治审查",
+        "中国共产党军事委员会", "中央纪律检查委员会", "中央纪委", "中央军委办公室",
     ],
     # 违法犯罪类
     "违法犯罪": [
@@ -83,6 +90,7 @@ SENSITIVE_RULES = {
         "窝藏", "串供", "胁迫",
         "有组织犯罪", "恐怖袭击",
         "无期徒刑", "有期徒刑", "拘役", "逮捕", "批捕", "起诉",
+        "案犯", "案件", "敌特", "毒品", "流氓", "淫秽", "收买",
     ],
     # 违法违规/纪律类
     "违纪违规": [
@@ -92,6 +100,7 @@ SENSITIVE_RULES = {
         "舞弊", "监守自盗", "小偷小摸", "偷盗", "偷摸", "偷窃",
         "挑拨离间", "煽动",
         "双规", "双反运动",
+        "检举", "揭发", "举报", "开除", "顽劣", "枉法", "勒令",
     ],
     # 其他敏感
     "其他敏感": [
@@ -100,7 +109,8 @@ SENSITIVE_RULES = {
         "民主运动", "民主墙", "民主评议会", "民主生活会",
         "领导人通信", "世维大会", "三青团",
         "宪政部门", "宪政制度", "宪政组织", "白旗",
-        "特殊行动队", "特殊任务组", "特殊手段", "特殊机构", "特殊训练",
+        "特别行动队", "特殊任务组", "特殊手段", "特殊机构", "特殊训练",
+        "民主评议", "宗教事务",
         "战犯", "战俘", "债务纠纷",
     ],
 }
@@ -366,7 +376,8 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     llm_ms = log.time_end("review_llm", score=llm_result.get("risk_score", 0))
 
     llm_score = llm_result.get("risk_score", 0)
-    log.obs("LLM_REVIEW_DONE", score=llm_score, confidence=llm_result.get("confidence", 0), llm_ms=llm_ms)
+    llm_available = llm_result.get("llm_available", True)
+    log.obs("LLM_REVIEW_DONE", score=llm_score, confidence=llm_result.get("confidence", 0), llm_ms=llm_ms, available=llm_available)
 
     # 第三层：白名单降分
     open_hits = scan_open_categories(full_text)
@@ -374,8 +385,11 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     if open_hits:
         log.obs("WHITELIST_APPLIED", open_cats=list(set(h["type"] for h in open_hits)), reduction="5-10")
 
-    # 第四层：融合 (规则 50% + LLM 50%——审核场景需偏保守)
-    final_score = round(rule_score * 0.5 + llm_score * 0.5, 1)
+    # 第四层：融合 (规则 50% + LLM 50%——审核场景需偏保守；LLM 不可用时退化为纯规则评分，避免 50 分兜底污染干净档案)
+    if llm_available:
+        final_score = round(rule_score * 0.5 + llm_score * 0.5, 1)
+    else:
+        final_score = round(rule_score, 1)
 
     # 最终等级（四档建议，按详细功能清单 RV-003）
     if final_score <= 20:

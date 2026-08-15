@@ -29,9 +29,10 @@ def extract_text(file_path: str) -> str:
 
 
 def _extract_txt(file_path: str) -> str:
+    # 严格解码（无 errors="replace"）：UTF-8 解码 GBK 文件会抛异常并回退到 gbk，避免老档案乱码
     for enc in ("utf-8", "gbk", "utf-16"):
         try:
-            with open(file_path, "r", encoding=enc, errors="replace") as f:
+            with open(file_path, "r", encoding=enc) as f:
                 return f.read()
         except Exception:
             continue
