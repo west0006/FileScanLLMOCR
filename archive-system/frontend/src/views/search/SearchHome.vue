@@ -570,10 +570,20 @@ watch([activeCat, yearFrom, yearTo, activeOpenStatus, activeDepartment], () => {
   if (searched.value) doSearch()
 })
 
+function escapeHtml(s: string) {
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+function escapeRegExp(s: string) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 function highlightText(text: string) {
-  if (!keyword.value || !text) return text
-  return keyword.value.split(/\s+/).filter(Boolean).reduce((t, w) =>
-    t.replace(new RegExp(w, 'gi'), m => `<mark class="search-highlight">${m}</mark>`), text)
+  if (!text) return ''
+  const escaped = escapeHtml(text)
+  if (!keyword.value) return escaped
+  return keyword.value.split(/\s+/).filter(Boolean).reduce((t, w) => {
+    const kw = escapeHtml(w)
+    return t.replace(new RegExp(escapeRegExp(kw), 'gi'), m => `<mark class="search-highlight">${m}</mark>`)
+  }, escaped)
 }
 
 function goDetail(id: string) { router.push(`/search/detail/${id}`) }

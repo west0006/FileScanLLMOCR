@@ -220,30 +220,36 @@ const riskStrokeColor = computed(() => {
   return s <= 20 ? 'var(--c-success)' : s <= 60 ? 'var(--c-warning)' : 'var(--c-danger)'
 })
 
-// 渲染原文，敏感词红色标注
+function escHtml(s: any) {
+  return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+function escAttr(s: any) {
+  return escHtml(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
+// 渲染原文，敏感词红色标注（先按原始 offset 用控制字符占位，再统一转义，避免长度变化导致高亮错位 + title 属性注入）
 const renderedText = computed(() => {
-  let text = form.full_text
+  let text = form.full_text || ''
   if (!text) return ''
-  // 转义 HTML
-  text = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  // 换行
-  text = text.replace(/\n/g, '<br>')
-  // 如果有 AI 结果，标记敏感词位置
+
   if (result.value?.sensitive_items) {
     const items = [...result.value.sensitive_items].sort((a: any, b: any) => (b.start_char || 0) - (a.start_char || 0))
     for (const item of items) {
       const s = item.start_char ?? -1
       const e = item.end_char ?? -1
-      if (s >= 0 && e > s) {
-        const escaped = text.substring(0, s).replace(/<[^>]*>/g, '')
-        // 简化处理：直接包裹敏感片段
-        const before = text.substring(0, s)
-        const match = text.substring(s, e)
-        const after = text.substring(e)
-        text = before + `<mark class="sensitive-mark" title="${item.type}: ${item.content?.substring(0, 30)}">${match}</mark>` + after
+      if (s >= 0 && e > s && e <= text.length) {
+        const label = escAttr(`${item.type}: ${String(item.content ?? '').substring(0, 30)}`)
+        text = text.substring(0, s) + '\u0004' + label + '\u0006' + text.substring(s, e) + '\u0005' + text.substring(e)
       }
     }
   }
+
+  // 转义 HTML + 换行
+  text = escHtml(text).replace(/\n/g, '<br>')
+  // 还原标记
+  text = text.replace(/\u0004([^\u0006]*?)\u0006/g, (_m: any, label: string) => `<mark class="sensitive-mark" title="${label}">`)
+  text = text.replace(/\u0005/g, '</mark>')
+
   return text
 })
 
