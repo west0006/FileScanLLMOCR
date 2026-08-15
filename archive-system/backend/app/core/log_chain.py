@@ -86,7 +86,12 @@ def append_chain_log(db, **fields) -> OperationLog:
             # 文件锁不可用（如只读临时目录）时退化为仅线程锁，仍保证同进程串行化
             fl = None
         try:
-            prev = db.query(OperationLog).order_by(OperationLog.id.desc()).first()
+            # 读最新链头；MySQL 下用 SELECT ... FOR UPDATE 锁定链头行，覆盖跨容器部署
+            # （文件锁仅同机有效，跨机共享 DB 时需 DB 级串行化）
+            prev_q = db.query(OperationLog).order_by(OperationLog.id.desc())
+            if db.bind.dialect.name == "mysql":
+                prev_q = prev_q.with_for_update()
+            prev = prev_q.first()
             prev_hash = prev.chain_hash if prev and prev.chain_hash else "0" * 64
 
             content = build_log_content(
