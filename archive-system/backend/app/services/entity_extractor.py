@@ -120,13 +120,25 @@ def extract_entities(text: str) -> list[dict]:
     return entities
 
 
+# 常见误报（姓氏 + 普通汉字组成的非人名词），避免知识图谱把普通词当人名
+_PERSON_FALSE_POSITIVES = {
+    "严肃", "严格", "严厉", "严重", "庄严", "严寒",
+    "高兴", "高大", "高级", "高低", "高速", "高空", "高贵",
+    "黄牛", "黄金", "陈年", "陈旧", "张狂", "张口",
+    "白纸", "白天", "马上", "马匹", "方便", "方向", "方法",
+    "后来", "后果", "将来", "将军", "现在", "现实", "经过", "经验",
+}
+
+
 def _extract_persons(text: str, entities: list, seen: set):
     """抽取中文姓名"""
     pattern = re.compile(rf'([{_SURNAMES}][\u4e00-\u9fa5]{{1,3}})')
     for m in pattern.finditer(text):
         full = m.group(1)
-        # 过滤误匹配（全是姓氏本身不算）
+        # 过滤误匹配（全是姓氏本身不算 + 常见非人名词黑名单）
         if len(full) < 2:
+            continue
+        if full in _PERSON_FALSE_POSITIVES:
             continue
         key = (m.start(), m.end(), "PERSON", full)
         if key not in seen:

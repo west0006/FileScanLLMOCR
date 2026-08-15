@@ -118,7 +118,7 @@ def seed(force: bool = False):
 
         # ---- 示例操作日志（多样化的最近操作） ----
         if db.query(OperationLog).count() == 0:
-            logs = _generate_seed_logs()
+            logs = _generate_seed_logs(db)
             db.add_all(logs)
             db.commit()
 
@@ -388,7 +388,7 @@ def _generate_seed_reviews() -> list[ReviewRecord]:
     return reviews
 
 
-def _generate_seed_logs() -> list[OperationLog]:
+def _generate_seed_logs(db) -> list[OperationLog]:
     """生成多样化的操作日志"""
     from datetime import timedelta
     import random
@@ -401,6 +401,8 @@ def _generate_seed_logs() -> list[OperationLog]:
         ("reviewer2", "赵静"),
         ("archivist", "陈小红"),
     ]
+    # username → user_id 映射，避免硬编码 user_id=1 与 username 矛盾
+    user_id_map = {u.username: u.id for u in db.query(User).filter(User.username.in_([o[0] for o in user_ops])).all()}
 
     op_templates = [
         ("login", "auth", "用户登录", "success"),
@@ -445,7 +447,7 @@ def _generate_seed_logs() -> list[OperationLog]:
         chain_hash = compute_chain_hash(prev_hash, content)
 
         logs.append(OperationLog(
-            user_id=1, username=uname,
+            user_id=user_id_map.get(uname, 0), username=uname,
             operation_type=op_type, module=module,
             description=desc,
             target_id=target_id,
