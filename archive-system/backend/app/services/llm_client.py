@@ -49,8 +49,8 @@ SYSTEM_REVIEW = """你是中南财经政法大学档案馆的档案开放审核�
 
 SYSTEM_QUERY = "你是档案检索意图分析助手。用户输入查询，你输出 JSON: {\"intent\":\"exact_lookup|topic_research|person_lookup|stat_query\",\"entities\":[],\"keywords\":[],\"synonyms\":[],\"time_range\":null,\"suggest_fields\":[\"title^3\",\"full_text\"]}"
 
-# LLaMA-Factory 地址
-LLAMAFACTORY_URL = getattr(settings, 'LLAMAFACTORY_URL', 'http://10.11.13.100:7860')
+# LLaMA-Factory 地址（可通过 .env 配置）
+LLAMAFACTORY_URL = settings.LLAMAFACTORY_URL
 
 # 模拟敏感词
 _MOCK_SENSITIVE = ["个人隐私","身份证号","家庭出身","健康信息","上级来文","外收文","内部文件","知识产权","专利","版权"]

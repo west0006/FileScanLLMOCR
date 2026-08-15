@@ -31,7 +31,11 @@ class Settings(BaseSettings):
         if self.DB_MODE == "sqlite":
             db_path = self.SQLITE_PATH or os.path.join(PROJECT_ROOT, "archive_dev.db")
             return f"sqlite:///{db_path}"
-        return f"mysql+pymysql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
+        # 用户名/密码 URL 编码，避免含 @ : / # 等特殊字符时连接串被截断
+        from urllib.parse import quote_plus
+        user = quote_plus(self.DB_USER)
+        pwd = quote_plus(self.DB_PASSWORD)
+        return f"mysql+pymysql://{user}:{pwd}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}?charset=utf8mb4"
 
     # Elasticsearch
     ES_HOST: str = "elasticsearch"
@@ -70,6 +74,7 @@ class Settings(BaseSettings):
     OLLAMA_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "qwen2.5:3b"
     OCR_MODE: str = "mock"  # mock | real
+    LLAMAFACTORY_URL: str = "http://10.11.13.100:7860"  # LLaMA-Factory 地址（LLM_MODE=real）
 
     # 文件存储
     UPLOAD_DIR: str = "/app/uploads"
