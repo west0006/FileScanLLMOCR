@@ -77,8 +77,9 @@ def preview_review(req: PreviewRequest, request: Request, user: dict = Depends(g
             )
             db.add(record)
         db.commit()
-        # 同步更新 Archive 的开放状态
+        # 同步更新 Archive 的开放状态（随后再 commit，避免 open_status 回写随会话关闭丢失）
         _sync_open_status(db, req.archive_id, result.get("suggestion", ""))
+        db.commit()
     except Exception:
         pass
     finally:
