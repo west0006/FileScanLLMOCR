@@ -79,8 +79,12 @@ def set_database_sync_config(req: DatabaseSyncConfigRequest, user: dict = Depend
 
 @router.get("/config")
 def get_sync_configs(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
-    """查看同步配置"""
-    return _load_config()
+    """查看同步配置（数据库密码脱敏，避免明文回传）"""
+    cfg = _load_config()
+    db_cfg = cfg.get("database_sync")
+    if isinstance(db_cfg, dict) and db_cfg.get("password"):
+        db_cfg["password"] = "******"
+    return cfg
 
 
 @router.post("/trigger/file")

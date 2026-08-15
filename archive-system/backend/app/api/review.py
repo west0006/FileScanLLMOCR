@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel
 from typing import Optional
 
-from app.core.security import get_current_user, apply_data_scope, require_permission
+from app.core.security import get_current_user, apply_data_scope, require_permission, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
 from app.core.database import SessionLocal
 from app.models.models import ReviewTask, ReviewRecord, Archive
 from app.services.review_service import hybrid_review
@@ -53,6 +53,12 @@ def preview_review(req: PreviewRequest, request: Request, user: dict = Depends(g
     # 落库 — upsert：同一档案只保留最新一条记录
     db = SessionLocal()
     try:
+        # 数据范围校验：若 archive_id 对应已有档案，校验用户是否有权限（防篡改他人档案 open_status/预审结果）
+        if db.query(Archive).filter(Archive.archive_id == req.archive_id).first():
+            scoped = apply_data_scope(user, db.query(Archive), Archive)
+            if not scoped.filter(Archive.archive_id == req.archive_id).first():
+                return {"error": "无权访问该档案"}
+
         existing = db.query(ReviewRecord).filter(ReviewRecord.archive_id == req.archive_id).first()
         if existing:
             existing.risk_score = result["risk_score"]
@@ -90,7 +96,7 @@ def preview_review(req: PreviewRequest, request: Request, user: dict = Depends(g
 # ===================== 预审任务管理 =====================
 
 @router.post("/tasks")
-def create_review_task(req: CreateReviewTaskRequest, request: Request, user: dict = Depends(get_current_user)):
+def create_review_task(req: CreateReviewTaskRequest, request: Request, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """创建预审任务 → Celery 异步队列"""
     request.state.log_target_id = f"task-{req.task_name}"
     db = SessionLocal()

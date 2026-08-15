@@ -4,8 +4,11 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from app.core.security import get_current_user, apply_data_scope, has_data_permission
+import os
+
+from app.core.security import get_current_user, apply_data_scope, has_data_permission, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
 from app.core.database import SessionLocal
+from app.core.config import settings
 from app.models.models import OcrTask, Archive
 
 router = APIRouter()
@@ -26,7 +29,7 @@ class CreateOcrTaskRequest(BaseModel):
 
 
 @router.post("/tasks")
-def create_ocr_task(req: CreateOcrTaskRequest, request: Request, user: dict = Depends(get_current_user)):
+def create_ocr_task(req: CreateOcrTaskRequest, request: Request, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """创建 OCR 任务"""
     request.state.log_target_id = f"task-ocr-{req.task_name}"
     db = SessionLocal()
@@ -173,7 +176,7 @@ def quality_report(task_id: Optional[int] = None, user: dict = Depends(get_curre
     """OCR 质量报告 — 基于实际数据动态计算"""
     db = SessionLocal()
     try:
-        q = db.query(Archive).filter(Archive.ocr_status.in_(["done", "low_quality"]))
+        q = apply_data_scope(user, db.query(Archive), Archive).filter(Archive.ocr_status.in_(["done", "low_quality"]))
 
         if task_id:
             task = db.query(OcrTask).filter(OcrTask.id == task_id).first()
@@ -227,8 +230,13 @@ def quality_report(task_id: Optional[int] = None, user: dict = Depends(get_curre
 # ===================== 版面分析 =====================
 
 @router.post("/detect")
-def detect_structure(image_path: str, user: dict = Depends(get_current_user)):
+def detect_structure(image_path: str, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN))):
     """版面分析 — 检测标题/表格/段落/印章"""
+    # 路径校验：限定在同步数据目录内，防任意文件读取
+    sync_root = os.path.realpath(settings.SYNC_DATA_DIR)
+    real_path = os.path.realpath(image_path)
+    if real_path != sync_root and not real_path.startswith(sync_root + os.sep):
+        return {"error": "forbidden", "detail": "路径必须在同步数据目录内"}
     from app.services.ocr_client import ocr_client
     return ocr_client.recognize_structure(image_path)
 
@@ -252,13 +260,12 @@ class DebugOcrRequest(BaseModel):
 
 
 @router.post("/debug/test")
-def debug_ocr_test(req: DebugOcrRequest, user: dict = Depends(get_current_user)):
+def debug_ocr_test(req: DebugOcrRequest, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """
     测试专用端点 — 同步识别，返回详细信息。
-    需有效 Token，用于开发调试和问题排查。
+    仅系统管理员可用，用于开发调试和问题排查。
     """
     import time
-    from app.core.config import settings
     from app.services.ocr_client import ocr_client
 
     # 检测环境
@@ -278,6 +285,12 @@ def debug_ocr_test(req: DebugOcrRequest, user: dict = Depends(get_current_user))
     # 同步识别
     t0 = time.time()
     image_path = req.image_path or "debug_test_sample"
+    # 路径校验：限定在同步数据目录内，防任意文件读取
+    if req.image_path:
+        sync_root = os.path.realpath(settings.SYNC_DATA_DIR)
+        real_path = os.path.realpath(image_path)
+        if real_path != sync_root and not real_path.startswith(sync_root + os.sep):
+            return {"error": "forbidden", "detail": "路径必须在同步数据目录内"}
     result = ocr_client.recognize(image_path)
 
     # Mock 模式下覆盖文本

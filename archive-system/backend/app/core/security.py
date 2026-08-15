@@ -90,7 +90,17 @@ def require_role(*allowed_roles: str):
     """依赖工厂：检查当前用户角色"""
 
     async def checker(user: dict = Depends(get_current_user)):
-        if user["role"] in allowed_roles:
+        # 重查 DB 当前角色，避免 JWT 角色陈旧（被降权/改角色后旧 token 仍以旧角色放行）
+        from app.core.database import SessionLocal
+        from app.models.models import User as UserModel
+        db = SessionLocal()
+        try:
+            u = db.query(UserModel).filter(UserModel.id == user["user_id"]).first()
+            current_role = u.role if u else user["role"]
+        finally:
+            db.close()
+
+        if current_role in allowed_roles:
             return user
         # dev 模式：仅在 DEV_PERMISSIVE=true 时放行（默认强制权限）
         if settings.APP_ENV == "development" and settings.DEV_PERMISSIVE:

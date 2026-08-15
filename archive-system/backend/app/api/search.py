@@ -261,7 +261,7 @@ def archive_related(archive_id: str, limit: int = 5, user: dict = Depends(get_cu
 
     db = SessionLocal()
     try:
-        a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+        a = apply_data_scope(user, db.query(Archive), Archive).filter(Archive.archive_id == archive_id).first()
         if not a:
             return {"archive_id": archive_id, "related": []}
 
@@ -386,7 +386,7 @@ class ExportRequest(BaseModel):
 
 
 @router.post("/export")
-def export_results(req: ExportRequest, user: dict = Depends(get_current_user)):
+def export_results(req: ExportRequest, user: dict = Depends(require_permission("search", "download"))):
     """检索结果导出 — 直接返回 Excel 文件下载"""
     from fastapi.responses import FileResponse
     db = SessionLocal()
