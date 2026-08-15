@@ -4,7 +4,6 @@
       <div class="stat-card" :class="{active:statFilter==='all'}" @click="statFilter='all'"><div class="stat-icon stat-icon--green">●</div><div class="stat-label">当前在线</div><div class="stat-value">{{ users.length }}</div></div>
       <div class="stat-card" :class="{active:statFilter==='admin'}" @click="statFilter='admin'"><div class="stat-icon stat-icon--amber">👤</div><div class="stat-label">管理员在线</div><div class="stat-value">{{ adminCount }}</div></div>
       <div class="stat-card" :class="{active:statFilter==='reviewer'}" @click="statFilter='reviewer'"><div class="stat-icon stat-icon--purple"><IconSvg name="clip" size="15" /></div><div class="stat-label">审核员在线</div><div class="stat-value">{{ reviewerCount }}</div></div>
-      <div class="stat-card" :class="{active:statFilter==='searcher'}" @click="statFilter='searcher'"><div class="stat-icon stat-icon--blue"><IconSvg name="search" size="15" /></div><div class="stat-label">查档人员</div><div class="stat-value">{{ searcherCount }}</div></div>
       <div class="stat-card stat-card--refresh" @click="loadUsers"><div class="stat-icon stat-icon--blue"><IconSvg name="refresh" size="15" /></div><div class="stat-label">手动刷新 · 30秒自动</div><div class="stat-value" style="font-size:14px"><IconSvg name="refresh" size="15" /> 刷新</div></div>
     </div>
     <div class="page-head">
@@ -71,13 +70,11 @@ let _timer: any = null
 
 const adminCount = computed(() => users.value.filter(u => u.role?.includes('管理员')).length)
 const reviewerCount = computed(() => users.value.filter(u => u.role === '审核员').length)
-const searcherCount = computed(() => users.value.filter(u => u.role === '查档人员').length)
 
 const filteredUsers = computed(() => {
   if (statFilter.value === 'all') return users.value
   if (statFilter.value === 'admin') return users.value.filter(u => u.role?.includes('管理员'))
   if (statFilter.value === 'reviewer') return users.value.filter(u => u.role === '审核员')
-  if (statFilter.value === 'searcher') return users.value.filter(u => u.role === '查档人员')
   return users.value
 })
 
@@ -119,7 +116,7 @@ onUnmounted(() => { clearInterval(_timer) })
 
 <style scoped>
 .online-page { max-width: var(--page-max); margin: 0 auto; }
-.stats-grid-sm{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.stats-grid-sm{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
 .stats-grid-sm .stat-card{padding:14px}.stats-grid-sm .stat-value{font-size:22px}
 .page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
 .page-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-semibold); margin: 0; }

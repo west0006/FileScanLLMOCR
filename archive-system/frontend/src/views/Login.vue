@@ -57,8 +57,8 @@ const captchaText = ref('')
 const selectedRole = ref('reviewer')
 const roles = [
   { key: 'system_admin', label: '系统管理员' },
-  { key: 'archive_admin', label: '预审管理员' },
-  { key: 'reviewer', label: '查档人员' },
+  { key: 'archive_admin', label: '档案馆员' },
+  { key: 'reviewer', label: '审核员' },
 ]
 
 function genCaptcha() {

@@ -126,7 +126,7 @@ function actionLabel(a: string): string {
 }
 
 function roleLabel(name: string) {
-  return { system_admin: '系统管理员', archive_admin: '档案馆员', reviewer: '审核员', searcher: '查档人员' }[name] || name
+  return { system_admin: '系统管理员', archive_admin: '档案馆员', reviewer: '审核员' }[name] || name
 }
 
 onMounted(fetchRoles)
