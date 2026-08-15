@@ -42,7 +42,10 @@ def seed(force: bool = False):
                          "search": {"view": True, "download": False, "print": False},
                          "review": {"view": True, "export": False},
                      },
-                     data_scope={"departments": []}),
+                     data_scope={"departments": []},
+                     data_permissions={
+                         "file": {"view": True, "download": False, "print": False},
+                     }),
             ])
 
         # ---- 默认管理员（始终确保为 system_admin） ----

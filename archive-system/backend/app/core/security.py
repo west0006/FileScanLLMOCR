@@ -202,36 +202,25 @@ def apply_data_scope(user: dict, query, model):
 
         tree_auth = u.tree_auth or []
 
-        # 从 tree_auth 提取允许的门类和部门
-        allowed_categories = set()
-        allowed_departments = set()
-
+        # 从 tree_auth 提取成对的门类/部门授权（成对匹配，避免笛卡尔积越权）
+        # 节点格式: "门类/部门"（成对）或 "门类"（仅门类）
+        from sqlalchemy import or_, and_
+        pair_conditions = []
         for node in tree_auth:
             if "/" in node:
                 cat, dept = node.split("/", 1)
-                allowed_categories.add(cat)
-                allowed_departments.add(dept)
+                pair_conditions.append(and_(model.category == cat, model.department == dept))
             else:
-                allowed_categories.add(node)
+                pair_conditions.append(model.category == node)
 
-        if not allowed_categories and not allowed_departments:
+        if not pair_conditions:
             # 无授权: 只能看自己部门的
             if u.department:
                 return query.filter(model.department == u.department)
             return query.filter(False)  # 完全没有部门信息
 
-        # 构建过滤
-        from sqlalchemy import or_
-        conditions = []
-        if allowed_categories:
-            conditions.append(model.category.in_(allowed_categories))
-        if allowed_departments:
-            conditions.append(model.department.in_(allowed_departments))
-
-        if conditions:
-            return query.filter(or_(*conditions))
-
-        return query
+        # 构建过滤: 成对 OR
+        return query.filter(or_(*pair_conditions))
     finally:
         db.close()
 
@@ -257,8 +246,8 @@ def has_data_permission(user: dict, level: str, action: str) -> bool:
         if not role:
             return False
         dp = role.data_permissions or {}
-        if not dp:  # 未配置 → 全量放行
-            return True
+        if not dp:  # 未配置 → 默认拒绝（fail-closed，避免空配置越权放行）
+            return False
         level_perm = dp.get(level)
         if not isinstance(level_perm, dict):
             return False

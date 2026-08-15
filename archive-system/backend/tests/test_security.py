@@ -250,17 +250,29 @@ class TestDataPermission:
         assert has_data_permission(admin_user, "file", "view") is True
         assert has_data_permission(admin_user, "file", "download") is True
 
-    def test_02_unconfigured_role_allowed(self):
-        """data_permissions 未配置 → 全量放行（兼容现状）"""
+    def test_02_unconfigured_role_denied(self):
+        """data_permissions 未配置 → 默认拒绝（fail-closed，防空配置越权放行）"""
         from app.core.security import has_data_permission
+        from app.models.models import Role
         db = SessionLocal()
         try:
             u = db.query(User).filter(User.username == "reviewer1", User.is_active == True).first()
             if not u:
                 pytest.skip("无 reviewer1 用户")
+            role = db.query(Role).filter(Role.name == u.role).first()
+            original = role.data_permissions if role else None
+            if role:
+                role.data_permissions = {}
+                db.commit()
             user = {"user_id": u.id, "username": u.username, "role": u.role}
-            # 未配置（seed 默认 data_permissions 为空 dict）→ 放行
-            assert has_data_permission(user, "file", "view") is True
+            try:
+                # 未配置 → 拒绝（fail-closed）
+                assert has_data_permission(user, "file", "view") is False
+                assert has_data_permission(user, "file", "download") is False
+            finally:
+                if role:
+                    role.data_permissions = original
+                    db.commit()
         finally:
             db.close()
 

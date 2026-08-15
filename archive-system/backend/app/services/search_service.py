@@ -281,38 +281,33 @@ def _build_data_scope_filters(user: dict) -> list[dict]:
         if not u or not u.tree_auth:
             if u and u.department:
                 return [{"term": {"department": u.department}}]
-            return []
+            # 无 tree_auth 且无部门 → 匹配空集（与 SQLite filter(False) 一致，防越权放行）
+            return [{"bool": {"must_not": [{"match_all": {}}]}}]
 
         tree_auth = u.tree_auth
-        cats = set()
-        depts = set()
+        # 成对 (category AND department) 授权，避免笛卡尔积越权
+        pair_clauses = []
         for node in tree_auth:
             if "/" in node:
                 cat, dept = node.split("/", 1)
-                cats.add(cat)
-                depts.add(dept)
+                pair_clauses.append({
+                    "bool": {
+                        "must": [
+                            {"term": {"category": cat}},
+                            {"term": {"department": dept}},
+                        ],
+                    }
+                })
             else:
-                cats.add(node)
+                pair_clauses.append({"term": {"category": node}})
 
-        filters = []
-        if cats and depts:
-            filters.append({
-                "bool": {
-                    "should": [
-                        {"terms": {"category": list(cats)}},
-                        {"terms": {"department": list(depts)}},
-                    ],
-                    "minimum_should_match": 1,
-                }
-            })
-        elif cats:
-            filters.append({"terms": {"category": list(cats)}})
-        elif depts:
-            filters.append({"terms": {"department": list(depts)}})
-        elif u.department:
-            filters.append({"term": {"department": u.department}})
+        if pair_clauses:
+            return [{"bool": {"should": pair_clauses, "minimum_should_match": 1}}]
 
-        return filters
+        if u.department:
+            return [{"term": {"department": u.department}}]
+
+        return [{"bool": {"must_not": [{"match_all": {}}]}}]
     finally:
         db.close()
 
