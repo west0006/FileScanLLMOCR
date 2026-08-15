@@ -144,9 +144,13 @@ onMounted(async () => {
   }
 })
 
+let rankSeq = 0  // 请求序号，防快速连点查询时旧响应覆盖新数据
+
 async function fetchUserRanking() {
+  const seq = ++rankSeq
   try {
     const res = await statsApi.byUser({top_n:20,role:userFilter.role||undefined,period:userFilter.period})
+    if (seq !== rankSeq) return
     const ranking = (res.data.items||[]).map((u:any)=>({...u,name:u.name||u.username,role:u.role||'reviewer'}))
     userRanking.value = ranking
     const types = ['search','view_entry','view_file','download','print']
@@ -158,6 +162,7 @@ async function fetchUserRanking() {
     })
     // 异步获取本年累计（by-user period=year）
     statsApi.byUser({top_n:20,period:'year',role:userFilter.role||undefined}).then(yr => {
+      if (seq !== rankSeq) return  // 旧请求的异步回调丢弃
       const yrRanking = yr.data.items || []
       methodDetail.value = types.map(t => {
         const month = ranking.reduce((s,u)=>s+(u[t]||0),0)
@@ -169,6 +174,7 @@ async function fetchUserRanking() {
     }).catch(() => {})
     hasError.value = false
   } catch {
+    if (seq !== rankSeq) return
     userRanking.value = []
     methodDetail.value = []
     hasError.value = true
@@ -179,10 +185,14 @@ async function fetchUserRanking() {
 const TREND_COLORS: Record<string, string> = { search: '#10B981', view_entry: '#6366F1', view_file: '#8B5CF6', download: '#F59E0B', print: '#06B6D4' }
 const TREND_NAMES: Record<string, string> = { search: '检索', view_entry: '条目浏览', view_file: '文件浏览', download: '下载', print: '打印' }
 
+let timeSeq = 0  // 请求序号，防快速切换粒度时旧响应覆盖新数据
+
 async function loadTimeChart() {
   if(!timeChartRef.value) return
+  const seq = ++timeSeq
   let timeData:any[]=[]
   try{const res=await statsApi.byTime({granularity:timeGranularity.value,days:timeGranularity.value==='year'?365:timeGranularity.value==='quarter'?90:30});timeData=res.data.items||[]}catch{timeData=[]}
+  if (seq !== timeSeq) return
   timeHasData.value = timeData.length > 0
   const types = ['search','view_entry','view_file','download','print']
   _initChart(timeChartRef, {

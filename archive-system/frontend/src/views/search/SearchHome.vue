@@ -504,7 +504,10 @@ function splitCategoryScope(cat: string): { category: string | undefined; depart
   return { category: cat, department: undefined }
 }
 
+let searchSeq = 0  // 请求序号，防快速切换筛选/模式时旧响应覆盖新数据
+
 async function doSearch(resetPage = true) {
+  const seq = ++searchSeq
   loading.value = true
   searched.value = true
   if (resetPage) page.value = 1
@@ -548,15 +551,17 @@ async function doSearch(resetPage = true) {
         res = await searchApi.keyword({ keywords: keyword.value, exact: exactMatch.value, dimension: searchDimension.value, ...base })
       }
     }
+    if (seq !== searchSeq) return
     results.value = res.data.results
     total.value = res.data.total
     queryTime.value = res.data.query_time_ms || 0
   } catch {
+    if (seq !== searchSeq) return
     results.value = []
     total.value = 0
     ElMessage.error('检索失败')
   } finally {
-    loading.value = false
+    if (seq === searchSeq) loading.value = false
   }
 }
 

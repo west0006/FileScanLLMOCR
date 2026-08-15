@@ -196,9 +196,13 @@ async function loadConfig() {
   } catch { /* keep defaults */ }
 }
 
+let historySeq = 0  // 请求序号，防连点触发同步时旧响应覆盖新数据
+
 async function fetchHistory() {
+  const seq = ++historySeq
   try {
     const res = await syncApi.history({ page: 1, page_size: 50 })
+    if (seq !== historySeq) return
     history.value = res.data.items || []
     // 更新统计卡片
     const items = history.value

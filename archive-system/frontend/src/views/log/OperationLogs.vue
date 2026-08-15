@@ -96,6 +96,7 @@ async function fetchLogs() {
         logApi.list({ page:1, page_size:1, operation_type:'view' }),
         logApi.auditSummary().catch(() => ({ data: { today_total: 0, today_failed: 0 } })),
       ])
+      if (seq !== fetchSeq) return
       logTabs.value[0].count = allR.data.total || 0
       logTabs.value[1].count = loginR.data.total || 0
       logTabs.value[2].count = searchR.data.total || 0
