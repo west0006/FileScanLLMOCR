@@ -102,7 +102,7 @@ class TestReview:
 
 class TestUsers:
     def get_token(self):
-        return client.post("/api/auth/login", json={"username": "test", "password": "x"}).json()["access_token"]
+        return client.post("/api/auth/login", json={"username": "admin", "password": "x"}).json()["access_token"]
 
     def test_list_users(self):
         token = self.get_token()
@@ -199,7 +199,7 @@ class TestStats:
 class TestSync:
     """数据同步端点"""
     def get_token(self):
-        return client.post("/api/auth/login", json={"username": "test", "password": "x"}).json()["access_token"]
+        return client.post("/api/auth/login", json={"username": "admin", "password": "x"}).json()["access_token"]
 
     def test_get_config(self):
         token = self.get_token()

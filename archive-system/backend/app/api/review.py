@@ -290,7 +290,9 @@ def get_review_record(record_id: int, user: dict = Depends(get_current_user)):
     try:
         r = db.query(ReviewRecord).filter(ReviewRecord.id == record_id).first()
         if not r: return {"error": "not_found"}
-        a = db.query(Archive).filter(Archive.archive_id == r.archive_id).first()
+        a = apply_data_scope(user, db.query(Archive), Archive).filter(Archive.archive_id == r.archive_id).first()
+        if not a:
+            return {"error": "not_found"}
         return {"id": r.id, "archive_id": r.archive_id,
                 "title": a.title if a else "", "year": a.year if a else None,
                 "department": a.department if a else "",
@@ -317,9 +319,15 @@ def export_review_results(req: ReviewExportRequest, user: dict = Depends(require
     from fastapi.responses import FileResponse
     db = SessionLocal()
     try:
+        # 数据权限：先查出用户可访问的档案 ID，再过滤导出记录
+        allowed_ids = [a.archive_id for a in apply_data_scope(user, db.query(Archive), Archive).all()]
         q = db.query(ReviewRecord)
         if req.task_id: q = q.filter(ReviewRecord.task_id == req.task_id)
         if req.archive_ids: q = q.filter(ReviewRecord.archive_id.in_(req.archive_ids))
+        if allowed_ids:
+            q = q.filter(ReviewRecord.archive_id.in_(allowed_ids))
+        else:
+            q = q.filter(False)
         rows = q.limit(500).all()
         from app.services.export_service import export_to_excel
         from app.core.config import settings

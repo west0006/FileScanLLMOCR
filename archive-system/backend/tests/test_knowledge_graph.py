@@ -108,7 +108,7 @@ class TestKnowledgeGraphEndpoint:
         try:
             from app.core.seed import seed; seed()
         except: pass
-        resp = client.post("/api/auth/login", json={"username": "test", "password": "x"})
+        resp = client.post("/api/auth/login", json={"username": "admin", "password": "x"})
         return resp.json()["access_token"], client
 
     def test_knowledge_graph_endpoint(self):

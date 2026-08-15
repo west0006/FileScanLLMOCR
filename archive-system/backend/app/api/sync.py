@@ -2,15 +2,16 @@
 
 import json
 import os
+import re
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
 from fastapi.responses import FileResponse
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, require_role, ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN, apply_data_scope
 from app.core.database import SessionLocal
 from app.core.config import settings
-from app.models.models import SyncLog
+from app.models.models import SyncLog, Archive
 
 router = APIRouter()
 
@@ -52,7 +53,7 @@ class DatabaseSyncConfigRequest(BaseModel):
 
 
 @router.post("/config/file")
-def set_file_sync_config(req: FileSyncConfigRequest, user: dict = Depends(get_current_user)):
+def set_file_sync_config(req: FileSyncConfigRequest, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """配置文件同步 — 持久化到 JSON（share_paths 多目录，兼容旧 share_path）"""
     cfg = _load_config()
     data = req.model_dump()
@@ -68,7 +69,7 @@ def set_file_sync_config(req: FileSyncConfigRequest, user: dict = Depends(get_cu
 
 
 @router.post("/config/database")
-def set_database_sync_config(req: DatabaseSyncConfigRequest, user: dict = Depends(get_current_user)):
+def set_database_sync_config(req: DatabaseSyncConfigRequest, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """配置数据库同步 — 持久化到 JSON"""
     cfg = _load_config()
     cfg["database_sync"] = req.model_dump()
@@ -77,13 +78,13 @@ def set_database_sync_config(req: DatabaseSyncConfigRequest, user: dict = Depend
 
 
 @router.get("/config")
-def get_sync_configs(user: dict = Depends(get_current_user)):
+def get_sync_configs(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """查看同步配置"""
     return _load_config()
 
 
 @router.post("/trigger/file")
-def trigger_file_sync(mode: str = "incremental", user: dict = Depends(get_current_user)):
+def trigger_file_sync(mode: str = "incremental", user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """手动触发文件同步"""
     db = SessionLocal()
     try:
@@ -100,7 +101,7 @@ def trigger_file_sync(mode: str = "incremental", user: dict = Depends(get_curren
 
 
 @router.post("/trigger/database")
-def trigger_database_sync(mode: str = "incremental", user: dict = Depends(get_current_user)):
+def trigger_database_sync(mode: str = "incremental", user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """手动触发数据库同步"""
     db = SessionLocal()
     try:
@@ -150,7 +151,7 @@ _CACHE_DIR = os.path.join(os.path.dirname(settings.SYNC_DATA_DIR), ".transcode_c
 
 
 @router.get("/files/{file_path:path}")
-def serve_sync_file(file_path: str):
+def serve_sync_file(file_path: str, user: dict = Depends(get_current_user)):
     """
     提供同步目录中的文件访问。
 
@@ -171,6 +172,21 @@ def serve_sync_file(file_path: str):
        (real_path != real_root and not real_path.startswith(real_root + os.sep)):
         from fastapi.responses import JSONResponse
         return JSONResponse(status_code=403, content={"error": "forbidden"})
+
+    # 数据范围校验：非管理员仅可访问其数据权限范围内的档案原文
+    if user["role"] not in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+        _m = re.search(r'\d{4}-[A-Z]{2,3}-\d{3}', os.path.basename(full_path))
+        if not _m:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=403, content={"error": "forbidden"})
+        _db = SessionLocal()
+        try:
+            _scoped = apply_data_scope(user, _db.query(Archive), Archive)
+            if not _scoped.filter(Archive.archive_id == _m.group(0)).first():
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=403, content={"error": "forbidden"})
+        finally:
+            _db.close()
 
     if not os.path.isfile(full_path):
         from fastapi.responses import JSONResponse

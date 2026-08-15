@@ -116,14 +116,14 @@
                   <!-- PDF 使用 iframe 在线预览 -->
                   <iframe
                     v-if="imagePages[curPage].format === 'pdf'"
-                    :src="'/api/sync/files/' + imagePages[curPage].path"
+                    :src="imagePages[curPage]._url || ''"
                     class="archive-pdf"
                     frameborder="0"
                   />
                   <!-- 图像直接显示 -->
                   <img
                     v-else
-                    :src="'/api/sync/files/' + imagePages[curPage].path"
+                    :src="imagePages[curPage]._url || ''"
                     :alt="imagePages[curPage].filename"
                     @error="onImageError"
                     class="archive-image"
@@ -207,6 +207,19 @@ function onImageError() {
   // 图片加载失败，静默降级
 }
 
+// 通过鉴权接口拉取原文图像/PDF，生成对象 URL（避免 <img src> 无法携带 Authorization 头）
+async function loadImageUrls() {
+  for (const f of imagePages.value) {
+    if (f._url) continue
+    try {
+      const res = await searchApi.fileBlob(f.path)
+      f._url = URL.createObjectURL(res.data)
+    } catch {
+      f._url = ''
+    }
+  }
+}
+
 let loadSeq = 0  // 请求序列号，防止快速切换时旧响应覆盖新数据
 
 function goRelated(id: string) {
@@ -282,6 +295,8 @@ async function loadDetail(id: string) {
   archive.value = {}
   ocrContent.value = ''
   imageInfo.value = null
+  // 释放旧对象 URL
+  for (const f of imagePages.value) { if (f._url) URL.revokeObjectURL(f._url) }
   imagePages.value = []
   curPage.value = 0
   related.value = []
@@ -303,6 +318,7 @@ async function loadDetail(id: string) {
     if (img.data) {
       imageInfo.value = img.data
       imagePages.value = img.data.files || []
+      await loadImageUrls()
     }
 
     // 关联档案

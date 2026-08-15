@@ -55,7 +55,7 @@ def create_user(req: CreateUserRequest, request: Request, user: dict = Depends(r
 
 
 @router.get("/")
-def list_users(user: dict = Depends(get_current_user), page: int = 1, page_size: int = 20,
+def list_users(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN)), page: int = 1, page_size: int = 20,
                keyword: Optional[str] = None, role: Optional[str] = None, is_active: Optional[bool] = None):
     """用户列表"""
     db = SessionLocal()
@@ -80,7 +80,7 @@ def list_users(user: dict = Depends(get_current_user), page: int = 1, page_size:
 
 
 @router.put("/{user_id}")
-def update_user(user_id: int, req: UpdateUserRequest, user: dict = Depends(get_current_user)):
+def update_user(user_id: int, req: UpdateUserRequest, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """修改用户信息"""
     db = SessionLocal()
     try:
@@ -214,7 +214,7 @@ def list_online_users(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN, ROLE_
 # ===================== 角色管理 =====================
 
 @router.get("/roles")
-def list_roles(user: dict = Depends(get_current_user)):
+def list_roles(user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """角色列表"""
     db = SessionLocal()
     try:
@@ -296,7 +296,7 @@ def delete_role(role_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMI
 # ===================== 目录树授权 =====================
 
 @router.get("/{user_id}")
-def get_user(user_id: int, user: dict = Depends(get_current_user)):
+def get_user(user_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """用户详情"""
     db = SessionLocal()
     try:
@@ -310,7 +310,7 @@ def get_user(user_id: int, user: dict = Depends(get_current_user)):
 
 
 @router.get("/{user_id}/tree-auth")
-def get_tree_auth(user_id: int, user: dict = Depends(get_current_user)):
+def get_tree_auth(user_id: int, user: dict = Depends(require_role(ROLE_SYSTEM_ADMIN))):
     """查看目录树授权"""
     db = SessionLocal()
     try:

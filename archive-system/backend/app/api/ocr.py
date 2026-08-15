@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Request
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from app.core.security import get_current_user
+from app.core.security import get_current_user, apply_data_scope, has_data_permission
 from app.core.database import SessionLocal
 from app.models.models import OcrTask, Archive
 
@@ -67,6 +67,10 @@ def update_ocr_task(task_id: int, action: str, priority: Optional[int] = None, u
     try:
         t = db.query(OcrTask).filter(OcrTask.id == task_id).first()
         if not t: return {"error": "not_found"}
+        # 归属校验：仅任务创建者或管理员可操作
+        from app.core.security import ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN
+        if t.created_by and t.created_by != user["user_id"] and user["role"] not in (ROLE_SYSTEM_ADMIN, ROLE_ARCHIVE_ADMIN):
+            return {"error": "无权操作该任务"}
         if action == "start":
             t.status = "running"
             from app.tasks.ocr_tasks import process_ocr_task
@@ -136,8 +140,8 @@ def get_ocr_result(archive_id: str, user: dict = Depends(get_current_user)):
     """查看某档案的 OCR 识别结果"""
     db = SessionLocal()
     try:
-        a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
-        if a:
+        a = apply_data_scope(user, db.query(Archive), Archive).filter(Archive.archive_id == archive_id).first()
+        if a and has_data_permission(user, "file", "view"):
             return {"archive_id": archive_id, "ocr_text": a.ocr_text,
                     "confidence": a.ocr_confidence, "status": a.ocr_status}
         return {"archive_id": archive_id, "ocr_text": None}

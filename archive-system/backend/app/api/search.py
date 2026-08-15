@@ -134,7 +134,7 @@ def archive_ocr_text(archive_id: str, user: dict = Depends(get_current_user)):
     """OCR 对照文本"""
     db = SessionLocal()
     try:
-        a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+        a = apply_data_scope(user, db.query(Archive), Archive).filter(Archive.archive_id == archive_id).first()
         if a and a.ocr_text and has_data_permission(user, "file", "view"):
             return {"archive_id": archive_id, "ocr_text": a.ocr_text,
                     "ocr_confidence": a.ocr_confidence, "ocr_status": a.ocr_status}
@@ -196,7 +196,7 @@ def archive_knowledge_graph(archive_id: str, depth: int = 1, user: dict = Depend
 
     db = SessionLocal()
     try:
-        center = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+        center = apply_data_scope(user, db.query(Archive), Archive).filter(Archive.archive_id == archive_id).first()
         if not center:
             return {"archive_id": archive_id, "nodes": [], "edges": []}
 
@@ -222,7 +222,7 @@ def archive_knowledge_graph(archive_id: str, depth: int = 1, user: dict = Depend
                 nodes.append({"id": eid, "type": "entity", "label": e["name"], "entityType": e["type"]})
             edges.append({"source": archive_id, "target": eid, "type": "has_entity"})
 
-        candidates = db.query(Archive).filter(
+        candidates = apply_data_scope(user, db.query(Archive), Archive).filter(
             Archive.archive_id != archive_id,
             Archive.ocr_text.isnot(None), Archive.ocr_text != "",
         ).limit(200).all()
@@ -330,7 +330,7 @@ def archive_image(archive_id: str, page: int = 1, user: dict = Depends(get_curre
     """原文图像预览 — 返回文件路径供前端加载（需接入文件转码服务）"""
     db = SessionLocal()
     try:
-        a = db.query(Archive).filter(Archive.archive_id == archive_id).first()
+        a = apply_data_scope(user, db.query(Archive), Archive).filter(Archive.archive_id == archive_id).first()
         if not a:
             return {"archive_id": archive_id, "page": page, "image_url": None, "error": "archives_not_found"}
 
@@ -423,15 +423,16 @@ def export_results(req: ExportRequest, user: dict = Depends(get_current_user)):
 
 @router.get("/facets")
 def search_facets(user: dict = Depends(get_current_user)):
-    """检索筛选面板 — 返回门类/年度分布计数"""
+    """检索筛选面板 — 返回门类/年度分布计数（按数据范围过滤）"""
     from sqlalchemy import func
 
     db = SessionLocal()
     try:
-        cat_rows = db.query(Archive.category, func.count()).group_by(Archive.category).all()
+        base = apply_data_scope(user, db.query(Archive), Archive)
+        cat_rows = base.with_entities(Archive.category, func.count()).group_by(Archive.category).all()
         categories = [{"key": r[0], "label": r[0], "count": r[1]} for r in cat_rows if r[0]]
 
-        year_rows = db.query(Archive.year, func.count()).group_by(Archive.year).order_by(Archive.year.desc()).all()
+        year_rows = base.with_entities(Archive.year, func.count()).group_by(Archive.year).order_by(Archive.year.desc()).all()
         years = [{"year": r[0], "count": r[1]} for r in year_rows if r[0]]
 
         return {"categories": categories, "years": years}
