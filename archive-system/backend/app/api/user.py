@@ -10,8 +10,9 @@ from app.models.models import User, Role
 
 router = APIRouter()
 
-# 系统内置角色（不可删除，前端据此置灰删除按钮）
-_BUILTIN_ROLES = {"system_admin", "archive_admin", "reviewer"}
+# 系统预设角色（不可删除，前端据此置灰删除按钮）。清单 UM-006：系统管理员、档案馆员。
+# reviewer（审核员）为业务自定义角色，可删除（有关联用户时 delete_role 兜底拦截）。
+_BUILTIN_ROLES = {"system_admin", "archive_admin"}
 
 
 class CreateUserRequest(BaseModel):
