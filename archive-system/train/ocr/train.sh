@@ -50,6 +50,16 @@ echo "🚀 开始训练 (配置: $CONFIG)"
 echo "   GPU/NPU 设备: $(python -c 'import paddle; print(paddle.device.get_device())' 2>/dev/null || echo 'CPU')"
 echo ""
 
+# tools/train.py 位于 PaddleOCR 仓库内，需先 cd 到仓库根目录（或设置 PADDLEOCR_HOME）
+PADDLEOCR_HOME="${PADDLEOCR_HOME:-$HOME/PaddleOCR}"
+if [ ! -f "$PADDLEOCR_HOME/tools/train.py" ]; then
+    echo "❌ 未找到 $PADDLEOCR_HOME/tools/train.py"
+    echo "   请先克隆 PaddleOCR 仓库: git clone https://github.com/PaddlePaddle/PaddleOCR.git"
+    echo "   或设置 PADDLEOCR_HOME 指向 PaddleOCR 仓库根目录"
+    exit 1
+fi
+
+cd "$PADDLEOCR_HOME"
 python -m paddle.distributed.launch \
     --log_dir "$TRAIN_DIR/output/logs" \
     tools/train.py \

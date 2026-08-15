@@ -1,16 +1,22 @@
-# L1/L2 开发环境 —— x86 Docker Compose
-# L3 昇腾部署使用 docker-compose.arm.yml
+# L3 昇腾一体机部署 —— ARM (aarch64) Docker Compose
+#
+# 与 docker-compose.yml 的差异：
+#   - 所有服务构建参数 TARGETARCH=arm64（避免默认 amd64 构建 ARM 失败）
+#   - backend/celery/ocr-worker 显式 DB_MODE=mysql
+#   - OCR/LLM 真实推理在昇腾 NPU 上需 CANN（非 CUDA），本编排仅保证容器骨架与
+#     arm64 构建正确；NPU 推理镜像需接入 CANN 运行时后另行定制（不在本文件范围）
+#
+# 使用: docker compose -f docker-compose.arm.yml up -d
 
 version: "3.8"
 
 services:
-  # ===================== API 服务 =====================
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        TARGETARCH: ${TARGETARCH:-amd64}
+        TARGETARCH: arm64
     container_name: archive-backend
     ports:
       - "8000:8000"
@@ -43,13 +49,12 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # ===================== Celery Worker =====================
   celery:
     build:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        TARGETARCH: ${TARGETARCH:-amd64}
+        TARGETARCH: arm64
     container_name: archive-celery
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=4
     environment:
@@ -76,11 +81,13 @@ services:
       - redis
     restart: unless-stopped
 
-  # ===================== OCR Worker (PaddleOCR, 可选) =====================
+  # 昇腾 NPU 上 OCR 真实推理需 CANN 运行时；本占位默认 CPU/mock 模式
   ocr-worker:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      args:
+        TARGETARCH: arm64
     container_name: archive-ocr
     command: celery -A app.tasks.celery_app worker --loglevel=info --concurrency=2 --queues=ocr
     environment:
@@ -107,9 +114,8 @@ services:
       - elasticsearch
       - redis
     restart: unless-stopped
-    profiles: ["ocr"]  # 默认不启动，通过 --profile ocr 激活
+    profiles: ["ocr"]
 
-  # ===================== 前端 (开发模式) =====================
   frontend:
     build:
       context: ./frontend
@@ -126,9 +132,9 @@ services:
       - backend
     restart: unless-stopped
 
-  # ===================== MySQL 8.0 =====================
   mysql:
     image: mysql:8.0
+    platform: linux/arm64
     container_name: archive-mysql
     ports:
       - "3306:3306"
@@ -148,9 +154,10 @@ services:
       retries: 10
     restart: unless-stopped
 
-  # ===================== Elasticsearch =====================
+  # 注意：ARM 上 IK 插件需用对应 arm64 构建（stock ES 镜像不含 IK，见 init_es.sh 前置检查）
   elasticsearch:
     image: elasticsearch:8.12.0
+    platform: linux/arm64
     container_name: archive-es
     ports:
       - "9200:9200"
@@ -167,7 +174,6 @@ services:
       retries: 15
     restart: unless-stopped
 
-  # ===================== Redis =====================
   redis:
     image: redis:7-alpine
     container_name: archive-redis

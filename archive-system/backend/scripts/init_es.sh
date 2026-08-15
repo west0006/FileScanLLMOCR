@@ -5,6 +5,14 @@
 ES_HOST="${ES_HOST:-localhost:9200}"
 INDEX="${ES_INDEX:-archive_fulltext}"
 
+# 前置检查：IK 分词插件（analysis-ik）必须已安装，否则 ik_max_word/ik_smart 无法创建 mapping
+if ! curl -s "http://${ES_HOST}/_cat/plugins" | grep -q "analysis-ik"; then
+  echo "❌ 未检测到 IK 分词插件 (analysis-ik)，mapping 将无法创建"
+  echo "   安装（ES 8.12.0）: bin/elasticsearch-plugin install https://get.infini.cloud/elasticsearch/analysis-ik/8.12.0"
+  echo "   或用带 IK 的自定义 ES 镜像（medcl/elasticsearch-analysis-ik）"
+  exit 1
+fi
+
 echo "=== 创建 ES 索引: $INDEX ==="
 
 curl -X PUT "http://${ES_HOST}/${INDEX}" -H 'Content-Type: application/json' -d '{

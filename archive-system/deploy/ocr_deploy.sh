@@ -236,15 +236,13 @@ from paddleocr import PaddleOCR
 try:
     ocr = PaddleOCR(
         lang='ch',
-        use_angle_cls=True,
-        use_gpu=${STRATEGY}=="gpu",
-        show_log=False,
+        ocr_version='PP-OCRv5',
+        use_doc_orientation_classify=False,
+        use_doc_unwarping=False,
+        use_textline_orientation=False,
+        device='${DEVICE}',
     )
-    # 触发模型下载
-    import numpy as np
-    dummy = np.zeros((64, 128, 3), dtype=np.uint8)
-    result = ocr.ocr(dummy, cls=True)
-    print('  ✅ 中文 OCR 模型就绪')
+    print('  ✅ 中文 OCR 模型就绪（首次推理时自动下载权重）')
 except Exception as e:
     print(f'  ⚠️  OCR 模型测试异常 (首次运行正常): {str(e)[:120]}')
     print('  (如果是模型下载失败，请检查网络连接)')
