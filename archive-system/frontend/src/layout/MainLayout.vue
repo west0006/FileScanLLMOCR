@@ -72,6 +72,7 @@
           <span class="topbar-title">{{ pageTitle }}</span>
         </div>
         <div class="topbar-right">
+          <button class="btn-logout" @click="router.push('/change-password')">修改密码</button>
           <button class="btn-logout" @click="handleLogout">退出</button>
         </div>
       </header>
@@ -88,7 +89,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ROLE_LABELS } from '@/constants'
@@ -101,9 +102,33 @@ const sidebarCollapsed = ref(false)
 // 底部用户角色：按当前用户真实角色显示（回退为原始角色标识）
 const userRoleLabel = computed(() => ROLE_LABELS[auth.user?.role] || auth.user?.role || '')
 
-onMounted(() => { auth.fetchPermissions() })
-
 const pageTitle = computed(() => route.meta.title as string || '')
+
+// 会话闲置检测（清单 UM-005：闲置30分钟自动退出）
+// 后端 session_timeout 只在有请求时 401，这里补「纯闲置无请求」场景的主动退出
+const IDLE_TIMEOUT_MS = 30 * 60 * 1000
+let _lastActivity = Date.now()
+let _idleTimer: ReturnType<typeof setInterval> | null = null
+const _activityEvents = ['mousemove', 'mousedown', 'keydown', 'scroll', 'touchstart', 'click']
+
+function _resetActivity() { _lastActivity = Date.now() }
+function _checkIdle() {
+  if (Date.now() - _lastActivity > IDLE_TIMEOUT_MS) {
+    auth.logout()
+    router.push('/login')
+  }
+}
+
+onMounted(() => {
+  auth.fetchPermissions()
+  _lastActivity = Date.now()
+  _activityEvents.forEach(e => window.addEventListener(e, _resetActivity))
+  _idleTimer = setInterval(_checkIdle, 30 * 1000)
+})
+onUnmounted(() => {
+  _activityEvents.forEach(e => window.removeEventListener(e, _resetActivity))
+  if (_idleTimer) { clearInterval(_idleTimer); _idleTimer = null }
+})
 
 interface NavItem { to: string; label: string; icon: string; module?: string; exact?: boolean }
 interface NavSection { label: string; items: NavItem[] }
@@ -278,6 +303,7 @@ function handleLogout() {
   font-weight: var(--fw-medium); cursor: pointer; transition: all var(--t-fast);
 }
 .btn-logout:hover { border-color: var(--c-danger); color: var(--c-danger); }
+.topbar-right { display: flex; align-items: center; gap: 8px; }
 
 .content {
   flex: 1; overflow-y: auto; padding: var(--page-px, 32px);

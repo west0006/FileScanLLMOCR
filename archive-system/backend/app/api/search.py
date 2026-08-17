@@ -435,7 +435,15 @@ def search_facets(user: dict = Depends(get_current_user)):
         year_rows = base.with_entities(Archive.year, func.count()).group_by(Archive.year).order_by(Archive.year.desc()).all()
         years = [{"year": r[0], "count": r[1]} for r in year_rows if r[0]]
 
-        return {"categories": categories, "years": years}
+        # 归口单位分布（按门类分组）— 供前端目录树范围弹窗按数据权限构建
+        dept_rows = base.with_entities(Archive.category, Archive.department, func.count()).group_by(Archive.category, Archive.department).all()
+        departments: dict[str, list[dict]] = {}
+        for cat, dept, cnt in dept_rows:
+            if not cat or not dept:
+                continue
+            departments.setdefault(cat, []).append({"key": dept, "label": dept, "count": cnt})
+
+        return {"categories": categories, "years": years, "departments": departments}
     finally:
         db.close()
 

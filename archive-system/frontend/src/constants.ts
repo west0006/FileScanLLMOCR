@@ -130,3 +130,16 @@ export const MOCK_REVIEW_FALLBACK = {
   ],
   llm_confidence: 0.87, rule_hits_count: 5, llm_raw_score: 45,
 }
+
+// ============================================================
+// 密码复杂度校验（与后端 _password_complexity_error 规则一致）
+// ============================================================
+
+export function passwordComplexityError(p: string): string | null {
+  if (!p || p.length < 12) return '密码不少于12个字符'
+  if (!/[A-Z]/.test(p)) return '密码需包含大写字母'
+  if (!/[a-z]/.test(p)) return '密码需包含小写字母'
+  if (!/[0-9]/.test(p)) return '密码需包含数字'
+  if (!/[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\;\/]/.test(p)) return '密码需包含特殊字符'
+  return null
+}

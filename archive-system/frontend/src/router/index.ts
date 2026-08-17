@@ -27,6 +27,12 @@ const router = createRouter({
           meta: { title: '智能检索', module: 'search' },
         },
         {
+          path: 'change-password',
+          name: 'ChangePassword',
+          component: () => import('@/views/ChangePassword.vue'),
+          meta: { title: '修改密码' },
+        },
+        {
           path: 'search/detail/:id',
           name: 'ArchiveDetail',
           component: () => import('@/views/search/ArchiveDetail.vue'),

@@ -325,12 +325,15 @@ import { CATEGORY_TREE, FONDS_OPTIONS, MOCK_YEAR_LIST } from '@/constants'
 
 const router = useRouter()
 
+const deptMap = ref<Record<string, { key: string; label: string; count: number }[]>>({})
+
 onMounted(loadFacets)
 async function loadFacets() {
   try {
     const res = await searchApi.facets()
     if (res.data.categories?.length) categoryTree.value = res.data.categories
     if (res.data.years?.length) yearList.value = res.data.years
+    if (res.data.departments) deptMap.value = res.data.departments
   } catch { /* keep defaults */ }
 }
 
@@ -381,11 +384,17 @@ const scopeNodes = ref<string[]>([])
 const scopeCheckedKeys = ref<string[]>([])
 const scopeCategories = ref<string[]>([])
 const scopeDepartments = ref<string[]>([])
-const scopeTreeData = CATEGORY_TREE.map((c: any) => ({
-  id: c.key,
-  label: c.label,
-  children: (c.children || []).map((ch: any) => ({ id: `${c.key}/${ch.key}`, label: ch.label })),
-}))
+// 目录树范围树：基于 facets（已按数据权限过滤）构建，无权限的门类/部门不出现
+const scopeTreeData = computed(() => {
+  return categoryTree.value.map((c: any) => {
+    const catKey = c.label || c.key
+    const depts = deptMap.value[catKey] || []
+    const children = depts.length
+      ? depts.map((d: any) => ({ id: `${catKey}/${d.key}`, label: d.label }))
+      : ((CATEGORY_TREE.find((k: any) => k.key === catKey)?.children) || []).map((ch: any) => ({ id: `${catKey}/${ch.key}`, label: ch.key }))
+    return { id: catKey, label: catKey, children }
+  })
+})
 function onScopeCheck(_: any, data: any) {
   const keys: string[] = data.checkedKeys || []
   scopeNodes.value = keys
