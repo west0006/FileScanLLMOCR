@@ -241,7 +241,8 @@ async function toggleUser(u: any) {
       '操作确认',
       { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
     )
-    await userApi.toggleStatus(u.id, !u.is_active)
+    const res = await userApi.toggleStatus(u.id, !u.is_active)
+    if (res.data && res.data.error) { ElMessage.error(res.data.error); return }
     u.is_active = !u.is_active
     ElMessage.success(u.is_active ? '已启用' : '已停用')
   } catch (e: any) {

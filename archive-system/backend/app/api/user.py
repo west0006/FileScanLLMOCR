@@ -152,6 +152,9 @@ def toggle_user_status(user_id: int, is_active: bool, user: dict = Depends(requi
     """启用/停用用户"""
     db = SessionLocal()
     try:
+        # 不能停用当前登录账号（UM-014 管理员权限不可撤销；对齐 batch-status 的排除自身逻辑）
+        if user_id == user["user_id"] and not is_active:
+            return {"error": "不能停用当前登录账号"}
         u = db.query(User).filter(User.id == user_id).first()
         if u: u.is_active = is_active; db.commit()
         return {"user_id": user_id, "is_active": is_active}

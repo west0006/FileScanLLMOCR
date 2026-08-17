@@ -5,7 +5,7 @@
       <div class="filter-card">
         <div class="filter-title">档案门类</div>
         <div class="filter-tree-hier">
-          <div v-for="cat in categoryTree" :key="cat.key" class="ft-parent">
+          <div v-for="cat in (catCollapsed ? categoryTree.slice(0, 5) : categoryTree)" :key="cat.key" class="ft-parent">
             <div class="ft-parent-row" :class="{ active: activeCat === cat.key }"
               @click="activeCat = activeCat === cat.key ? '' : cat.key">
               <span class="ft-arrow">{{ cat.expanded ? '▼' : '▶' }}</span>
@@ -21,6 +21,9 @@
             </div>
           </div>
         </div>
+        <button v-if="categoryTree.length > 5" class="collapse-toggle" @click="catCollapsed = !catCollapsed">
+          {{ catCollapsed ? `展开全部 ${categoryTree.length} 项` : '收起' }}
+        </button>
       </div>
       <div class="filter-card">
         <div class="filter-title">归档年度</div>
@@ -30,12 +33,15 @@
           <input v-model.number="yearTo" type="number" placeholder="截止年" class="year-input" />
         </div>
         <div class="filter-tree">
-          <div v-for="y in yearList" :key="y.year" class="ft-node" :class="{ active: activeYear === y.year }"
+          <div v-for="y in (yearCollapsed ? yearList.slice(0, 5) : yearList)" :key="y.year" class="ft-node" :class="{ active: activeYear === y.year }"
             @click="activeYear = y.year; yearFrom = y.year; yearTo = y.year">
             <span>{{ y.year }}年</span>
             <span class="ft-count">{{ y.count }}</span>
           </div>
         </div>
+        <button v-if="yearList.length > 5" class="collapse-toggle" @click="yearCollapsed = !yearCollapsed">
+          {{ yearCollapsed ? `展开全部 ${yearList.length} 项` : '收起' }}
+        </button>
       </div>
       <div class="filter-card">
         <div class="filter-title">开放状态</div>
@@ -379,6 +385,9 @@ const activeDepartment = ref('')
 
 const categoryTree = ref(JSON.parse(JSON.stringify(CATEGORY_TREE)))
 const yearList = ref(MOCK_YEAR_LIST)
+// 筛选卡片折叠状态（常态只显示前五项）
+const catCollapsed = ref(true)
+const yearCollapsed = ref(true)
 const keyword = ref('')
 const semanticQuery = ref('')
 const advancedForm = reactive({
@@ -678,6 +687,20 @@ async function handleExport(format: string = 'excel') {
   padding: 14px;
   margin-bottom: 12px;
 }
+
+.collapse-toggle {
+  width: 100%;
+  margin-top: 8px;
+  padding: 4px 0;
+  border: none;
+  background: transparent;
+  color: var(--c-accent);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  text-align: center;
+  transition: color var(--t-fast);
+}
+.collapse-toggle:hover { color: var(--c-accent-hover); }
 
 .filter-title {
   font-size: var(--fs-sm);
@@ -1112,6 +1135,35 @@ async function handleExport(format: string = 'excel') {
   padding-top: 10px;
   border-top: 1px solid var(--c-border-light);
 }
+
+.scope-actions .btn-sm {
+  flex: 1;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.scope-actions .btn-sm:hover { border-color: var(--c-accent); color: var(--c-accent); }
+
+.scope-actions .btn-accent-sm {
+  flex: 1;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-sm);
+  border: none;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.scope-actions .btn-accent-sm:hover { background: var(--c-accent-hover); }
 
 /* ========== 结果区 ========== */
 .results-area {

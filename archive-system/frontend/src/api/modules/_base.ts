@@ -35,7 +35,9 @@ api.interceptors.response.use(
     }
     // 账户停用：Token 仍有效但请求被拒 → 清除本地会话并回到登录页
     // 仅处理「停用」类 403，权限不足等其他 403 保持原样，避免误伤
-    if (error.response?.status === 403 && String(error.response.data?.detail || '').includes('停用')) {
+    // 登录请求自身的 403（如停用用户登录）不整页跳转，交给 Login.vue 展示提示
+    if (error.response?.status === 403 && String(error.response.data?.detail || '').includes('停用')
+        && !String(error.config?.url || '').includes('/auth/login')) {
       clearSessionAndRedirect()
     }
     return Promise.reject(error)

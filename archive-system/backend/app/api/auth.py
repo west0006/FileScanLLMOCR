@@ -46,6 +46,9 @@ def login(req: LoginRequest, request: Request):
                 db.add(user)
                 db.commit()
                 db.refresh(user)
+            # 停用检查：dev 模式也拦截停用用户（UM-004 停用后无法登录），避免「能登录但接口全 403」的矛盾
+            if not user.is_active:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="账户已停用")
             user.last_login_at = datetime.utcnow()
             db.commit()
             token = create_access_token(user_id=user.id, username=user.username, role=user.role, name=user.name)
