@@ -1,10 +1,32 @@
 <template>
   <div class="online-page">
     <div class="stats-grid-sm">
-      <div class="stat-card" :class="{active:statFilter==='all'}" @click="statFilter='all'"><div class="stat-icon stat-icon--green">●</div><div class="stat-label">当前在线</div><div class="stat-value">{{ users.length }}</div></div>
-      <div class="stat-card" :class="{active:statFilter==='admin'}" @click="statFilter='admin'"><div class="stat-icon stat-icon--amber">👤</div><div class="stat-label">管理员在线</div><div class="stat-value">{{ adminCount }}</div></div>
-      <div class="stat-card" :class="{active:statFilter==='reviewer'}" @click="statFilter='reviewer'"><div class="stat-icon stat-icon--purple"><IconSvg name="clip" size="15" /></div><div class="stat-label">审核员在线</div><div class="stat-value">{{ reviewerCount }}</div></div>
-      <div class="stat-card stat-card--refresh" @click="loadUsers"><div class="stat-icon stat-icon--blue"><IconSvg name="refresh" size="15" /></div><div class="stat-label">手动刷新 · 30秒自动</div><div class="stat-value" style="font-size:14px"><IconSvg name="refresh" size="15" /> 刷新</div></div>
+      <div class="stat-card" :class="{ active: statFilter === 'all' }" @click="statFilter = 'all'">
+        <div class="stat-icon stat-icon--green">●</div>
+        <div class="stat-label">当前在线</div>
+        <div class="stat-value">{{ users.length }}</div>
+      </div>
+      <div class="stat-card" :class="{ active: statFilter === 'admin' }" @click="statFilter = 'admin'">
+        <div class="stat-icon stat-icon--amber">👤</div>
+        <div class="stat-label">管理员在线</div>
+        <div class="stat-value">{{ adminCount }}</div>
+      </div>
+      <div class="stat-card" :class="{ active: statFilter === 'reviewer' }" @click="statFilter = 'reviewer'">
+        <div class="stat-icon stat-icon--purple">
+          <IconSvg name="clip" size="15" />
+        </div>
+        <div class="stat-label">审核员在线</div>
+        <div class="stat-value">{{ reviewerCount }}</div>
+      </div>
+      <div class="stat-card stat-card--refresh" @click="loadUsers">
+        <div class="stat-icon stat-icon--blue">
+          <IconSvg name="refresh" size="15" />
+        </div>
+        <div class="stat-label">手动刷新 · 30秒自动</div>
+        <div class="stat-value" style="font-size:14px">
+          <IconSvg name="refresh" size="15" /> 刷新
+        </div>
+      </div>
     </div>
     <div class="page-head">
       <h2>在线用户</h2>
@@ -12,7 +34,8 @@
     </div>
 
     <div class="online-grid">
-      <div v-for="u in filteredUsers" :key="u.account" class="online-card" :class="{ 'online-card--self': u.isSelf }" @click="selectedUser = u">
+      <div v-for="u in filteredUsers" :key="u.account" class="online-card" :class="{ 'online-card--self': u.isSelf }"
+        @click="selectedUser = u">
         <div class="online-card-top">
           <div class="online-avatar" :class="'avatar--' + u.roleColor">{{ u.name[0] }}</div>
           <div class="online-status" :class="u.idle ? 'status--idle' : 'status--active'"></div>
@@ -41,15 +64,37 @@
     </div>
 
     <!-- 用户详情弹窗 -->
-    <AppModal :visible="!!selectedUser" :title="'用户详情 — ' + (selectedUser?.name || '')" @close="selectedUser = null" width="420px">
+    <AppModal :visible="!!selectedUser" :title="'用户详情 — ' + (selectedUser?.name || '')" @close="selectedUser = null"
+      width="420px">
       <div v-if="selectedUser" class="detail-grid">
-        <div><dt>用户名</dt><dd>@{{ selectedUser.account }}</dd></div>
-        <div><dt>姓名</dt><dd>{{ selectedUser.name }}</dd></div>
-        <div><dt>角色</dt><dd>{{ selectedUser.role }}</dd></div>
-        <div><dt>部门</dt><dd>{{ selectedUser.dept || '—' }}</dd></div>
-        <div><dt>会话时长</dt><dd>{{ selectedUser.sessionDuration }}</dd></div>
-        <div><dt>位置</dt><dd>{{ selectedUser.location || '档案馆办公区' }}</dd></div>
-        <div class="span-2"><dt>当前操作</dt><dd>{{ selectedUser.currentPage || '在线用户页面' }}</dd></div>
+        <div>
+          <dt>用户名</dt>
+          <dd>@{{ selectedUser.account }}</dd>
+        </div>
+        <div>
+          <dt>姓名</dt>
+          <dd>{{ selectedUser.name }}</dd>
+        </div>
+        <div>
+          <dt>角色</dt>
+          <dd>{{ selectedUser.role }}</dd>
+        </div>
+        <div>
+          <dt>部门</dt>
+          <dd>{{ selectedUser.dept || '—' }}</dd>
+        </div>
+        <div>
+          <dt>会话时长</dt>
+          <dd>{{ selectedUser.sessionDuration }}</dd>
+        </div>
+        <div>
+          <dt>位置</dt>
+          <dd>{{ selectedUser.location || '档案馆办公区' }}</dd>
+        </div>
+        <div class="span-2">
+          <dt>当前操作</dt>
+          <dd>{{ selectedUser.currentPage || '在线用户页面' }}</dd>
+        </div>
       </div>
     </AppModal>
   </div>
@@ -83,6 +128,7 @@ function roleLabel(r: string): string {
 }
 
 function loadUsers() {
+  // console.log('Loading online users...')
   userApi.listOnline?.().then(res => {
     const now = Date.now()
     users.value = (res.data.items || []).map((u: any) => {
@@ -115,56 +161,219 @@ onUnmounted(() => { clearInterval(_timer) })
 </script>
 
 <style scoped>
-.online-page { max-width: var(--page-max); margin: 0 auto; }
-.stats-grid-sm{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.stats-grid-sm .stat-card{padding:14px}.stats-grid-sm .stat-value{font-size:22px}
-.page-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; }
-.page-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-semibold); margin: 0; }
-.page-head-count { font-size: var(--fs-base); color: var(--c-accent); font-weight: var(--fw-semibold); }
+.online-page {
+  max-width: var(--page-max);
+  margin: 0 auto;
+}
+
+.stats-grid-sm {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px
+}
+
+.stats-grid-sm .stat-card {
+  padding: 14px
+}
+
+.stats-grid-sm .stat-value {
+  font-size: 22px
+}
+
+.page-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.page-head h2 {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  margin: 0;
+}
+
+.page-head-count {
+  font-size: var(--fs-base);
+  color: var(--c-accent);
+  font-weight: var(--fw-semibold);
+}
 
 .online-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 }
+
 .online-card {
-  background: var(--c-surface); border-radius: var(--r-lg);
-  border: 1px solid var(--c-border); padding: 20px;
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--c-border);
+  padding: 20px;
   transition: all var(--t-fast);
 }
-.online-card:hover { box-shadow: var(--s-card-hover); }
-.online-card-top { position: relative; margin-bottom: 12px; display: flex; align-items: center; }
-.online-avatar {
-  width: 44px; height: 44px; border-radius: var(--r-md);
-  display: flex; align-items: center; justify-content: center;
-  font-size: var(--fs-lg); font-weight: var(--fw-semibold); color: #fff;
+
+.online-card:hover {
+  box-shadow: var(--s-card-hover);
 }
-.avatar--green { background: var(--c-accent); }
-.avatar--purple { background: var(--c-purple); }
-.avatar--amber { background: var(--c-warning); }
+
+.online-card-top {
+  position: relative;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+}
+
+.online-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: #fff;
+}
+
+.avatar--green {
+  background: var(--c-accent);
+}
+
+.avatar--purple {
+  background: var(--c-purple);
+}
+
+.avatar--amber {
+  background: var(--c-warning);
+}
+
 .online-status {
-  position: absolute; bottom: 0; left: 34px;
-  width: 12px; height: 12px; border-radius: 50%;
+  position: absolute;
+  bottom: 0;
+  left: 34px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
   border: 2px solid var(--c-surface);
 }
-.status--active { background: var(--c-success); }
-.status--idle { background: var(--c-text-muted); }
 
-.online-info h4 { font-size: var(--fs-base); font-weight: var(--fw-semibold); color: var(--c-text); margin: 0 0 2px; }
-.online-role { font-size: var(--fs-xs); color: var(--c-accent); margin-right: 8px; }
-.online-dept { font-size: var(--fs-xs); color: var(--c-text-muted); }
-.online-details { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--c-border-light); }
-.od-row { display: flex; justify-content: space-between; align-items: center; font-size: var(--fs-xs); color: var(--c-text-secondary); padding: 2px 0; }
-.od-row span:first-child { color: var(--c-text-muted); }
-.meta-sep { color: var(--c-border); margin: 0 2px; }
-.online-meta { font-size: var(--fs-xs); color: var(--c-text-muted); margin-top: 2px; }
-.self-tag { font-size: 10px; padding: 1px 6px; border-radius: var(--r-full); background: var(--c-accent-light); color: var(--c-accent); font-weight: var(--fw-medium); margin-left: 6px; vertical-align: middle; }
-.online-card--self { border-color: var(--c-accent); background: var(--c-accent-light); }
-.online-card { cursor: pointer; }
-.stats-grid-sm .stat-card { cursor: pointer; }
-.stats-grid-sm .stat-card.active { border-color: var(--c-accent); background: var(--c-accent-light); }
-.stats-grid-sm .stat-card--refresh { cursor: pointer; }
-.stats-grid-sm .stat-card--refresh:hover { border-color: var(--c-accent); }
-.detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; margin: 0; }
-.detail-grid dt { font-size: var(--fs-xs); color: var(--c-text-muted); font-weight: var(--fw-medium); margin-bottom: 2px; }
-.detail-grid dd { font-size: var(--fs-sm); color: var(--c-text); margin: 0; font-weight: var(--fw-medium); }
-.span-2 { grid-column: span 2; }
+.status--active {
+  background: var(--c-success);
+}
+
+.status--idle {
+  background: var(--c-text-muted);
+}
+
+.online-info h4 {
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text);
+  margin: 0 0 2px;
+}
+
+.online-role {
+  font-size: var(--fs-xs);
+  color: var(--c-accent);
+  margin-right: 8px;
+}
+
+.online-dept {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+}
+
+.online-details {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-border-light);
+}
+
+.od-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: var(--fs-xs);
+  color: var(--c-text-secondary);
+  padding: 2px 0;
+}
+
+.od-row span:first-child {
+  color: var(--c-text-muted);
+}
+
+.meta-sep {
+  color: var(--c-border);
+  margin: 0 2px;
+}
+
+.online-meta {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+  margin-top: 2px;
+}
+
+.self-tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  background: var(--c-accent-light);
+  color: var(--c-accent);
+  font-weight: var(--fw-medium);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.online-card--self {
+  border-color: var(--c-accent);
+  background: var(--c-accent-light);
+}
+
+.online-card {
+  cursor: pointer;
+}
+
+.stats-grid-sm .stat-card {
+  cursor: pointer;
+}
+
+.stats-grid-sm .stat-card.active {
+  border-color: var(--c-accent);
+  background: var(--c-accent-light);
+}
+
+.stats-grid-sm .stat-card--refresh {
+  cursor: pointer;
+}
+
+.stats-grid-sm .stat-card--refresh:hover {
+  border-color: var(--c-accent);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+  margin: 0;
+}
+
+.detail-grid dt {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+  font-weight: var(--fw-medium);
+  margin-bottom: 2px;
+}
+
+.detail-grid dd {
+  font-size: var(--fs-sm);
+  color: var(--c-text);
+  margin: 0;
+  font-weight: var(--fw-medium);
+}
+
+.span-2 {
+  grid-column: span 2;
+}
 </style>
