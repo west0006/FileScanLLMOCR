@@ -75,7 +75,7 @@ def _write_log_sync(
         db.close()
 
 
-def _log_exception_failure(self, request: Request, exc: Exception, duration_ms: float):
+def _log_exception_failure(request: Request, exc: Exception, duration_ms: float):
     """端点抛出未处理异常时，记录一条失败日志（不阻塞异常传播）"""
     try:
         method = request.method
@@ -124,7 +124,7 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         except Exception as exc:
             # 端点抛异常（未处理 500）时也记录失败日志
             duration_ms = round((time.time() - t0) * 1000)
-            self._log_exception_failure(request, exc, duration_ms)
+            _log_exception_failure(request, exc, duration_ms)
             raise
         duration_ms = round((time.time() - t0) * 1000)
 

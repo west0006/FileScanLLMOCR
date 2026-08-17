@@ -375,9 +375,17 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     llm_result = llm_client.review(full_text, metadata)
     llm_ms = log.time_end("review_llm", score=llm_result.get("risk_score", 0))
 
-    llm_score = llm_result.get("risk_score", 0)
+    # 防御 LLM 返回非标准 JSON（qwen2.5:3b 等小模型可能返回字符串数值/字符串列表）
+    def _safe_float(v, default=0.0):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return default
+
+    llm_score = max(0.0, min(100.0, _safe_float(llm_result.get("risk_score"), 0.0)))
     llm_available = llm_result.get("llm_available", True)
-    log.obs("LLM_REVIEW_DONE", score=llm_score, confidence=llm_result.get("confidence", 0), llm_ms=llm_ms, available=llm_available)
+    llm_confidence = _safe_float(llm_result.get("confidence"), 0.0)
+    log.obs("LLM_REVIEW_DONE", score=llm_score, confidence=llm_confidence, llm_ms=llm_ms, available=llm_available)
 
     # 第三层：白名单降分
     open_hits = scan_open_categories(full_text)
@@ -401,9 +409,10 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
     else:
         final_level, suggestion = "高", "建议不开放"
 
-    # 合并敏感项
-    sensitive_items = llm_result.get("sensitive_items", [])
-    llm_types = {s.get("type", "") for s in sensitive_items}
+    # 合并敏感项（防御 LLM 返回非 list / 元素非 dict）
+    raw_items = llm_result.get("sensitive_items", [])
+    sensitive_items = [s for s in raw_items if isinstance(s, dict)] if isinstance(raw_items, list) else []
+    llm_types = {s.get("type", "") for s in sensitive_items if isinstance(s.get("type", ""), str)}
     for hit in rule_hits:
         if hit["type"] not in llm_types:
             sensitive_items.append({
@@ -431,7 +440,7 @@ def hybrid_review(full_text: str, metadata: dict | None = None) -> dict:
         "open_categories": list(set(h["type"] for h in open_hits)),
         "open_hits_count": len(open_hits),
         "llm_raw_score": llm_score,
-        "llm_confidence": llm_result.get("confidence", 0),
+        "llm_confidence": llm_confidence,
         "rule_raw_score": rule_score,
     }
 
