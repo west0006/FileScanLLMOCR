@@ -1,14 +1,43 @@
 <template>
   <div class="page">
-    <div class="page-head"><h2>数据同步</h2></div>
-    <div class="process-banner"><IconSvg name="pin" size="14" /> 系统支持<strong>双通道同步机制</strong>：<strong>文件同步</strong>（扫描共享目录，比对时间戳+哈希，增量复制新增/变更文件）和<strong>数据库同步</strong>（连接源库只读查询，字段映射+增量字段，同步元数据到本地）。配置完成后系统将按设定频率自动执行。</div>
+    <div class="page-head">
+      <h2>数据同步</h2>
+    </div>
+    <div class="process-banner">
+      <IconSvg name="pin" size="14" />
+      系统支持<strong>双通道同步机制</strong>：<strong>文件同步</strong>（扫描共享目录，比对时间戳+哈希，增量复制新增/变更文件）和<strong>数据库同步</strong>（连接源库只读查询，字段映射+增量字段，同步元数据到本地）。配置完成后系统将按设定频率自动执行。
+    </div>
 
     <!-- 同步状态卡片 -->
     <div class="stats-grid-sm">
-      <div class="stat-card"><div class="stat-icon stat-icon--green"><IconSvg name="folder" size="15" /></div><div class="stat-label">已同步文件</div><div class="stat-value">{{ syncStats.files }}</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--blue"><IconSvg name="chart" size="15" /></div><div class="stat-label">同步记录</div><div class="stat-value">{{ syncStats.records }}</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--purple"><IconSvg name="refresh" size="15" /></div><div class="stat-label">运行状态</div><div class="stat-value" style="font-size:16px">{{ syncStats.running }}</div></div>
-      <div class="stat-card"><div class="stat-icon stat-icon--amber"><IconSvg name="pkg" size="15" /></div><div class="stat-label">下次同步</div><div class="stat-value" style="font-size:14px">{{ syncStats.nextSync }}</div></div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--green">
+          <IconSvg name="folder" size="15" />
+        </div>
+        <div class="stat-label">已同步文件</div>
+        <div class="stat-value">{{ syncStats.files }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--blue">
+          <IconSvg name="chart" size="15" />
+        </div>
+        <div class="stat-label">同步记录</div>
+        <div class="stat-value">{{ syncStats.records }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--purple">
+          <IconSvg name="refresh" size="15" />
+        </div>
+        <div class="stat-label">运行状态</div>
+        <div class="stat-value" style="font-size:16px">{{ syncStats.running }}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon stat-icon--amber">
+          <IconSvg name="pkg" size="15" />
+        </div>
+        <div class="stat-label">下次同步</div>
+        <div class="stat-value" style="font-size:14px">{{ syncStats.nextSync }}</div>
+      </div>
     </div>
 
     <!-- Tab 切换 -->
@@ -121,8 +150,14 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>ID</th><th>开始时间</th><th>类型</th><th>方式</th>
-            <th>新增</th><th>更新</th><th>失败</th><th>状态</th>
+            <th>ID</th>
+            <th>开始时间</th>
+            <th>类型</th>
+            <th>方式</th>
+            <th>新增</th>
+            <th>更新</th>
+            <th>失败</th>
+            <th>状态</th>
           </tr>
         </thead>
         <tbody>
@@ -134,7 +169,9 @@
             <td>{{ h.new_files || 0 }}</td>
             <td>{{ h.updated_files || 0 }}</td>
             <td>{{ h.failed_count || 0 }}</td>
-            <td><span class="risk-tag" :class="'risk-tag--' + (h.status === 'completed' ? 'low' : h.status === 'failed' ? 'high' : 'mid')">{{ statusLabel(h.status) }}</span></td>
+            <td><span class="risk-tag"
+                :class="'risk-tag--' + (h.status === 'completed' ? 'low' : h.status === 'failed' ? 'high' : 'mid')">{{
+                  statusLabel(h.status) }}</span></td>
           </tr>
           <tr v-if="history.length === 0">
             <td colspan="8" class="table-empty">暂无同步记录</td>
@@ -323,77 +360,248 @@ onUnmounted(() => { if (_pollTimer) clearInterval(_pollTimer) })
 </script>
 
 <style scoped>
-.page { max-width: var(--page-max); margin: 0 auto; }
-.page-head { margin-bottom: 20px; }
-.page-head h2 { font-size: var(--fs-xl); font-weight: var(--fw-semibold); margin: 0; }
-.sync-tabs {
-  display: flex; gap: 4px; margin-bottom: 16px;
-  background: var(--c-surface); border-radius: var(--r-md); padding: 3px;
-  width: fit-content; border: 1px solid var(--c-border);
+.page {
+  max-width: var(--page-max);
+  margin: 0 auto;
 }
+
+.page-head {
+  margin-bottom: 20px;
+}
+
+.page-head h2 {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  margin: 0;
+}
+
+.sync-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  background: var(--c-surface);
+  border-radius: var(--r-md);
+  padding: 3px;
+  width: fit-content;
+  border: 1px solid var(--c-border);
+}
+
 .sync-tab {
-  padding: 6px 16px; border-radius: var(--r-sm); border: none;
-  background: transparent; color: var(--c-text-secondary);
-  font-size: var(--fs-sm); font-weight: var(--fw-medium); cursor: pointer;
+  padding: 6px 16px;
+  border-radius: var(--r-sm);
+  border: none;
+  background: transparent;
+  color: var(--c-text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
   transition: all var(--t-fast);
 }
-.sync-tab.active { background: var(--c-accent); color: #fff; }
+
+.sync-tab.active {
+  background: var(--c-accent);
+  color: #fff;
+}
+
 .card {
-  background: var(--c-surface); border-radius: var(--r-lg);
-  border: 1px solid var(--c-border); overflow: hidden;
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--c-border);
+  overflow: hidden;
 }
-.card-body { padding: 20px; }
-.form-group { margin-bottom: 16px; }
+
+.card-body {
+  padding: 20px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
 .form-group label {
-  display: block; font-size: var(--fs-xs); font-weight: var(--fw-semibold);
-  color: var(--c-text-muted); text-transform: uppercase;
-  letter-spacing: 0.5px; margin-bottom: 6px;
+  display: block;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
 }
-.form-row { display: flex; gap: 16px; }
-.dir-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
-.dir-row .field-input { flex: 1; }
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.dir-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.dir-row .field-input {
+  flex: 1;
+}
+
 .field-input {
-  height: 40px; padding: 0 12px; border: 1px solid var(--c-border);
-  border-radius: var(--r-sm); font-size: var(--fs-base);
-  background: var(--c-bg); outline: none; font-family: var(--font);
-  width: 100%; max-width: 400px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-base);
+  background: var(--c-bg);
+  outline: none;
+  font-family: var(--font);
+  width: 100%;
+  max-width: 400px;
 }
-.field-input:focus { border-color: var(--c-accent); }
+
+.field-input:focus {
+  border-color: var(--c-accent);
+}
+
 .btn-primary {
-  height: 36px; padding: 0 20px; border-radius: var(--r-sm); border: none;
-  background: var(--c-accent); color: #fff; font-size: var(--fs-sm);
-  font-weight: var(--fw-semibold); cursor: pointer;
+  height: 36px;
+  padding: 0 20px;
+  border-radius: var(--r-sm);
+  border: none;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
 }
-.btn-primary:hover { background: var(--c-accent-hover); }
+
+.btn-primary:hover {
+  background: var(--c-accent-hover);
+}
+
 .btn-sm {
-  height: 36px; padding: 0 16px; border-radius: var(--r-sm);
-  border: 1px solid var(--c-border); background: var(--c-surface);
-  color: var(--c-text-secondary); font-size: var(--fs-sm); cursor: pointer;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--c-border);
+  background: var(--c-surface);
+  color: var(--c-text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
 }
-.btn-sm:hover { border-color: var(--c-accent); color: var(--c-accent); }
-.btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
-.sync-msg { margin-top: 12px; padding: 8px 12px; border-radius: var(--r-sm); font-size: var(--fs-sm); }
-.sync-msg.success { background: #F0FDF4; color: var(--c-success); }
-.sync-msg.error { background: #FEF2F2; color: var(--c-danger); }
-.sync-msg.info { background: #EFF6FF; color: var(--c-info); }
-.data-table { width: 100%; border-collapse: collapse; }
+
+.btn-sm:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.btn-sm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sync-msg {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+}
+
+.sync-msg.success {
+  background: #F0FDF4;
+  color: var(--c-success);
+}
+
+.sync-msg.error {
+  background: #FEF2F2;
+  color: var(--c-danger);
+}
+
+.sync-msg.info {
+  background: #EFF6FF;
+  color: var(--c-info);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
 .data-table th {
-  padding: 12px 16px; text-align: left; font-size: var(--fs-xs);
-  font-weight: var(--fw-semibold); color: var(--c-text-muted);
-  text-transform: uppercase; letter-spacing: 0.5px;
-  background: var(--c-bg); border-bottom: 1px solid var(--c-border);
+  padding: 12px 16px;
+  text-align: left;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--c-bg);
+  border-bottom: 1px solid var(--c-border);
 }
+
 .data-table td {
-  padding: 12px 16px; font-size: var(--fs-sm); color: var(--c-text);
+  padding: 12px 16px;
+  font-size: var(--fs-sm);
+  color: var(--c-text);
   border-bottom: 1px solid var(--c-border-light);
 }
-.mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: var(--fs-xs); color: var(--c-text-secondary); }
-.table-empty { padding: 48px; text-align: center; color: var(--c-text-muted); }
-.risk-tag { padding: 2px 10px; border-radius: var(--r-full); font-size: 11px; font-weight: var(--fw-bold); }
-.risk-tag--low { background: #F0FDF4; color: var(--c-success); }
-.risk-tag--mid { background: #FFFBEB; color: var(--c-warning); }
-.risk-tag--high { background: #FEF2F2; color: var(--c-danger); }
-.process-banner{padding:12px 16px;margin-bottom:16px;background:linear-gradient(90deg,#EFF6FF,#F0F7FF);border-left:4px solid var(--c-accent);border-radius:var(--r-sm);font-size:var(--fs-sm);color:var(--c-text-secondary);line-height:1.6}
-.stats-grid-sm{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.stats-grid-sm .stat-card{padding:14px;cursor:default}.stats-grid-sm .stat-value{font-size:22px}
+
+.mono {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: var(--fs-xs);
+  color: var(--c-text-secondary);
+}
+
+.table-empty {
+  padding: 48px;
+  text-align: center;
+  color: var(--c-text-muted);
+}
+
+.risk-tag {
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+}
+
+.risk-tag--low {
+  background: #F0FDF4;
+  color: var(--c-success);
+}
+
+.risk-tag--mid {
+  background: #FFFBEB;
+  color: var(--c-warning);
+}
+
+.risk-tag--high {
+  background: #FEF2F2;
+  color: var(--c-danger);
+}
+
+.process-banner {
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(90deg, #EFF6FF, #F0F7FF);
+  border-left: 4px solid var(--c-accent);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
+  line-height: 1.6
+}
+
+.stats-grid-sm {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px
+}
+
+.stats-grid-sm .stat-card {
+  padding: 14px;
+  cursor: default
+}
+
+.stats-grid-sm .stat-value {
+  font-size: 22px
+}
 </style>

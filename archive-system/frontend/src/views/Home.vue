@@ -139,12 +139,13 @@
                 <td>
                   <div class="mini-bar">
                     <div class="mini-bar-fill"
-                      :style="{ width: t.pct + '%', background: t.status === 'done' ? 'var(--c-success)' : 'var(--c-info)' }"></div>
+                      :style="{ width: t.pct + '%', background: t.status === 'done' ? 'var(--c-success)' : 'var(--c-info)' }">
+                    </div>
                     <span class="mini-bar-num">{{ t.pct }}%</span>
                   </div>
                 </td>
                 <td><span class="risk-tag" :class="'risk-tag--' + (t.status === 'done' ? 'low' : 'mid')">{{
-                  t.status ==='done'?'已完成':'处理中' }}</span></td>
+                  t.status === 'done' ? '已完成' : '处理中' }}</span></td>
               </tr>
             </tbody>
           </table>

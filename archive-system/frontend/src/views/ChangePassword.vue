@@ -5,7 +5,8 @@
       <p class="cp-sub">修改成功后需重新登录</p>
       <div class="form-group">
         <label>原密码</label>
-        <input v-model="form.old_password" type="password" class="field-input" placeholder="请输入原密码" @keyup.enter="submit" />
+        <input v-model="form.old_password" type="password" class="field-input" placeholder="请输入原密码"
+          @keyup.enter="submit" />
       </div>
       <div class="form-group">
         <label>新密码</label>
@@ -49,26 +50,78 @@ async function submit() {
 </script>
 
 <style scoped>
-.change-pwd-page { max-width: 480px; margin: 0 auto; padding-top: 40px; }
+.change-pwd-page {
+  max-width: 480px;
+  margin: 0 auto;
+  padding-top: 40px;
+}
+
 .cp-card {
-  background: var(--c-surface); border-radius: var(--r-lg);
-  border: 1px solid var(--c-border); padding: 32px;
+  background: var(--c-surface);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--c-border);
+  padding: 32px;
 }
-.cp-card h2 { font-size: var(--fs-xl); font-weight: var(--fw-semibold); margin: 0 0 4px; }
-.cp-sub { font-size: var(--fs-sm); color: var(--c-text-muted); margin: 0 0 24px; }
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--c-text-secondary); margin-bottom: 6px; }
+
+.cp-card h2 {
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  margin: 0 0 4px;
+}
+
+.cp-sub {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+  margin: 0 0 24px;
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-secondary);
+  margin-bottom: 6px;
+}
+
 .field-input {
-  height: 40px; padding: 0 12px; border: 1px solid var(--c-border);
-  border-radius: var(--r-sm); font-size: var(--fs-base); background: var(--c-bg);
-  outline: none; font-family: var(--font); width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-base);
+  background: var(--c-bg);
+  outline: none;
+  font-family: var(--font);
+  width: 100%;
 }
-.field-input:focus { border-color: var(--c-accent); }
+
+.field-input:focus {
+  border-color: var(--c-accent);
+}
+
 .btn-primary {
-  height: 40px; padding: 0 20px; border-radius: var(--r-sm); border: none;
-  background: var(--c-accent); color: #fff; font-size: var(--fs-base);
-  font-weight: var(--fw-semibold); cursor: pointer; width: 100%;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: var(--r-sm);
+  border: none;
+  background: var(--c-accent);
+  color: #fff;
+  font-size: var(--fs-base);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  width: 100%;
 }
-.btn-primary:hover:not(:disabled) { background: var(--c-accent-hover); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--c-accent-hover);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 </style>

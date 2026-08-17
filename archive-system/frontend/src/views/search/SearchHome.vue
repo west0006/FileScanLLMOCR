@@ -6,15 +6,15 @@
         <div class="filter-title">档案门类</div>
         <div class="filter-tree-hier">
           <div v-for="cat in categoryTree" :key="cat.key" class="ft-parent">
-            <div class="ft-parent-row" :class="{active:activeCat===cat.key}" @click="activeCat = activeCat===cat.key ? '' : cat.key">
+            <div class="ft-parent-row" :class="{ active: activeCat === cat.key }"
+              @click="activeCat = activeCat === cat.key ? '' : cat.key">
               <span class="ft-arrow">{{ cat.expanded ? '▼' : '▶' }}</span>
               <span>{{ cat.label }}</span>
               <span class="ft-count">{{ cat.count }}</span>
             </div>
             <div v-if="cat.children && cat.expanded" class="ft-children">
-              <div v-for="child in cat.children" :key="child.key"
-                   class="ft-child" :class="{active:activeCat===cat.key+'/'+child.key}"
-                   @click.stop="activeCat=cat.key+'/'+child.key">
+              <div v-for="child in cat.children" :key="child.key" class="ft-child"
+                :class="{ active: activeCat === cat.key + '/' + child.key }" @click.stop="activeCat = cat.key + '/' + child.key">
                 <span>{{ child.label }}</span>
                 <span class="ft-count">{{ child.count }}</span>
               </div>
@@ -30,7 +30,8 @@
           <input v-model.number="yearTo" type="number" placeholder="截止年" class="year-input" />
         </div>
         <div class="filter-tree">
-          <div v-for="y in yearList" :key="y.year" class="ft-node" :class="{active:activeYear===y.year}" @click="activeYear=y.year; yearFrom=y.year; yearTo=y.year">
+          <div v-for="y in yearList" :key="y.year" class="ft-node" :class="{ active: activeYear === y.year }"
+            @click="activeYear = y.year; yearFrom = y.year; yearTo = y.year">
             <span>{{ y.year }}年</span>
             <span class="ft-count">{{ y.count }}</span>
           </div>
@@ -39,9 +40,9 @@
       <div class="filter-card">
         <div class="filter-title">开放状态</div>
         <div class="filter-tree">
-          <div v-for="s in openStatusOptions" :key="s.value"
-               class="ft-node" :class="{active:activeOpenStatus===s.value}"
-               @click="activeOpenStatus = activeOpenStatus===s.value ? '' : s.value">
+          <div v-for="s in openStatusOptions" :key="s.value" class="ft-node"
+            :class="{ active: activeOpenStatus === s.value }"
+            @click="activeOpenStatus = activeOpenStatus === s.value ? '' : s.value">
             <span>{{ s.label }}</span>
           </div>
         </div>
@@ -50,268 +51,286 @@
         <div class="filter-title">归口单位</div>
         <input v-model="activeDepartment" placeholder="如 教务处" class="year-input" @keyup.enter="doSearch()" />
       </div>
-      <button class="filter-reset" v-if="activeCat||yearFrom||yearTo||activeOpenStatus||activeDepartment" @click="activeCat='';activeYear=null;yearFrom=undefined;yearTo=undefined;activeOpenStatus='';activeDepartment='';doSearch()">清除筛选</button>
+      <button class="filter-reset" v-if="activeCat || yearFrom || yearTo || activeOpenStatus || activeDepartment"
+        @click="activeCat = ''; activeYear = null; yearFrom = undefined; yearTo = undefined; activeOpenStatus = ''; activeDepartment = ''; doSearch()">清除筛选</button>
     </aside>
 
     <!-- 右侧主区域 -->
     <div class="search-main">
-    <!-- 搜索区 -->
-    <div class="search-hero">
-      <div class="search-tabs">
-        <button
-          v-for="tab in tabs"
-          :key="tab.key"
-          :class="['tab-btn', { active: searchMode === tab.key }]"
-          @click="searchMode = tab.key"
-        >{{ tab.label }}</button>
-      </div>
-
-      <!-- 关键词检索 -->
-      <div v-if="searchMode === 'keyword'" class="search-input-row">
-        <div class="search-dim-row">
-          <span class="dim-label">检索字段</span>
-          <select v-model="searchDimension" class="dim-select">
-            <option value="all">全部字段</option>
-            <option value="title">题名</option>
-            <option value="archive_id">档号</option>
-            <option value="author">责任者</option>
-            <option value="subject">主题词</option>
-            <option value="file_code">文件编号</option>
-          </select>
+      <!-- 搜索区 -->
+      <div class="search-hero">
+        <div class="search-tabs">
+          <button v-for="tab in tabs" :key="tab.key" :class="['tab-btn', { active: searchMode === tab.key }]"
+            @click="searchMode = tab.key">{{ tab.label }}</button>
         </div>
-        <div class="search-box">
-          <svg class="search-box-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          <input
-            v-model="keyword"
-            placeholder="输入关键词搜索档案..."
-            class="search-input"
-            @keyup.enter="doSearch()"
-            @focus="showAutoComplete = true"
-            @blur="showAutoComplete = false"
-            @input="showAutoComplete = true"
-            list="search-autocomplete"
-          />
-          <datalist id="search-autocomplete">
-            <option v-for="h in searchAutoList" :key="h" :value="h" />
-          </datalist>
-          <button class="search-btn" @click="doSearch()">检索</button>
-          <label class="exact-toggle" title="精确匹配：完整字段值严格匹配"><input type="checkbox" v-model="exactMatch" /> 精确</label>
-          <button class="history-btn" @click.stop="showHistory = !showHistory" title="检索历史">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          </button>
-          <div v-if="showHistory" class="history-dropdown" @click.stop>
-            <div class="history-head">
-              <span>检索历史</span>
-              <button class="history-clear" @click="clearHistory">清空</button>
-            </div>
-            <div v-if="searchHistory.length === 0" class="history-empty">暂无检索记录</div>
-            <div v-for="(h, i) in searchHistory" :key="i" class="history-item" @click="keyword = h; showHistory = false; doSearch()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              <span>{{ h }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- 语义检索 -->
-      <div v-else-if="searchMode === 'semantic'" class="search-input-row">
-        <div class="search-box">
-          <svg class="search-box-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V22l-4-2-4 2v-7.26A6.98 6.98 0 0 1 5 9a7 7 0 0 1 7-7z"/></svg>
-          <input
-            v-model="semanticQuery"
-            placeholder="用自然语言描述查找内容，如：1996年招生工作相关文件..."
-            class="search-input"
-            @keyup.enter="doSearch()"
-          />
-          <button class="search-btn search-btn--ai" @click="doSearch()">AI 检索</button>
-        </div>
-      </div>
-
-      <!-- 高级检索 -->
-      <div v-else class="advanced-form">
-        <div class="adv-row">
-          <div class="adv-field">
-            <label>关键词</label>
-            <input v-model="advancedForm.keywords" placeholder="可选" class="adv-input" />
-          </div>
-          <div class="adv-field">
-            <label>题名</label>
-            <input v-model="advancedForm.title" placeholder="可选" class="adv-input" />
-          </div>
-          <div class="adv-field">
-            <label>责任者</label>
-            <input v-model="advancedForm.author" placeholder="可选" class="adv-input" />
-          </div>
-          <div class="adv-field">
-            <label>文件编号</label>
-            <input v-model="advancedForm.file_code" placeholder="可选" class="adv-input" />
-          </div>
-          <div class="adv-field">
-            <label>主题词</label>
-            <input v-model="advancedForm.subject" placeholder="可选" class="adv-input" />
-          </div>
-          <div class="adv-field">
-            <label>归档年度</label>
-            <select v-model="advancedForm.yearFrom" class="adv-select">
-              <option :value="undefined">全部年份</option>
-              <option v-for="y in yearOptions" :key="y" :value="y">{{ y }} 年</option>
+        <!-- 关键词检索 -->
+        <div v-if="searchMode === 'keyword'" class="search-input-row">
+          <div class="search-dim-row">
+            <span class="dim-label">检索字段</span>
+            <select v-model="searchDimension" class="dim-select">
+              <option value="all">全部字段</option>
+              <option value="title">题名</option>
+              <option value="archive_id">档号</option>
+              <option value="author">责任者</option>
+              <option value="subject">主题词</option>
+              <option value="file_code">文件编号</option>
             </select>
           </div>
-          <div class="adv-field">
-            <label>档案门类</label>
-            <select v-model="advancedForm.category" class="adv-select">
-              <option value="">全部</option>
-              <option value="文书档案">文书档案</option>
-              <option value="教学档案">教学档案</option>
-              <option value="科研档案">科研档案</option>
-              <option value="人事档案">人事档案</option>
-            </select>
-          </div>
-          <div class="adv-field">
-            <label>归口单位</label>
-            <input v-model="advancedForm.department" placeholder="可选" class="adv-input" />
-          </div>
-          <div class="adv-field">
-            <label>全宗号</label>
-            <el-select v-model="selectedFondsIds" multiple placeholder="全部全宗" collapse-tags class="adv-multi">
-              <el-option v-for="f in fondsOptions" :key="f" :label="f" :value="f" />
-            </el-select>
-          </div>
-          <div class="adv-field">
-            <label>保管期限</label>
-            <select v-model="advancedForm.retention_period" class="adv-select">
-              <option value="">全部</option>
-              <option value="永久">永久</option>
-              <option value="长期">长期</option>
-              <option value="短期">短期</option>
-            </select>
-          </div>
-          <div class="adv-field">
-            <label>开放状态</label>
-            <select v-model="advancedForm.openStatus" class="adv-select">
-              <option value="">全部</option>
-              <option v-for="s in openStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-            </select>
-          </div>
-          <button class="search-btn" style="align-self:flex-end" @click="doSearch()">高级检索</button>
-        </div>
-      </div>
-
-      <!-- 检索范围 -->
-      <div class="search-scope">
-        <span class="scope-label">检索范围</span>
-        <div class="scope-options">
-          <button
-            v-for="lvl in levels"
-            :key="lvl.key"
-            :class="['scope-btn', { active: searchLevel === lvl.key }]"
-            @click="searchLevel = lvl.key"
-          >{{ lvl.label }}</button>
-        </div>
-        <div class="scope-tree-btn" @click="showScopeTree = !showScopeTree">
-          <IconSvg name="folder" size="15" /> {{ scopeNodes.length ? '已选 ' + scopeNodes.length + ' 个节点' : '按目录筛选' }} ▼
-          <div v-if="showScopeTree" class="scope-popover" @click.stop>
-            <el-tree ref="scopeTreeRef" :data="scopeTreeData" show-checkbox node-key="id" :default-checked-keys="scopeCheckedKeys" @check="onScopeCheck" :props="{label:'label'}" />
-            <div class="scope-actions">
-              <button class="btn-sm" @click="clearScope">清除</button>
-              <button class="btn-accent-sm" @click="showScopeTree=false">确定</button>
-            </div>
-          </div>
-        </div>
-        <button class="scope-tree-btn" style="margin-left:8px" @click="fileInputRef?.click()">
-          <IconSvg name="doc" size="15" /> 文档入库
-        </button>
-        <input ref="fileInputRef" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none" @change="onIngestFile" />
-      </div>
-    </div>
-
-    <!-- 结果区 -->
-    <div v-if="searched" class="results-area">
-      <div class="results-toolbar">
-        <div class="results-summary">
-          <span class="results-count">{{ total }}</span>
-          <span class="results-label">条结果</span>
-          <span class="results-time">{{ queryTime }}ms</span>
-        </div>
-        <div class="results-actions">
-          <select v-model="sortBy" class="sort-select" @change="doSearch()">
-            <option value="score">相关度排序</option>
-            <option value="time_desc">时间倒序</option>
-            <option value="time_asc">时间正序</option>
-            <option value="title_asc">题名排序</option>
-          </select>
-          <button class="btn-export" @click="handleExport('excel')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Excel
-          </button>
-          <button class="btn-export" @click="handleExport('csv')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            CSV
-          </button>
-          <button class="btn-export" @click="handleExport('pdf')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            PDF
-          </button>
-        </div>
-      </div>
-
-      <div class="filter-tags" v-if="activeFilterTags.length">
-        <span v-for="t in activeFilterTags" :key="t.key" class="filter-tag">{{ t.label }}</span>
-      </div>
-
-      <div v-if="loading" class="results-loading">
-        <div class="skeleton" v-for="i in 4" :key="i">
-          <div class="skeleton-line skeleton-line--title"></div>
-          <div class="skeleton-line"></div>
-          <div class="skeleton-line skeleton-line--short"></div>
-        </div>
-      </div>
-
-      <div v-else-if="results.length === 0" class="results-empty">
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity="0.3"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <p>未找到匹配的档案</p>
-        <span>尝试调整关键词或检索条件</span>
-        <div class="suggestions" v-if="searchSuggestions.length">
-          <span class="suggestions-label">您可能想找：</span>
-          <button v-for="(s, i) in searchSuggestions" :key="i" class="suggestion-chip" @click="keyword=s;doSearch()">{{ s }}</button>
-        </div>
-        <span class="help-text">提示：切换检索字段为「全部字段」可扩大搜索范围。已收录 {{ facetSummary }}</span>
-      </div>
-
-      <div v-else class="results-list">
-        <div
-          v-for="item in results"
-          :key="item.archive_id"
-          class="result-card"
-          @click="goDetail(item.archive_id)"
-        >
-          <div class="result-card-body">
-            <div class="result-card-top">
-              <h3 class="result-title" v-html="highlightText(item.title)"></h3>
-              <div class="result-badges">
-                <span class="badge" :class="'badge--' + (item.risk_level || 'low')">{{ item.risk_level === '未审核' ? '未审核' : (item.risk_level || '低') + '风险' }}</span>
-                <span class="badge badge--plain">{{ item.category || '文书档案' }}</span>
+          <div class="search-box">
+            <svg class="search-box-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.35-4.35" />
+            </svg>
+            <input v-model="keyword" placeholder="输入关键词搜索档案..." class="search-input" @keyup.enter="doSearch()"
+              @focus="showAutoComplete = true" @blur="showAutoComplete = false" @input="showAutoComplete = true"
+              list="search-autocomplete" />
+            <datalist id="search-autocomplete">
+              <option v-for="h in searchAutoList" :key="h" :value="h" />
+            </datalist>
+            <button class="search-btn" @click="doSearch()">检索</button>
+            <label class="exact-toggle" title="精确匹配：完整字段值严格匹配"><input type="checkbox" v-model="exactMatch" /> 精确</label>
+            <button class="history-btn" @click.stop="showHistory = !showHistory" title="检索历史">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </button>
+            <div v-if="showHistory" class="history-dropdown" @click.stop>
+              <div class="history-head">
+                <span>检索历史</span>
+                <button class="history-clear" @click="clearHistory">清空</button>
+              </div>
+              <div v-if="searchHistory.length === 0" class="history-empty">暂无检索记录</div>
+              <div v-for="(h, i) in searchHistory" :key="i" class="history-item"
+                @click="keyword = h; showHistory = false; doSearch()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+                <span>{{ h }}</span>
               </div>
             </div>
-            <p class="result-summary">{{ item.summary || '暂无内容摘要...' }}</p>
-            <div class="result-meta">
-              <span class="meta-item">{{ item.archive_id }}</span>
-              <span class="meta-sep">·</span>
-              <span class="meta-item">{{ item.year }}</span>
-              <span class="meta-sep">·</span>
-              <span class="meta-item">{{ item.department }}</span>
-              <span class="meta-score">{{ item.relevance || 85 }}% 匹配</span>
-              <button class="meta-send" @click.stop="sendToReview(item)" title="发送到AI预审">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                送审
-              </button>
+          </div>
+        </div>
+
+        <!-- 语义检索 -->
+        <div v-else-if="searchMode === 'semantic'" class="search-input-row">
+          <div class="search-box">
+            <svg class="search-box-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2">
+              <path
+                d="M12 2a7 7 0 0 1 7 7c0 2.38-1.19 4.47-3 5.74V22l-4-2-4 2v-7.26A6.98 6.98 0 0 1 5 9a7 7 0 0 1 7-7z" />
+            </svg>
+            <input v-model="semanticQuery" placeholder="用自然语言描述查找内容，如：1996年招生工作相关文件..." class="search-input"
+              @keyup.enter="doSearch()" />
+            <button class="search-btn search-btn--ai" @click="doSearch()">AI 检索</button>
+          </div>
+        </div>
+
+        <!-- 高级检索 -->
+        <div v-else class="advanced-form">
+          <div class="adv-row">
+            <div class="adv-field">
+              <label>关键词</label>
+              <input v-model="advancedForm.keywords" placeholder="可选" class="adv-input" />
+            </div>
+            <div class="adv-field">
+              <label>题名</label>
+              <input v-model="advancedForm.title" placeholder="可选" class="adv-input" />
+            </div>
+            <div class="adv-field">
+              <label>责任者</label>
+              <input v-model="advancedForm.author" placeholder="可选" class="adv-input" />
+            </div>
+            <div class="adv-field">
+              <label>文件编号</label>
+              <input v-model="advancedForm.file_code" placeholder="可选" class="adv-input" />
+            </div>
+            <div class="adv-field">
+              <label>主题词</label>
+              <input v-model="advancedForm.subject" placeholder="可选" class="adv-input" />
+            </div>
+            <div class="adv-field">
+              <label>归档年度</label>
+              <select v-model="advancedForm.yearFrom" class="adv-select">
+                <option :value="undefined">全部年份</option>
+                <option v-for="y in yearOptions" :key="y" :value="y">{{ y }} 年</option>
+              </select>
+            </div>
+            <div class="adv-field">
+              <label>档案门类</label>
+              <select v-model="advancedForm.category" class="adv-select">
+                <option value="">全部</option>
+                <option value="文书档案">文书档案</option>
+                <option value="教学档案">教学档案</option>
+                <option value="科研档案">科研档案</option>
+                <option value="人事档案">人事档案</option>
+              </select>
+            </div>
+            <div class="adv-field">
+              <label>归口单位</label>
+              <input v-model="advancedForm.department" placeholder="可选" class="adv-input" />
+            </div>
+            <div class="adv-field">
+              <label>全宗号</label>
+              <el-select v-model="selectedFondsIds" multiple placeholder="全部全宗" collapse-tags class="adv-multi">
+                <el-option v-for="f in fondsOptions" :key="f" :label="f" :value="f" />
+              </el-select>
+            </div>
+            <div class="adv-field">
+              <label>保管期限</label>
+              <select v-model="advancedForm.retention_period" class="adv-select">
+                <option value="">全部</option>
+                <option value="永久">永久</option>
+                <option value="长期">长期</option>
+                <option value="短期">短期</option>
+              </select>
+            </div>
+            <div class="adv-field">
+              <label>开放状态</label>
+              <select v-model="advancedForm.openStatus" class="adv-select">
+                <option value="">全部</option>
+                <option v-for="s in openStatusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+              </select>
+            </div>
+            <button class="search-btn" style="align-self:flex-end" @click="doSearch()">高级检索</button>
+          </div>
+        </div>
+
+        <!-- 检索范围 -->
+        <div class="search-scope">
+          <span class="scope-label">检索范围</span>
+          <div class="scope-options">
+            <button v-for="lvl in levels" :key="lvl.key" :class="['scope-btn', { active: searchLevel === lvl.key }]"
+              @click="searchLevel = lvl.key">{{ lvl.label }}</button>
+          </div>
+          <div class="scope-tree-btn" @click="showScopeTree = !showScopeTree">
+            <IconSvg name="folder" size="15" /> {{ scopeNodes.length ? '已选 ' + scopeNodes.length + ' 个节点' : '按目录筛选' }} ▼
+            <div v-if="showScopeTree" class="scope-popover" @click.stop>
+              <el-tree ref="scopeTreeRef" :data="scopeTreeData" show-checkbox node-key="id"
+                :default-checked-keys="scopeCheckedKeys" @check="onScopeCheck" :props="{ label: 'label' }" />
+              <div class="scope-actions">
+                <button class="btn-sm" @click="clearScope">清除</button>
+                <button class="btn-accent-sm" @click="showScopeTree = false">确定</button>
+              </div>
             </div>
           </div>
+          <button class="scope-tree-btn" style="margin-left:8px" @click="fileInputRef?.click()">
+            <IconSvg name="doc" size="15" /> 文档入库
+          </button>
+          <input ref="fileInputRef" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none"
+            @change="onIngestFile" />
         </div>
       </div>
 
-      <el-pagination v-if="total > pageSize" class="results-pager" background layout="prev, pager, next, sizes" :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20,50,100]" @current-change="(p: number)=>{page=p;doSearch(false)}" @size-change="(s: number)=>{pageSize=s;page=1;doSearch()}" />
-    </div>
+      <!-- 结果区 -->
+      <div v-if="searched" class="results-area">
+        <div class="results-toolbar">
+          <div class="results-summary">
+            <span class="results-count">{{ total }}</span>
+            <span class="results-label">条结果</span>
+            <span class="results-time">{{ queryTime }}ms</span>
+          </div>
+          <div class="results-actions">
+            <select v-model="sortBy" class="sort-select" @change="doSearch()">
+              <option value="score">相关度排序</option>
+              <option value="time_desc">时间倒序</option>
+              <option value="time_asc">时间正序</option>
+              <option value="title_asc">题名排序</option>
+            </select>
+            <button class="btn-export" @click="handleExport('excel')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Excel
+            </button>
+            <button class="btn-export" @click="handleExport('csv')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              CSV
+            </button>
+            <button class="btn-export" @click="handleExport('pdf')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              PDF
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-tags" v-if="activeFilterTags.length">
+          <span v-for="t in activeFilterTags" :key="t.key" class="filter-tag">{{ t.label }}</span>
+        </div>
+
+        <div v-if="loading" class="results-loading">
+          <div class="skeleton" v-for="i in 4" :key="i">
+            <div class="skeleton-line skeleton-line--title"></div>
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line skeleton-line--short"></div>
+          </div>
+        </div>
+
+        <div v-else-if="results.length === 0" class="results-empty">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+            opacity="0.3">
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.35-4.35" />
+          </svg>
+          <p>未找到匹配的档案</p>
+          <span>尝试调整关键词或检索条件</span>
+          <div class="suggestions" v-if="searchSuggestions.length">
+            <span class="suggestions-label">您可能想找：</span>
+            <button v-for="(s, i) in searchSuggestions" :key="i" class="suggestion-chip"
+              @click="keyword = s; doSearch()">{{ s }}</button>
+          </div>
+          <span class="help-text">提示：切换检索字段为「全部字段」可扩大搜索范围。已收录 {{ facetSummary }}</span>
+        </div>
+
+        <div v-else class="results-list">
+          <div v-for="item in results" :key="item.archive_id" class="result-card" @click="goDetail(item.archive_id)">
+            <div class="result-card-body">
+              <div class="result-card-top">
+                <h3 class="result-title" v-html="highlightText(item.title)"></h3>
+                <div class="result-badges">
+                  <span class="badge" :class="'badge--' + (item.risk_level || 'low')">{{ item.risk_level === '未审核' ?
+                    '未审核' : (item.risk_level || '低') + '风险' }}</span>
+                  <span class="badge badge--plain">{{ item.category || '文书档案' }}</span>
+                </div>
+              </div>
+              <p class="result-summary">{{ item.summary || '暂无内容摘要...' }}</p>
+              <div class="result-meta">
+                <span class="meta-item">{{ item.archive_id }}</span>
+                <span class="meta-sep">·</span>
+                <span class="meta-item">{{ item.year }}</span>
+                <span class="meta-sep">·</span>
+                <span class="meta-item">{{ item.department }}</span>
+                <span class="meta-score">{{ item.relevance || 85 }}% 匹配</span>
+                <button class="meta-send" @click.stop="sendToReview(item)" title="发送到AI预审">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 11l3 3L22 4" />
+                    <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                  送审
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <el-pagination v-if="total > pageSize" class="results-pager" background layout="prev, pager, next, sizes"
+          :total="total" :page-size="pageSize" :current-page="page" :page-sizes="[20, 50, 100]"
+          @current-change="(p: number) => { page = p; doSearch(false) }"
+          @size-change="(s: number) => { pageSize = s; page = 1; doSearch() }" />
+      </div>
     </div><!-- /search-main -->
   </div>
 </template>
@@ -633,71 +652,214 @@ async function handleExport(format: string = 'excel') {
 </script>
 
 <style scoped>
-.search-page { max-width: var(--page-max); margin: 0 auto; display: flex; gap: 20px; align-items: flex-start; }
+.search-page {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
 
 /* ========== 左侧筛选栏 ========== */
-.search-sidebar { width: 220px; flex-shrink: 0; }
-.search-main { flex: 1; min-width: 0; }
+.search-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+}
+
+.search-main {
+  flex: 1;
+  min-width: 0;
+}
 
 .filter-card {
-  background: var(--c-surface); border-radius: var(--r-md); border: 1px solid var(--c-border);
-  padding: 14px; margin-bottom: 12px;
+  background: var(--c-surface);
+  border-radius: var(--r-md);
+  border: 1px solid var(--c-border);
+  padding: 14px;
+  margin-bottom: 12px;
 }
+
 .filter-title {
-  font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--c-text);
-  margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--c-border-light);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text);
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--c-border-light);
 }
-.filter-tree { display: flex; flex-direction: column; gap: 2px; }
+
+.filter-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .ft-node {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 10px; border-radius: var(--r-sm); cursor: pointer;
-  font-size: var(--fs-sm); color: var(--c-text-secondary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
   transition: all var(--t-fast);
 }
-.ft-node:hover { background: var(--c-bg); color: var(--c-text); }
-.ft-node.active { background: var(--c-accent-light); color: var(--c-accent); font-weight: var(--fw-medium); }
-.ft-count {
-  font-size: 11px; padding: 1px 6px; border-radius: var(--r-full);
-  background: var(--c-bg); color: var(--c-text-muted);
+
+.ft-node:hover {
+  background: var(--c-bg);
+  color: var(--c-text);
 }
-.ft-node.active .ft-count { background: var(--c-accent); color: #fff; }
+
+.ft-node.active {
+  background: var(--c-accent-light);
+  color: var(--c-accent);
+  font-weight: var(--fw-medium);
+}
+
+.ft-count {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: var(--r-full);
+  background: var(--c-bg);
+  color: var(--c-text-muted);
+}
+
+.ft-node.active .ft-count {
+  background: var(--c-accent);
+  color: #fff;
+}
 
 .filter-reset {
-  display: block; width: 100%; padding: 6px; border: none; background: transparent;
-  color: var(--c-accent); font-size: var(--fs-xs); cursor: pointer;
-  border-radius: var(--r-sm); transition: background var(--t-fast);
+  display: block;
+  width: 100%;
+  padding: 6px;
+  border: none;
+  background: transparent;
+  color: var(--c-accent);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: background var(--t-fast);
 }
-.filter-reset:hover { background: var(--c-accent-light); }
-.year-range-row { display: flex; gap: 4px; align-items: center; margin-bottom: 8px; }
-.year-input { flex: 1; height: 28px; padding: 0 6px; border: 1px solid var(--c-border); border-radius: var(--r-sm); font-size: var(--fs-xs); background: var(--c-bg); outline: none; width: 0; }
-.year-input:focus { border-color: var(--c-accent); }
-.year-sep { font-size: var(--fs-xs); color: var(--c-text-muted); }
+
+.filter-reset:hover {
+  background: var(--c-accent-light);
+}
+
+.year-range-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.year-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  background: var(--c-bg);
+  outline: none;
+  width: 0;
+}
+
+.year-input:focus {
+  border-color: var(--c-accent);
+}
+
+.year-sep {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+}
 
 /* 分层树 */
-.filter-tree-hier { display: flex; flex-direction: column; }
+.filter-tree-hier {
+  display: flex;
+  flex-direction: column;
+}
+
 .ft-parent-row {
-  display: flex; align-items: center; gap: 4px;
-  padding: 6px 10px; border-radius: var(--r-sm); cursor: pointer;
-  font-size: var(--fs-sm); color: var(--c-text-secondary); transition: all var(--t-fast);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--c-text-secondary);
+  transition: all var(--t-fast);
 }
-.ft-parent-row:hover { background: var(--c-bg); color: var(--c-text); }
-.ft-parent-row.active { background: var(--c-accent-light); color: var(--c-accent); font-weight: var(--fw-medium); }
-.ft-arrow { font-size: 9px; width: 12px; color: var(--c-text-muted); }
-.ft-children { padding-left: 14px; }
+
+.ft-parent-row:hover {
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+
+.ft-parent-row.active {
+  background: var(--c-accent-light);
+  color: var(--c-accent);
+  font-weight: var(--fw-medium);
+}
+
+.ft-arrow {
+  font-size: 9px;
+  width: 12px;
+  color: var(--c-text-muted);
+}
+
+.ft-children {
+  padding-left: 14px;
+}
+
 .ft-child {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 4px 10px; border-radius: var(--r-sm); cursor: pointer;
-  font-size: var(--fs-xs); color: var(--c-text-secondary); transition: all var(--t-fast);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: var(--fs-xs);
+  color: var(--c-text-secondary);
+  transition: all var(--t-fast);
 }
-.ft-child:hover { background: var(--c-bg); }
-.ft-child.active { background: var(--c-accent-light); color: var(--c-accent); font-weight: var(--fw-medium); }
+
+.ft-child:hover {
+  background: var(--c-bg);
+}
+
+.ft-child.active {
+  background: var(--c-accent-light);
+  color: var(--c-accent);
+  font-weight: var(--fw-medium);
+}
 
 /* 检索维度 */
-.search-dim-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.dim-label { font-size: var(--fs-xs); color: var(--c-text-muted); white-space: nowrap; }
+.search-dim-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.dim-label {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+  white-space: nowrap;
+}
+
 .dim-select {
-  height: 30px; padding: 0 8px; border: 1px solid var(--c-border); border-radius: var(--r-sm);
-  font-size: var(--fs-xs); background: var(--c-surface); color: var(--c-text); outline: none; cursor: pointer;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-xs);
+  background: var(--c-surface);
+  color: var(--c-text);
+  outline: none;
+  cursor: pointer;
 }
 
 /* ========== 搜索区 ========== */
@@ -718,6 +880,7 @@ async function handleExport(format: string = 'excel') {
   padding: 3px;
   width: fit-content;
 }
+
 .tab-btn {
   padding: 6px 16px;
   border-radius: var(--r-sm);
@@ -729,13 +892,17 @@ async function handleExport(format: string = 'excel') {
   cursor: pointer;
   transition: all var(--t-fast);
 }
+
 .tab-btn.active {
   background: var(--c-surface);
   color: var(--c-accent);
   box-shadow: var(--s-card);
 }
 
-.search-input-row { margin-bottom: 8px; }
+.search-input-row {
+  margin-bottom: 8px;
+}
+
 .search-box {
   display: flex;
   align-items: center;
@@ -745,16 +912,19 @@ async function handleExport(format: string = 'excel') {
   padding: 4px;
   transition: all var(--t-fast);
 }
+
 .search-box:focus-within {
   border-color: var(--c-accent);
   background: var(--c-surface);
   box-shadow: 0 0 0 3px var(--c-accent-light);
 }
+
 .search-box-icon {
   margin: 0 12px;
   color: var(--c-text-muted);
   flex-shrink: 0;
 }
+
 .search-input {
   flex: 1;
   border: none;
@@ -765,7 +935,11 @@ async function handleExport(format: string = 'excel') {
   padding: 10px 0;
   font-family: var(--font);
 }
-.search-input::placeholder { color: var(--c-text-muted); }
+
+.search-input::placeholder {
+  color: var(--c-text-muted);
+}
+
 .search-btn {
   height: 40px;
   padding: 0 24px;
@@ -779,11 +953,18 @@ async function handleExport(format: string = 'excel') {
   transition: background var(--t-fast);
   white-space: nowrap;
 }
-.search-btn:hover { background: var(--c-accent-hover); }
+
+.search-btn:hover {
+  background: var(--c-accent-hover);
+}
+
 .search-btn--ai {
   background: linear-gradient(135deg, #6366F1, #8B5CF6);
 }
-.search-btn--ai:hover { background: linear-gradient(135deg, #4F46E5, #7C3AED); }
+
+.search-btn--ai:hover {
+  background: linear-gradient(135deg, #4F46E5, #7C3AED);
+}
 
 /* 高级检索 */
 .adv-row {
@@ -792,7 +973,13 @@ async function handleExport(format: string = 'excel') {
   flex-wrap: wrap;
   align-items: flex-end;
 }
-.adv-field { display: flex; flex-direction: column; gap: 4px; }
+
+.adv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .adv-field label {
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
@@ -800,6 +987,7 @@ async function handleExport(format: string = 'excel') {
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
+
 .adv-input {
   height: 40px;
   padding: 0 12px;
@@ -812,8 +1000,16 @@ async function handleExport(format: string = 'excel') {
   font-family: var(--font);
   min-width: 140px;
 }
-.adv-input:focus { border-color: var(--c-accent); }
-.adv-input--sm { width: 100px; min-width: 80px; }
+
+.adv-input:focus {
+  border-color: var(--c-accent);
+}
+
+.adv-input--sm {
+  width: 100px;
+  min-width: 80px;
+}
+
 .adv-select {
   height: 40px;
   padding: 0 12px;
@@ -825,9 +1021,20 @@ async function handleExport(format: string = 'excel') {
   outline: none;
   cursor: pointer;
 }
-.adv-multi { min-width: 180px; }
-.adv-range { display: flex; align-items: center; gap: 6px; }
-.adv-sep { color: var(--c-text-muted); }
+
+.adv-multi {
+  min-width: 180px;
+}
+
+.adv-range {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.adv-sep {
+  color: var(--c-text-muted);
+}
 
 /* 检索范围 */
 .search-scope {
@@ -838,12 +1045,18 @@ async function handleExport(format: string = 'excel') {
   padding-top: 16px;
   border-top: 1px solid var(--c-border-light);
 }
+
 .scope-label {
   font-size: var(--fs-sm);
   color: var(--c-text-muted);
   font-weight: var(--fw-medium);
 }
-.scope-options { display: flex; gap: 4px; }
+
+.scope-options {
+  display: flex;
+  gap: 4px;
+}
+
 .scope-btn {
   padding: 4px 12px;
   border-radius: var(--r-full);
@@ -854,20 +1067,68 @@ async function handleExport(format: string = 'excel') {
   cursor: pointer;
   transition: all var(--t-fast);
 }
+
 .scope-btn.active {
   background: var(--c-accent);
   color: #fff;
   border-color: var(--c-accent);
 }
-.scope-tree-btn { position: relative; font-size: var(--fs-xs); color: var(--c-text-secondary); cursor: pointer; padding: 4px 10px; border: 1px solid var(--c-border); border-radius: var(--r-sm); white-space: nowrap; }
-.scope-tree-btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
-.scope-popover { position: absolute; top: 32px; left: 0; z-index: 50; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); box-shadow: var(--s-dropdown); padding: 12px; min-width: 280px; max-height: 400px; overflow-y: auto; }
-.scope-actions { display: flex; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--c-border-light); }
+
+.scope-tree-btn {
+  position: relative;
+  font-size: var(--fs-xs);
+  color: var(--c-text-secondary);
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+}
+
+.scope-tree-btn:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.scope-popover {
+  position: absolute;
+  top: 32px;
+  left: 0;
+  z-index: 50;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--s-dropdown);
+  padding: 12px;
+  min-width: 280px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.scope-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--c-border-light);
+}
 
 /* ========== 结果区 ========== */
-.results-area { animation: fadeIn 0.3s ease; }
+.results-area {
+  animation: fadeIn 0.3s ease;
+}
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 .results-toolbar {
   display: flex;
@@ -875,15 +1136,36 @@ async function handleExport(format: string = 'excel') {
   justify-content: space-between;
   margin-bottom: 16px;
 }
-.results-summary { display: flex; align-items: baseline; gap: 6px; }
+
+.results-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
 .results-count {
   font-size: var(--fs-2xl);
   font-weight: var(--fw-bold);
   color: var(--c-accent);
 }
-.results-label { color: var(--c-text-secondary); font-size: var(--fs-base); }
-.results-time { color: var(--c-text-muted); font-size: var(--fs-xs); margin-left: 8px; }
-.results-actions { display: flex; gap: 8px; align-items: center; }
+
+.results-label {
+  color: var(--c-text-secondary);
+  font-size: var(--fs-base);
+}
+
+.results-time {
+  color: var(--c-text-muted);
+  font-size: var(--fs-xs);
+  margin-left: 8px;
+}
+
+.results-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .sort-select {
   height: 32px;
   padding: 0 8px;
@@ -895,6 +1177,7 @@ async function handleExport(format: string = 'excel') {
   outline: none;
   cursor: pointer;
 }
+
 .btn-export {
   display: flex;
   align-items: center;
@@ -909,7 +1192,11 @@ async function handleExport(format: string = 'excel') {
   cursor: pointer;
   transition: all var(--t-fast);
 }
-.btn-export:hover { border-color: var(--c-accent); color: var(--c-accent); }
+
+.btn-export:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
 
 /* 卡片结果 */
 .result-card {
@@ -920,12 +1207,17 @@ async function handleExport(format: string = 'excel') {
   cursor: pointer;
   transition: all var(--t-fast);
 }
+
 .result-card:hover {
   border-color: var(--c-accent);
   box-shadow: var(--s-card-hover);
   transform: translateY(-1px);
 }
-.result-card-body { padding: 16px 20px; }
+
+.result-card-body {
+  padding: 16px 20px;
+}
+
 .result-card-top {
   display: flex;
   align-items: flex-start;
@@ -933,6 +1225,7 @@ async function handleExport(format: string = 'excel') {
   gap: 12px;
   margin-bottom: 8px;
 }
+
 .result-title {
   font-size: var(--fs-lg);
   font-weight: var(--fw-semibold);
@@ -941,7 +1234,13 @@ async function handleExport(format: string = 'excel') {
   line-height: var(--lh-tight);
   flex: 1;
 }
-.result-badges { display: flex; gap: 6px; flex-shrink: 0; }
+
+.result-badges {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
 .badge {
   padding: 2px 10px;
   border-radius: var(--r-full);
@@ -949,10 +1248,26 @@ async function handleExport(format: string = 'excel') {
   font-weight: var(--fw-semibold);
   letter-spacing: 0.3px;
 }
-.badge--高 { background: #FEF2F2; color: var(--c-danger); }
-.badge--中 { background: #FFFBEB; color: var(--c-warning); }
-.badge--低 { background: #F0FDF4; color: var(--c-success); }
-.badge--plain { background: var(--c-bg); color: var(--c-text-secondary); }
+
+.badge--高 {
+  background: #FEF2F2;
+  color: var(--c-danger);
+}
+
+.badge--中 {
+  background: #FFFBEB;
+  color: var(--c-warning);
+}
+
+.badge--低 {
+  background: #F0FDF4;
+  color: var(--c-success);
+}
+
+.badge--plain {
+  background: var(--c-bg);
+  color: var(--c-text-secondary);
+}
 
 .result-summary {
   font-size: var(--fs-sm);
@@ -972,7 +1287,11 @@ async function handleExport(format: string = 'excel') {
   font-size: var(--fs-xs);
   color: var(--c-text-muted);
 }
-.meta-sep { margin: 0 4px; }
+
+.meta-sep {
+  margin: 0 4px;
+}
+
 .meta-score {
   margin-left: auto;
   font-weight: var(--fw-semibold);
@@ -981,14 +1300,26 @@ async function handleExport(format: string = 'excel') {
   padding: 2px 8px;
   border-radius: var(--r-full);
 }
+
 .meta-send {
-  display: flex; align-items: center; gap: 4px;
-  padding: 2px 10px; border-radius: var(--r-full);
-  border: 1px solid var(--c-border); background: transparent;
-  color: var(--c-purple); font-size: 11px; font-weight: var(--fw-medium);
-  cursor: pointer; transition: all var(--t-fast);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--c-border);
+  background: transparent;
+  color: var(--c-purple);
+  font-size: 11px;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: all var(--t-fast);
 }
-.meta-send:hover { background: #F3E8FF; border-color: var(--c-purple); }
+
+.meta-send:hover {
+  background: #F3E8FF;
+  border-color: var(--c-purple);
+}
 
 /* 分页 */
 .results-pager {
@@ -998,6 +1329,7 @@ async function handleExport(format: string = 'excel') {
   gap: 16px;
   margin-top: 24px;
 }
+
 .pager-btn {
   height: 36px;
   padding: 0 20px;
@@ -1010,12 +1342,27 @@ async function handleExport(format: string = 'excel') {
   cursor: pointer;
   transition: all var(--t-fast);
 }
-.pager-btn:hover:not(:disabled) { border-color: var(--c-accent); color: var(--c-accent); }
-.pager-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.pager-info { font-size: var(--fs-sm); color: var(--c-text-muted); }
+
+.pager-btn:hover:not(:disabled) {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
+.pager-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pager-info {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
 
 /* 加载骨架 */
-.skeleton { padding: 16px 0; }
+.skeleton {
+  padding: 16px 0;
+}
+
 .skeleton-line {
   height: 12px;
   background: var(--c-border);
@@ -1023,11 +1370,26 @@ async function handleExport(format: string = 'excel') {
   margin-bottom: 8px;
   animation: pulse 1.5s ease infinite;
 }
-.skeleton-line--title { width: 60%; height: 16px; }
-.skeleton-line--short { width: 40%; }
+
+.skeleton-line--title {
+  width: 60%;
+  height: 16px;
+}
+
+.skeleton-line--short {
+  width: 40%;
+}
+
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
 }
 
 /* 空结果 */
@@ -1036,49 +1398,170 @@ async function handleExport(format: string = 'excel') {
   padding: 64px 0;
   color: var(--c-text-muted);
 }
-.results-empty p { margin: 12px 0 4px; font-size: var(--fs-lg); font-weight: var(--fw-medium); }
-.results-empty span { font-size: var(--fs-sm); }
+
+.results-empty p {
+  margin: 12px 0 4px;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+}
+
+.results-empty span {
+  font-size: var(--fs-sm);
+}
 
 /* 检索历史 */
-.search-box { position: relative; }
-.history-btn {
-  width: 36px; height: 36px; border: 1px solid var(--c-border); border-radius: var(--r-sm);
-  background: var(--c-surface); color: var(--c-text-muted); cursor: pointer;
-  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+.search-box {
+  position: relative;
 }
-.history-btn:hover { border-color: var(--c-accent); color: var(--c-accent); }
+
+.history-btn {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: var(--c-surface);
+  color: var(--c-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.history-btn:hover {
+  border-color: var(--c-accent);
+  color: var(--c-accent);
+}
+
 .exact-toggle {
-  display: flex; align-items: center; gap: 4px; font-size: var(--fs-xs);
-  color: var(--c-text-muted); cursor: pointer; white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
   user-select: none;
 }
-.exact-toggle input { accent-color: var(--c-accent); }
-.exact-toggle:has(input:checked) { color: var(--c-accent); font-weight: var(--fw-semibold); }
+
+.exact-toggle input {
+  accent-color: var(--c-accent);
+}
+
+.exact-toggle:has(input:checked) {
+  color: var(--c-accent);
+  font-weight: var(--fw-semibold);
+}
+
 .history-dropdown {
-  position: absolute; top: 44px; right: 60px; width: 300px; max-height: 320px; overflow-y: auto;
-  background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md);
-  box-shadow: var(--s-dropdown); z-index: 50; padding: 8px 0;
+  position: absolute;
+  top: 44px;
+  right: 60px;
+  width: 300px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--s-dropdown);
+  z-index: 50;
+  padding: 8px 0;
 }
+
 .history-head {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 6px 12px 8px; border-bottom: 1px solid var(--c-border-light);
-  font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--c-text-muted);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 12px 8px;
+  border-bottom: 1px solid var(--c-border-light);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-muted);
 }
+
 .history-clear {
-  border: none; background: none; color: var(--c-danger); font-size: var(--fs-xs); cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--c-danger);
+  font-size: var(--fs-xs);
+  cursor: pointer;
 }
-.history-empty { padding: 16px; text-align: center; color: var(--c-text-muted); font-size: var(--fs-sm); }
+
+.history-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+}
+
 .history-item {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-  cursor: pointer; font-size: var(--fs-sm); color: var(--c-text); transition: background var(--t-fast);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+  color: var(--c-text);
+  transition: background var(--t-fast);
 }
-.history-item:hover { background: var(--c-bg); }
-.history-item svg { color: var(--c-text-muted); flex-shrink: 0; }
-.suggestions{margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center}
-.suggestions-label{font-size:var(--fs-xs);color:var(--c-text-muted)}
-.suggestion-chip{padding:3px 12px;border-radius:var(--r-full);border:1px solid var(--c-accent);background:var(--c-accent-light);color:var(--c-accent);font-size:var(--fs-xs);cursor:pointer}
-.suggestion-chip:hover{background:var(--c-accent);color:#fff}
-.help-text{font-size:var(--fs-xs);color:var(--c-text-muted);margin-top:8px}
-.filter-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
-.filter-tag{padding:3px 10px;border-radius:var(--r-full);background:var(--c-accent-light);color:var(--c-accent);font-size:var(--fs-xs);font-weight:var(--fw-medium)}
+
+.history-item:hover {
+  background: var(--c-bg);
+}
+
+.history-item svg {
+  color: var(--c-text-muted);
+  flex-shrink: 0;
+}
+
+.suggestions {
+  margin-top: 12px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center
+}
+
+.suggestions-label {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted)
+}
+
+.suggestion-chip {
+  padding: 3px 12px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--c-accent);
+  background: var(--c-accent-light);
+  color: var(--c-accent);
+  font-size: var(--fs-xs);
+  cursor: pointer
+}
+
+.suggestion-chip:hover {
+  background: var(--c-accent);
+  color: #fff
+}
+
+.help-text {
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+  margin-top: 8px
+}
+
+.filter-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 12px
+}
+
+.filter-tag {
+  padding: 3px 10px;
+  border-radius: var(--r-full);
+  background: var(--c-accent-light);
+  color: var(--c-accent);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium)
+}
 </style>

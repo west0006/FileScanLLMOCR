@@ -46,13 +46,14 @@
             <td>{{ u.department || '—' }}</td>
             <td>{{ roleLabel(u.role) }}</td>
             <td class="text-sm">{{ u.last_login_at?.substring(0, 19) || u.created_at?.substring(0, 19) || '—' }}</td>
-            <td><span class="risk-tag" :class="u.is_active ? 'risk-tag--low' : 'risk-tag--high'">{{ u.is_active ? '正常' : '停用'
+            <td><span class="risk-tag" :class="u.is_active ? 'risk-tag--low' : 'risk-tag--high'">{{ u.is_active ? '正常' :
+              '停用'
                 }}</span></td>
             <td>
               <button class="btn-sm" @click="openEdit(u)">编辑</button>
               <button class="btn-sm" style="margin-left:4px" @click="openResetPwd(u)">密码</button>
               <button class="btn-sm" style="margin-left:4px" @click="toggleUser(u)">{{ u.is_active ? '停用' : '启用'
-                }}</button>
+              }}</button>
             </td>
           </tr>
           <tr v-if="users.length === 0">
@@ -63,7 +64,8 @@
     </div>
     <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total"
       :page-size="pageSize" :current-page="page" :page-sizes="[20, 50, 100]"
-      @current-change="(p: number) => { page = p; fetchUsers() }" @size-change="(s: number) => { pageSize = s; fetchUsers() }" />
+      @current-change="(p: number) => { page = p; fetchUsers() }"
+      @size-change="(s: number) => { pageSize = s; fetchUsers() }" />
 
     <!-- 新建弹窗 -->
     <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">

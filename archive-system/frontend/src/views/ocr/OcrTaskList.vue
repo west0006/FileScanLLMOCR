@@ -62,7 +62,7 @@
                 <div class="mini-bar-fill" :class="'mini-bar--' + barClass(t.status)"
                   :style="{ width: (t.processed_pages / t.total_pages * 100 || 0) + '%' }"></div>
                 <span class="mini-bar-num">{{ t.processed_pages }}/{{ t.total_pages }} ({{ t.total_pages ?
-                  Math.round(t.processed_pages / t.total_pages*100) : 0 }}%)</span>
+                  Math.round(t.processed_pages / t.total_pages * 100) : 0 }}%)</span>
               </div>
               <div v-if="t.status === 'running' && t.speed" class="text-xs"
                 style="color:var(--c-text-muted);margin-top:2px">{{ t.speed }} 页/分 · 约 {{ etaText(t) }} 剩余</div>
@@ -75,7 +75,8 @@
                 <option :value="2">紧急</option>
               </select>
             </td>
-            <td><span class="risk-tag" :class="'risk-tag--' + barClass(t.status)">{{ statusLabel(t.status) }}</span></td>
+            <td><span class="risk-tag" :class="'risk-tag--' + barClass(t.status)">{{ statusLabel(t.status) }}</span>
+            </td>
             <td class="text-sm">{{ t.created_at?.substring(0, 10) }}</td>
             <td>
               <button class="btn-sm" @click="openDetail(t)">详情</button>
@@ -97,7 +98,8 @@
     </div>
     <el-pagination v-if="total > pageSize" class="pager" background layout="prev, pager, next, sizes" :total="total"
       :page-size="pageSize" :current-page="page" :page-sizes="[20, 50, 100]"
-      @current-change="(p: number) => { page = p; fetchTasks() }" @size-change="(s: number) => { pageSize = s; fetchTasks() }" />
+      @current-change="(p: number) => { page = p; fetchTasks() }"
+      @size-change="(s: number) => { pageSize = s; fetchTasks() }" />
 
     <!-- 创建任务弹窗 -->
     <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">

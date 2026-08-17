@@ -12,6 +12,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
     'Noto Sans SC', sans-serif;
 }
+
 #app {
   height: 100vh;
 }
