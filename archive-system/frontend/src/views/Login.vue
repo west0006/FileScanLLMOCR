@@ -70,10 +70,16 @@ function genCaptcha() {
 genCaptcha()
 
 async function handleLogin() {
-  // 验证码校验（留空则跳过）
-  if (captchaInput.value) {
-    const expected = captchaText.value.replace(' = ?', '').split(' + ').reduce((s: number, n: string) => s + parseInt(n), 0).toString()
-    if (captchaInput.value !== expected) { genCaptcha(); return }
+  // 验证码校验（必填）
+  if (!captchaInput.value.trim()) {
+    ElMessage.warning('请输入验证码')
+    return
+  }
+  const expected = captchaText.value.replace(' = ?', '').split(' + ').reduce((s: number, n: string) => s + parseInt(n), 0).toString()
+  if (captchaInput.value.trim() !== expected) {
+    ElMessage.error('验证码错误，请重新输入')
+    genCaptcha()
+    return
   }
   loading.value = true
   try {

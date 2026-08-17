@@ -416,7 +416,7 @@ async function fetchRecords() {
       else if (s.includes('部分') && volMap[vid].suggestion === '建议开放') volMap[vid].suggestion = '建议部分开放'
     }
     volumeRecords.value = Object.values(volMap)
-  } catch { /* ignore */ }
+  } catch { if (seq !== fetchSeq) return; ElMessage.error('预审记录加载失败，请稍后重试') }
 }
 function showVolumeDetail(v: any) {
   ElMessage.info(`案卷 ${v.archive_id}: ${v.title}, ${v.item_count} 件, 最高风险 ${v.max_risk}`)

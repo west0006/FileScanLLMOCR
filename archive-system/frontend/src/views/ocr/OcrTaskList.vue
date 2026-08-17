@@ -229,7 +229,7 @@ async function fetchTasks() {
     const res = await ocrApi.listTasks({ page: page.value, page_size: pageSize.value, status: statusFilter.value || undefined })
     if (seq !== fetchSeq) return
     tasks.value = res.data.items || []; total.value = res.data.total || 0
-  } catch { /* */ }
+  } catch { if (seq !== fetchSeq) return; ElMessage.error('OCR 任务加载失败，请稍后重试') }
 }
 async function fetchEngineInfo() {
   try {

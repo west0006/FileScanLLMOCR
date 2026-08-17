@@ -213,7 +213,7 @@ async function fetchUsers() {
     if (seq !== fetchSeq) return
     users.value = res.data.items || []
     total.value = res.data.total || 0
-  } catch { /* ignore */ }
+  } catch { if (seq !== fetchSeq) return; ElMessage.error('用户列表加载失败，请稍后重试') }
 }
 
 function openCreate() { form.username = ''; form.name = ''; form.department = ''; form.role = 'reviewer'; form.password = ''; errorMsg.value = ''; showCreate.value = true }

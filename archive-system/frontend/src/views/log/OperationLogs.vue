@@ -160,7 +160,7 @@ async function fetchLogs() {
       logStats.value.accessCount = viewR.data.total || 0
       logStats.value.operationCount = Math.max(0, (allR.data.total || 0) - (viewR.data.total || 0) - (loginR.data.total || 0))
     } catch { /* ignore */ }
-  } catch { /* ignore */ }
+  } catch { if (seq !== fetchSeq) return; ElMessage.error('日志加载失败，请稍后重试') }
 }
 
 function typeLabel(t: string) { return OP_TYPE_LABELS[t] || t }

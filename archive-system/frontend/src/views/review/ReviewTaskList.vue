@@ -228,7 +228,7 @@ async function fetchTasks() {
     tasks.value = res.data.items || []
     total.value = res.data.total || 0
     metrics.value = res.data.metrics || {}
-  } catch { /* keep empty */ }
+  } catch { if (seq !== fetchSeq) return; ElMessage.error('预审任务加载失败，请稍后重试') }
 }
 async function handleCreateTask() {
   if (!createForm.value.task_name) { ElMessage.warning('请输入任务名称'); return }
