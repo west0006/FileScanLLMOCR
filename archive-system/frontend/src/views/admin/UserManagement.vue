@@ -52,6 +52,7 @@
             <td>
               <button class="btn-sm" @click="openEdit(u)">编辑</button>
               <button class="btn-sm" style="margin-left:4px" @click="openResetPwd(u)">密码</button>
+              <button class="btn-sm" style="margin-left:4px" @click="openTreeAuth(u)" title="配置目录树授权">目录授权</button>
               <button class="btn-sm" style="margin-left:4px" @click="toggleUser(u)">{{ u.is_active ? '停用' : '启用'
               }}</button>
             </td>
@@ -145,14 +146,36 @@
         </div>
       </div>
     </div>
+
+    <!-- 目录树授权弹窗（UM-009/010/011） -->
+    <div v-if="showTreeAuth" class="modal-overlay" @click.self="showTreeAuth = false">
+      <div class="modal-card" style="width:420px">
+        <div class="modal-head">
+          <h3>目录树授权 — {{ treeAuthTarget?.username }}</h3><button class="modal-close" @click="showTreeAuth = false"><svg
+              width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg></button>
+        </div>
+        <div class="modal-body">
+          <p class="tree-auth-hint">勾选该用户可访问的档案目录节点，上级节点自动包含所有下级部门。</p>
+          <el-tree ref="treeAuthRef" :data="treeAuthTreeData" show-checkbox node-key="id" :props="{ label: 'label' }"
+            :default-checked-keys="treeAuthChecked" style="max-height:300px;overflow-y:auto;padding:8px" />
+          <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px">
+            <button class="btn-sm" @click="showTreeAuth = false">取消</button>
+            <button class="btn-primary" @click="saveTreeAuth">保存</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick } from 'vue'
 import { userApi } from '@/api'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { passwordComplexityError } from '@/constants'
+import { passwordComplexityError, TREE_AUTH_DATA } from '@/constants'
 
 const users = ref<any[]>([])
 const showCreate = ref(false)
@@ -195,6 +218,38 @@ async function doResetPassword() {
     ElMessage.success('密码已重置')
     showResetPwd.value = false
   } catch { ElMessage.error('重置失败') }
+}
+
+// 目录树授权（UM-009/010/011）
+const showTreeAuth = ref(false)
+const treeAuthTarget = ref<any>(null)
+const treeAuthRef = ref<any>()
+const treeAuthChecked = ref<string[]>([])
+const treeAuthTreeData = Object.entries(TREE_AUTH_DATA).map(([cat, depts]) => ({
+  id: cat,
+  label: cat,
+  children: (depts || []).map((d) => ({ id: `${cat}/${d}`, label: d })),
+}))
+
+async function openTreeAuth(u: any) {
+  treeAuthTarget.value = u
+  showTreeAuth.value = true
+  try {
+    const res = await userApi.getTreeAuth(u.id)
+    treeAuthChecked.value = res.data.authorized_nodes || []
+    await nextTick()
+    treeAuthRef.value?.setCheckedKeys(treeAuthChecked.value)
+  } catch { /* 保持空勾选 */ }
+}
+async function saveTreeAuth() {
+  if (!treeAuthTarget.value) return
+  const checked = treeAuthRef.value?.getCheckedKeys() || []
+  try {
+    const res = await userApi.updateTreeAuth(treeAuthTarget.value.id, checked)
+    if (res.data && res.data.error) { ElMessage.error(res.data.error); return }
+    ElMessage.success('目录树授权已保存')
+    showTreeAuth.value = false
+  } catch { ElMessage.error('保存失败') }
 }
 
 function roleLabel(r: string) { return { system_admin: '系统管理员', archive_admin: '档案馆员', reviewer: '审核员' }[r] || r }
