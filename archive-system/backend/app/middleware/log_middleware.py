@@ -48,6 +48,40 @@ _OP_DETAIL_MAP = {
 }
 
 
+def _classify_operation(method: str, path: str, request: Request):
+    """统一的操作分类（成功/失败路径共用），返回 (op_type, module, description)；None 表示不记录"""
+    if method == "GET":
+        # 下载/打印操作优先分类（LG-006）
+        if path.endswith("/download"):
+            return "download", "search", "下载档案原文"
+        if path.endswith("/print"):
+            return "print", "search", "打印档案"
+        if "/archives/" in path and (path.endswith("/image") or path.endswith("/ocr")):
+            return "view_file", "search", "浏览档案原文"
+        if "/archives/" in path:
+            return "view_entry", "search", "浏览档案详情"
+        # GET 请求 → 功能访问
+        for prefix, (ot, desc) in _GET_PAGE_MAP.items():
+            if path.startswith(prefix):
+                return ot, prefix.strip("/").replace("api/", "").replace("/", ""), desc
+        return None
+
+    if method in ("POST", "PUT", "DELETE"):
+        # 写操作 → 功能操作
+        op_tag = path.split("/")[2] if len(path.split("/")) > 2 else "other"
+        if path.endswith("/export"):
+            return "export", op_tag, "导出操作"
+        if op_tag in _OP_DETAIL_MAP:
+            detail = _OP_DETAIL_MAP[op_tag]
+            if op_tag == "auth":
+                op_type, description = detail.get("logout" if path.endswith("/logout") else "login", detail.get("login", ("login", "用户登录")))
+                return op_type, op_tag, description
+            return detail["default"][0], op_tag, detail["default"][1]
+        return op_tag, op_tag, f"{method} {path}"
+
+    return None
+
+
 def _write_log_sync(
     user_id: int, username: str, op_type: str, module: str,
     description: str, target_id: str, ip: str, result: str,
@@ -92,11 +126,18 @@ def _log_exception_failure(request: Request, exc: Exception, duration_ms: float)
             if payload:
                 user_id = int(payload.get("sub", 0))
                 username = payload.get("username", "anonymous")
-        op_tag = path.split("/")[2] if len(path.split("/")) > 2 else "other"
-        desc = f"{method} {path} — 服务异常: {str(exc)[:150]}"
+        classified = _classify_operation(method, path, request)
+        if classified is None:
+            return
+        op_type, module, description = classified
+        # 复用端点自定义描述（与成功路径一致，便于按操作关键词追溯）
+        custom_desc = getattr(request.state, "log_description", None)
+        if custom_desc:
+            description = custom_desc
+        desc = f"{description} — 服务异常: {str(exc)[:150]}"
         threading.Thread(
             target=_write_log_sync,
-            args=(user_id, username, op_tag, op_tag, desc, "", request.client.host if request.client else "", "failure", "", session_id),
+            args=(user_id, username, op_type, module, desc, "", request.client.host if request.client else "", "failure", "", session_id),
             daemon=True,
         ).start()
     except Exception:
@@ -151,71 +192,21 @@ class OperationLogMiddleware(BaseHTTPMiddleware):
         except Exception:
             pass
 
-        op_type = "other"
-        module = "other"
-        description = ""
-
-        if method == "GET":
-            # 下载/打印操作优先分类（LG-006）
-            if path.endswith("/download"):
-                op_type = "download"
-                module = "search"
-                description = "下载档案原文"
-            elif path.endswith("/print"):
-                op_type = "print"
-                module = "search"
-                description = "打印档案"
-            elif "/archives/" in path and (path.endswith("/image") or path.endswith("/ocr")):
-                op_type = "view_file"
-                module = "search"
-                description = "浏览档案原文"
-            elif "/archives/" in path:
-                op_type = "view_entry"
-                module = "search"
-                description = "浏览档案详情"
-            else:
-                # GET 请求 → 功能访问
-                for prefix, (ot, desc) in _GET_PAGE_MAP.items():
-                    if path.startswith(prefix):
-                        op_type = ot
-                        module = prefix.strip("/").replace("api/", "").replace("/", "")
-                        description = desc
-                        break
-                else:
-                    return response  # 不记录
-
-        elif method in ("POST", "PUT", "DELETE"):
-            # 写操作 → 功能操作
-            op_tag = path.split("/")[2] if len(path.split("/")) > 2 else "other"
-
-            # 登录端点：从 request.state 获取用户名（由 auth endpoint 设置）
-            login_user = getattr(request.state, "log_username", None)
-            if login_user:
-                username = login_user
-                user_name = login_user
-
-            if path.endswith("/export"):
-                op_type = "export"
-                module = op_tag
-                description = "导出操作"
-            elif op_tag in _OP_DETAIL_MAP:
-                detail = _OP_DETAIL_MAP[op_tag]
-                if op_tag == "auth":
-                    op_type, description = detail.get("logout" if path.endswith("/logout") else "login", detail.get("login", ("login", "用户登录")))
-                else:
-                    op_type, description = detail["default"]
-                module = op_tag
-            else:
-                op_type = op_tag
-                module = op_tag
-                description = f"{method} {path}"
-
-            # 路由自定义描述优先
-            custom_desc = getattr(request.state, "log_description", None)
-            if custom_desc:
-                description = custom_desc
-        else:
+        classified = _classify_operation(method, path, request)
+        if classified is None:
             return response
+        op_type, module, description = classified
+
+        # 登录端点：从 request.state 获取用户名（由 auth endpoint 设置）
+        login_user = getattr(request.state, "log_username", None)
+        if login_user:
+            username = login_user
+            user_name = login_user
+
+        # 路由自定义描述优先
+        custom_desc = getattr(request.state, "log_description", None)
+        if custom_desc:
+            description = custom_desc
 
         result = "success" if response.status_code < 400 else "failure"
 
