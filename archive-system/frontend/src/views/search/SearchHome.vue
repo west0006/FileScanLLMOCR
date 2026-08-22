@@ -520,7 +520,23 @@ const activeFilterTags = computed(() => {
 onMounted(() => {
   const stored = localStorage.getItem('search_history')
   if (stored) searchHistory.value = JSON.parse(stored)
+  loadHistory()  // 后端历史优先（SE-022 双轨贯通）
 })
+
+// 从后端 /search/history 加载检索历史（OperationLog 自动记录），与 localStorage 合并
+async function loadHistory() {
+  try {
+    const res = await searchApi.history({ page: 1, page_size: 20 })
+    const items = (res.data.items || []).map((i: any) => {
+      const q = String(i.query || '').replace(/^(关键词检索|语义检索):\s*/, '').trim()
+      return q
+    }).filter((q: string) => q)
+    if (items.length) {
+      searchHistory.value = [...new Set([...items, ...searchHistory.value])].slice(0, 20)
+      localStorage.setItem('search_history', JSON.stringify(searchHistory.value))
+    }
+  } catch { /* 后端不可用时保持 localStorage */ }
+}
 function saveToHistory(q: string) {
   if (!q.trim()) return
   searchHistory.value = [q, ...searchHistory.value.filter(h => h !== q)].slice(0, 20)
