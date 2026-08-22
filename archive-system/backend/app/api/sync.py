@@ -208,13 +208,9 @@ def serve_sync_file(file_path: str, user: dict = Depends(get_current_user)):
     if ext in (".tiff", ".tif"):
         return _transcode_tiff(full_path, file_path)
 
-    # PDF — 暂不支持
+    # PDF — 浏览器原生渲染（Chrome/Firefox/Edge 内置 PDF viewer），前端 iframe 加载
     if ext == ".pdf":
-        from fastapi.responses import JSONResponse
-        return JSONResponse(status_code=415, content={
-            "error": "pdf_not_supported",
-            "hint": "PDF 在线预览需接入 pdf.js 渲染，当前仅支持下载",
-        })
+        return FileResponse(full_path, media_type="application/pdf")
 
     from fastapi.responses import JSONResponse
     return JSONResponse(status_code=415, content={"error": "unsupported_format", "ext": ext})

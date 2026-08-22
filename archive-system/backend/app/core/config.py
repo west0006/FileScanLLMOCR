@@ -76,9 +76,9 @@ class Settings(BaseSettings):
     OCR_MODE: str = "mock"  # mock | real
     LLAMAFACTORY_URL: str = "http://10.11.13.100:7860"  # LLaMA-Factory 地址（LLM_MODE=real）
 
-    # 文件存储
-    UPLOAD_DIR: str = "/app/uploads"
-    SYNC_DATA_DIR: str = "/app/sync_data"
+    # 文件存储（默认基于项目根：本地 backend/ 下；Docker 挂载 /app 后 PROJECT_ROOT=/app 自动一致）
+    UPLOAD_DIR: str = os.path.join(PROJECT_ROOT, "uploads")
+    SYNC_DATA_DIR: str = os.path.join(PROJECT_ROOT, "sync_data")
     MAX_UPLOAD_SIZE_MB: int = 500
 
     model_config = {
